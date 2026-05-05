@@ -1,66 +1,57 @@
 <?php
-// config.php - UBICAR EN RAÍZ, FUERA DE /public
+/**
+ * config.php - Configuración de Base de Datos
+ * Ubicación: RAÍZ del proyecto (fuera de /public)
+ */
 
-// Prevenir acceso directo por navegador
+// 1. SEGURIDAD: Prevenir acceso directo por navegador
 if (PHP_SAPI !== 'cli' && !defined('APP_ENTRY_POINT')) {
     http_response_code(403);
     exit('Acceso denegado');
 }
 
-// Cargar .env si existe (para local)
-$envFile = __DIR__ . '/.env';
-if (file_exists($envFile)) {
-    $envVars = parse_ini_file($envFile);
-    foreach ($envVars as $key => $value) {
-        if (!getenv($key)) putenv("$key=$value");
-    }
-}
-
-// Detectar entorno
-$isProduction = getenv('RAILWAY_ENVIRONMENT') === 'true';
-
-if ($isProduction) {
-    $host = getenv('RAILWAY_MYSQL_HOST') ?: getenv('MYSQL_HOST');
-    $dbname = getenv('RAILWAY_MYSQL_DATABASE') ?: getenv('MYSQL_DATABASE');
-    $username = getenv('RAILWAY_MYSQL_USER') ?: getenv('MYSQL_USER');
-    $password = getenv('RAILWAY_MYSQL_PASSWORD') ?: getenv('MYSQL_PASSWORD');
-    $port = getenv('RAILWAY_MYSQL_PORT') ?: '3306';
+// 2. DETECCIÓN DE ENTORNO
+// Railway inyecta 'MYSQL_HOST' automáticamente si el servicio MySQL está conectado
+if (getenv('MYSQL_HOST')) {
+    // 🚀 ENTORNO PRODUCCIÓN (RAILWAY)
+    $host = getenv('MYSQL_HOST');
+    $dbname = getenv('MYSQL_DATABASE');
+    $username = getenv('MYSQL_USER');
+    $password = getenv('MYSQL_PASSWORD');
+    $port = getenv('MYSQL_PORT') ?: '3306';
+    $isProduction = true;
 } else {
-    // Local con fallback seguro
-    $host = getenv('DB_HOST') ?: 'localhost';
-    $dbname = getenv('DB_NAME') ?: 'medicalot_local';
-    $username = getenv('DB_USER') ?: 'root';
-    $password = getenv('DB_PASS') ?: '';
-    $port = getenv('DB_PORT') ?: '3306';
+    // 💻 ENTORNO DESARROLLO (LOCAL XAMPP)
+    // Nota: Usamos '127.0.0.1' para evitar conflictos de sockets en macOS/Linux
+    $host = '127.0.0.1'; 
+    $dbname = 'medicalot_local'; // Nombre de tu BD local
+    $username = 'root';
+    $password = ''; // Tu contraseña de XAMPP
+    $port = '3306';
+    $isProduction = false;
 }
 
+// 3. CONEXIÓN PDO
 try {
-    $pdo = new PDO(
-        "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4",
-        $username,
-        $password,
-        [
-            PDO::ATTR_ERRMODE => $isProduction ? PDO::ERRMODE_SILENT : PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false, // Prevenir SQL injection
-            PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone='+00:00'"
-        ]
-    );
+    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+    $pdo = new PDO($dsn, $username, $password, [
+        // En producción, ERRMODE_WARNING evita mostrar errores crudos al usuario
+        PDO::ATTR_ERRMODE => $isProduction ? PDO::ERRMODE_WARNING : PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false, // Previene SQL Injection
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone='+00:00'"
+    ]);
+} catch (PDOException $e) {
+    error_log("DB Connection Error: " . $e->getMessage());
     
-    // En producción, no mostrar errores de BD al usuario
-    if ($isProduction && !$pdo) {
-        error_log("DB Connection failed");
-        exit('Error de sistema');
+    // En producción, mostramos mensaje genérico y matamos el script
+    if ($isProduction) {
+        http_response_code(500);
+        // Mensaje amigable para el usuario (puedes personalizarlo)
+        exit("⚠️ Error de conexión a base de datos. Por favor contacte al administrador.");
     }
     
-} catch (PDOException $e) {
-    error_log("DB Error: " . $e->getMessage());
-    if (!$isProduction) throw $e;
-    exit('Error de conexión');
+    // En local, lanzamos el error para depurar
+    throw $e;
 }
-
-// Constantes de la app
-define('APP_NAME', 'MedicalOT');
-define('APP_DOMAIN', 'medicalot.com');
-define('APP_URL', $isProduction ? 'https://medicalot.com' : 'http://localhost');
 ?>
