@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+# Especificar que el document root es public/
+startCommand = "php -S 0.0.0.0:$PORT -t public"
+
+# Health check
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
