@@ -1,0 +1,17 @@
+/Applications/XAMPP/xamppfiles/bin/mysql \
+  --host=trolley.proxy.rlwy.net \
+  --port=28420 \
+  --user=root \
+  --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
+  --database=railway \
+  -e "UPDATE convenios SET estado = IF(activo = 1, 'activo', 'inactivo') WHERE estado IS NULL;"
+
+
+mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
+
+
+
+  # Commit y push
+git add .
+git commit -m "feat: sitio en mantencion"
+git push origin main

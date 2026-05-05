@@ -2,63 +2,62 @@
 // includes/BrevoMailer.php
 class BrevoMailer {
     private $apiKey;
-    private $toEmail;
-    private $toName;
-    private $subject;
-    private $htmlBody;
-
+    private $fromEmail = 'contacto@medicalot.com'; // Actualizar con dominio verificado
+    private $fromName = 'MedicalOT';
+    
     public function __construct() {
-        $this->apiKey = defined('BREVO_API_KEY') ? BREVO_API_KEY : getenv('BREVO_API_KEY');
+        $this->apiKey = getenv('BREVO_API_KEY');
         if (!$this->apiKey) {
-            throw new Exception('BREVO_API_KEY no configurada');
+            error_log('❌ BREVO_API_KEY no configurada');
+            // En desarrollo, permitir fallback sin error fatal
+            if (getenv('APP_ENV') !== 'production') {
+                $this->apiKey = 'dummy-key-for-dev';
+            }
         }
     }
 
-    public function setTo($email, $name = '') {
-        $this->toEmail = $email;
-        $this->toName = $name ?: $email;
-        return $this;
-    }
+    public function send(string $toEmail, string $subject, string $htmlBody, array $cc = []): bool {
+        // Validar email para prevenir header injection
+        if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            error_log("Email inválido: $toEmail");
+            return false;
+        }
 
-    public function setHtmlBody($html) {
-        $this->htmlBody = $html;
-        return $this;
-    }
-
-    public function setSubject($subject) {
-        $this->subject = $subject;
-        return $this;
-    }
-
-    public function send() {
         $data = [
-            'sender' => ['name' => 'NegocioUP', 'email' => 'llobos@gltcomex.com'],
-            'to' => [['email' => $this->toEmail, 'name' => $this->toName]],
-            'subject' => $this->subject,
-            'htmlContent' => $this->htmlBody
+            'sender' => ['name' => $this->fromName, 'email' => $this->fromEmail],
+            'to' => [['email' => $toEmail]],
+            'subject' => htmlspecialchars($subject, ENT_QUOTES, 'UTF-8'),
+            'htmlContent' => $htmlBody
         ];
+        
+        if (!empty($cc)) {
+            $data['cc'] = array_map(fn($e) => ['email' => $e], $cc);
+        }
 
-        $ch = curl_init();
+        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
         curl_setopt_array($ch, [
-            CURLOPT_URL => 'https://api.brevo.com/v3/smtp/email',
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($data),
             CURLOPT_HTTPHEADER => [
                 'api-key: ' . $this->apiKey,
-                'Content-Type: application/json'
-            ]
+                'Content-Type: application/json',
+                'Accept: application/json'
+            ],
+            CURLOPT_TIMEOUT => 30
         ]);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
         curl_close($ch);
 
         if ($httpCode !== 201) {
-            error_log("❌ Error Brevo: $response");
-            throw new Exception('Error al enviar correo');
+            error_log("❌ Brevo Error $httpCode: $response | $error");
+            return false;
         }
 
+        error_log("✅ Email enviado a $toEmail - Asunto: $subject");
         return true;
     }
 }
