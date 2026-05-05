@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS OT | Piloto Gestión Hospitalaria</title>
+<style>
+  :root { --p:#0056b3; --s:#0ea5e9; --bg:#f8fafc; --card:#fff; --border:#e2e8f0; --txt:#0f172a; --ok:#10b981; --warn:#f59e0b; --err:#ef4444; }
+  * { box-sizing:border-box; margin:0; padding:0; font-family: system-ui, -apple-system, sans-serif; }
+  body { background:var(--bg); color:var(--txt); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+  header { background:var(--card); padding:10px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  nav { background:#f1f5f9; padding:8px 20px; border-bottom:1px solid var(--border); display:flex; gap:6px; overflow-x:auto; }
+  nav button { padding:8px 14px; border:none; background:#e2e8f0; border-radius:6px; cursor:pointer; font-size:13px; }
+  nav button.active { background:var(--p); color:#fff; }
+  .container { flex:1; padding:15px; overflow:hidden; }
+  .module { display:none; height:100%; } .module.active { display:block; }
+  .grid-70-30 { display:grid; grid-template-columns:70% 30%; gap:10px; height:100%; }
+  .grid-30-70 { display:grid; grid-template-rows:30% 70%; gap:10px; }
+  .card { background:var(--card); border-radius:8px; border:1px solid var(--border); padding:12px; overflow:auto; }
+  .filters { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; align-items:end; }
+  .filters select, .filters input, button { width:100%; padding:8px; border:1px solid var(--border); border-radius:6px; }
+  button { background:var(--p); color:#fff; border:none; cursor:pointer; font-weight:500; }
+  button:hover { opacity:0.9; }
+  .table-wrap { height:100%; overflow:auto; } table { width:100%; border-collapse:collapse; font-size:13px; } th, td { padding:8px; border-bottom:1px solid var(--border); text-align:left; } th { background:#f1f5f9; position:sticky; top:0; } tr:hover { background:#f8fafc; cursor:pointer; } tr.sel { background:#dbeafe; border-left:3px solid var(--p); }
+  .badge { padding:2px 6px; border-radius:10px; font-size:11px; color:#fff; } .b-pen{background:var(--warn)} .b-asi{background:var(--s)} .b-pro{background:var(--ok)} .b-cer{background:#64748b}
+  .detail-form label { display:block; font-size:12px; color:#475569; margin:8px 0 4px; } .detail-form input, .detail-form select, .detail-form textarea { width:100%; padding:6px; border:1px solid var(--border); border-radius:4px; }
+  .btn-row { display:flex; gap:8px; margin-top:12px; } .sec { background:#64748b; } .dan { background:var(--err); }
+  .kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; } .kpi-card { background:var(--card); padding:15px; border-radius:8px; border:1px solid var(--border); text-align:center; } .kpi-val { font-size:24px; font-weight:700; margin:8px 0; } .progress { height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden; margin-top:5px; } .bar { height:100%; background:var(--p); } .bar.warn { background:var(--warn); } .bar.err { background:var(--err); }
+  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:100; } .modal-content { background:#fff; padding:20px; border-radius:10px; width:90%; max-width:500px; } .login-box { max-width:320px; margin:auto; text-align:center; padding:30px; background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); } .hidden { display:none!important; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" style="display:flex; height:100vh; background:#f1f5f9;">
+  <div class="login-box">
+    <h2>🏥 NEXUS OT</h2>
+    <p style="color:#64748b; margin-bottom:15px;">Sistema de Gestión de Mantenimiento</p>
+    <input id="user" placeholder="Usuario" style="margin-bottom:10px; width:100%; padding:10px; border:1px solid var(--border); border-radius:6px;">
+    <input id="pass" type="password" placeholder="Contraseña" style="margin-bottom:15px; width:100%; padding:10px; border:1px solid var(--border); border-radius:6px;">
+    <button onclick="login()" style="width:100%; padding:10px;">Ingresar</button>
+    <p style="font-size:11px; color:#94a3b8; margin-top:15px;">adminhospital / admicontratista / tecnico | pass: 12345</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden" style="height:100vh; display:flex; flex-direction:column;">
+  <header>
+    <h3 id="role-title">Panel</h3>
+    <button class="sec" onclick="logout()" style="width:auto; padding:6px 12px;">🔒 Salir</button>
+  </header>
+  <nav id="nav"></nav>
+  <div class="container">
+    <!-- M1 -->
+    <div id="m1" class="module">
+      <div class="card" style="text-align:center; padding:40px;">
+        <h3>📥 Módulo 1: Carga y Validación SIC</h3>
+        <p style="color:#64748b; margin:15px 0;">Arrastra o selecciona el archivo `.xlsx` o `.csv` exportado del sistema SIC.</p>
+        <input type="file" id="fileInput" style="margin:10px auto; display:block;" onchange="validateUpload()">
+        <div id="upload-log" style="background:#f8fafc; padding:10px; border-radius:6px; margin-top:10px; text-align:left; font-size:13px; max-height:200px; overflow:auto;"></div>
+      </div>
+    </div>
+    <!-- M2 -->
+    <div id="m2" class="module active">
+      <div class="grid-70-30">
+        <div class="grid-30-70">
+          <div class="card">
+            <h4 style="margin-bottom:8px;">🔍 Filtros de Planificación</h4>
+            <div class="filters">
+              <div><label>Especialidad</label><select id="fEsp" onchange="applyFilters()"><option value="">Todas</option><option>M-CLIMATIZACION FRIGORISTA</option><option>M-GASFITERIA</option><option>M-ELECTROMECANICA</option></select></div>
+              <div><label>Estado</label><select id="fEstado" onchange="applyFilters()"><option value="">Todos</option><option>pendiente</option><option>asignada</option><option>en_proceso</option><option>cerrada</option></select></div>
+              <div><label>Mes</label><select id="fMes" onchange="applyFilters()"><option value="">Todos</option><option>enero</option><option>febrero</option><option>marzo</option><option>abril</option><option>mayo</option><option>junio</option></select></div>
+              <div><label>Asignado a</label><select id="fGrupo" onchange="applyFilters()"><option value="">Todos</option></select></div>
+            </div>
+          </div>
+          <div class="card table-wrap">
+            <table id="otTable"><thead><tr><th>ID SIC</th><th>Protocolo</th><th>Equipo</th><th>Fecha</th><th>HH</th><th>Esp.</th><th>Grupo</th><th>Estado</th></tr></thead><tbody id="tBody"></tbody></table>
+          </div>
+        </div>
+        <div class="card detail-form" id="detailPanel">
+          <h3>📋 Detalle de OT</h3>
+          <p style="color:#94a3b8; margin-top:20px; text-align:center;">Selecciona una fila para ver/editar</p>
+        </div>
+      </div>
+    </div>
+    <!-- M3 -->
+    <div id="m3" class="module">
+      <div class="card">
+        <h3>👥 Módulo 3: Mantenedor de Recursos</h3>
+        <div style="margin:15px 0; display:flex; gap:8px; flex-wrap:wrap;">
+          <button onclick="addContractor()">➕ Contratista</button>
+          <button class="sec" onclick="addGroup()">👥 Grupo/Pool</button>
+          <button class="sec" onclick="addTech()">👷 Técnico</button>
+        </div>
+        <table><thead><tr><th>Entidad</th><th>Nombre</th><th>Especialidad</th><th>Supervisor</th><th>Miembros</th></tr></thead><tbody id="resTable"></tbody></table>
+      </div>
+    </div>
+    <!-- M4 -->
+    <div id="m4" class="module">
+      <div class="card" style="max-width:600px; margin:auto;">
+        <h3>🔗 Módulo 4: Asignación de OTs</h3>
+        <div style="margin:15px 0; display:grid; gap:10px;">
+          <div><label>Seleccionar OT</label><select id="aOT"></select></div>
+          <div><label>Tipo Asignación</label><select id="aTipo" onchange="toggleAssign()"><option value="grupo">A Grupo/Pool</option><option value="tecnico">A Técnico Directo</option></select></div>
+          <div><label>Recurso</label><select id="aRecurso"></select></div>
+          <div style="display:flex; gap:10px; align-items:center;"><input type="checkbox" id="aAuto"> <label for="aAuto" style="width:auto; margin:0;">Asignación Automática (por carga/disponibilidad)</label></div>
+          <button onclick="assignOT()">✅ Confirmar Asignación</button>
+        </div>
+      </div>
+    </div>
+    <!-- M5 -->
+    <div id="m5" class="module">
+      <div class="card">
+        <h3>📱 Módulo 5: Tracking en Terreno</h3>
+        <div id="tech-view" style="display:none;">
+          <p>Técnicos solo ven sus OTs asignadas. Usa M2 para ver el detalle global.</p>
+        </div>
+        <div style="margin-top:15px;">
+          <h4>Registro de Avance / Cierre</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px;">
+            <div><label>HH Reportadas</label><input id="eHH" type="number"></div>
+            <div><label>% Avance</label><input id="eAvance" type="range" min="0" max="100" oninput="this.nextElementSibling.value=this.value+'%'"><output>0%</output></div>
+            <div><label>Estado</label><select id="eEstado"><option>en_proceso</option><option>pausada</option><option>cerrada</option></select></div>
+          </div>
+          <div style="margin-top:10px;"><label>Evidencia (fotos/doc)</label><input type="file" id="eEvidencia" style="padding:5px;"></div>
+          <div style="margin-top:10px;"><label>Crear Sub-OT (si aplica)</label><input id="eSubOT" placeholder="Descripción tarea adicional"></div>
+          <div class="btn-row"><button onclick="saveExecution()">💾 Guardar Avance</button><button class="sec" onclick="alert('Notificación enviada al supervisor')">📢 Reportar Incidencia</button></div>
+        </div>
+      </div>
+    </div>
+    <!-- M6 -->
+    <div id="m6" class="module">
+      <div class="kpi-grid">
+        <div class="kpi-card"><h4>SLA Cumplimiento</h4><div class="kpi-val" id="kSLA">92%</div><div class="progress"><div class="bar" style="width:92%"></div></div></div>
+        <div class="kpi-card"><h4>HH Presupuestadas vs Reales</h4><div class="kpi-val" id="kHH">108%</div><div class="progress"><div class="bar warn" style="width:100%"></div></div><small style="color:var(--warn)">⚠️ 8% sobre tope en 3 OTs</small></div>
+        <div class="kpi-card"><h4>OTs Cerradas / Mes</h4><div class="kpi-val" id="kClosed">47</div><div class="progress"><div class="bar" style="width:65%"></div></div></div>
+      </div>
+      <div class="card" style="margin-top:15px;"><h4>📊 Distribución por Especialidad</h4><div style="display:flex; gap:15px; margin-top:10px;"><span style="width:120px;">Climatización</span><div class="progress" style="flex:1"><div class="bar" style="width:60%"></div></div><span>60%</span></div><div style="display:flex; gap:15px; margin-top:8px;"><span style="width:120px;">Gasfitería</span><div class="progress" style="flex:1"><div class="bar" style="width:25%"></div></div><span>25%</span></div><div style="display:flex; gap:15px; margin-top:8px;"><span style="width:120px;">Electromecánica</span><div class="progress" style="flex:1"><div class="bar" style="width:15%"></div></div><span>15%</span></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// STATE
+const DB = {
+  ots: [
+    {id:358121, proto:'I000', equipo:'Conductivos Diarios', fecha:'2026-01-01', hh:2, esp:'M-CLIMATIZACION FRIGORISTA', mes:'enero', grupo:null, estado:'pendiente'},
+    {id:395125, proto:'IB14', equipo:'Estanque Agua PCI', fecha:'2026-05-25', hh:0.8, esp:'M-GASFITERIA', mes:'mayo', grupo:'Pool_Gasfiteria_A', estado:'asignada'},
+    {id:397889, proto:'I713', equipo:'Estanque Criogénico', fecha:'2026-02-04', hh:2, esp:'M-ELECTROMECANICA', mes:'febrero', grupo:'Pool_Elec_01', estado:'en_proceso'},
+    {id:397894, proto:'I713', equipo:'Estanque Criogénico', fecha:'2026-06-10', hh:2, esp:'M-ELECTROMECANICA', mes:'junio', grupo:null, estado:'pendiente'}
+  ],
+  groups: [{id:'Pool_Gasfiteria_A', name:'Pool Gasfitería A', esp:'M-GASFITERIA', sup:'Sup. Pérez', techs:3}, {id:'Pool_Elec_01', name:'Pool Electromecánica 01', esp:'M-ELECTROMECANICA', sup:'Sup. Rojas', techs:5}],
+  execution: []
+};
+let currentUser = null, selectedOT = null;
+
+// AUTH
+function login(){
+  const u=document.getElementById('user').value.toLowerCase(), p=document.getElementById('pass').value;
+  if(p!=='12345') return alert('Contraseña incorrecta');
+  if(['adminhospital','admicontratista','tecnico'].includes(u)){
+    currentUser = {role: u.replace('adminhospital','admin_hosp').replace('admicontratista','admin_cont').replace('tecnico','tech'), name: u};
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('app').style.display='flex';
+    document.getElementById('role-title').innerText = currentUser.role==='admin_hosp' ? 'Admin Hospital | NEXUS OT' : currentUser.role==='admin_cont' ? 'Supervisor Contratista | NEXUS OT' : 'Técnico Terreno | NEXUS OT';
+    setupNav(); applyFilters(); renderResources();
+    if(currentUser.role==='tech') document.getElementById('tech-view').style.display='block';
+  } else alert('Usuario no válido');
+}
+function logout(){ location.reload(); }
+
+// NAV & ROUTING
+function setupNav(){
+  const nav=document.getElementById('nav'); nav.innerHTML='';
+  const tabs = [
+    {id:'m1', label:'📥 Carga SIC', roles:['admin_hosp']},
+    {id:'m2', label:'📊 Home OTs', roles:['admin_hosp','admin_cont','tech']},
+    {id:'m3', label:'👥 Recursos', roles:['admin_hosp','admin_cont']},
+    {id:'m4', label:'🔗 Asignación', roles:['admin_hosp','admin_cont']},
+    {id:'m5', label:'📱 Tracking', roles:['admin_hosp','admin_cont','tech']},
+    {id:'m6', label:'📈 KPIs', roles:['admin_hosp','admin_cont']}
+  ];
+  tabs.forEach(t=>{
+    if(t.roles.includes(currentUser.role)){
+      const b=document.createElement('button'); b.innerText=t.label; b.id='btn_'+t.id; b.onclick=()=>switchModule(t.id);
+      nav.appendChild(b);
+    }
+  });
+  switchModule('m2');
+}
+function switchModule(id){
+  document.querySelectorAll('.module').forEach(m=>m.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('btn_'+id); if(btn) btn.classList.add('active');
+  if(id==='m2') applyFilters();
+  if(id==='m4') populateAssign();
+  if(id==='m6') updateKPIs();
+}
+
+// M2 RENDER & FILTERS
+function applyFilters(){
+  const esp=document.getElementById('fEsp').value, estado=document.getElementById('fEstado').value, mes=document.getElementById('fMes').value;
+  const filtered = DB.ots.filter(o=>(!esp||o.esp===esp)&&(!estado||o.estado===estado)&&(!mes||o.mes===mes));
+  const tbody=document.getElementById('tBody'); tbody.innerHTML='';
+  filtered.forEach(o=>{
+    const tr=document.createElement('tr'); tr.dataset.id=o.id;
+    tr.innerHTML=`<td>${o.id}</td><td>${o.proto}</td><td>${o.equipo}</td><td>${o.fecha}</td><td>${o.hh}</td><td>${o.esp}</td><td>${o.grupo||'-'}</td><td><span class="badge b-${o.estado.replace('en_proceso','pro').replace('asignada','asi').replace('pendiente','pen').replace('cerrada','cer')}">${o.estado}</span></td>`;
+    tr.onclick=()=>selectOT(o,tr);
+    tbody.appendChild(tr);
+  });
+  // Populate filter grupos
+  const fg=document.getElementById('fGrupo'); fg.innerHTML='<option value="">Todos</option>';
+  DB.groups.forEach(g=>fg.innerHTML+=`<option>${g.id}</option>`);
+}
+function selectOT(o, tr){
+  document.querySelectorAll('tr').forEach(t=>t.classList.remove('sel')); tr.classList.add('sel');
+  selectedOT=o;
+  const dp=document.getElementById('detailPanel');
+  dp.innerHTML=`
+    <h3>📋 Detalle OT #${o.id}</h3>
+    <label>Protocolo / Equipo</label><input value="${o.proto} - ${o.equipo}" readonly>
+    <label>Fecha Programada</label><input value="${o.fecha}" readonly>
+    <label>HH Asignadas</label><input type="number" value="${o.hh}">
+    <label>Estado Actual</label><select id="dEstado"><option ${o.estado==='pendiente'?'selected':''}>pendiente</option><option ${o.estado==='asignada'?'selected':''}>asignada</option><option ${o.estado==='en_proceso'?'selected':''}>en_proceso</option><option ${o.estado==='cerrada'?'selected':''}>cerrada</option></select>
+    <div class="btn-row"><button onclick="alert('OT #${o.id} actualizada')">✏️ Editar</button><button class="sec" onclick="applyFilters()">🔄 Volver</button></div>
+    <div class="btn-row"><button class="sec" onclick="alert('Formulario manual abierto')">➕ Insertar OT Manual</button></div>
+  `;
+}
+
+// M3 RESOURCES
+function renderResources(){
+  const tb=document.getElementById('resTable'); tb.innerHTML='';
+  DB.groups.forEach(g=>{ tb.innerHTML+=`<tr><td>Grupo</td><td>${g.name}</td><td>${g.esp}</td><td>${g.sup}</td><td>${g.techs}</td></tr>`; });
+  // Add mock techs & contractors if needed
+}
+function addGroup(){ alert('Simulación: Formulario para crear Pool de Técnicos'); }
+function addTech(){ alert('Simulación: Alta de Técnico con especialidad y rol'); }
+function addContractor(){ alert('Simulación: Registro de Contratista (Razón Social, RUT, Especialidad)'); }
+
+// M4 ASSIGNMENT
+function populateAssign(){
+  const so=document.getElementById('aOT'); so.innerHTML=''; DB.ots.forEach(o=>so.innerHTML+=`<option value="${o.id}">OT #${o.id} - ${o.equipo}</option>`);
+  const sr=document.getElementById('aRecurso'); sr.innerHTML='';
+  if(document.getElementById('aTipo').value==='grupo') DB.groups.forEach(g=>sr.innerHTML+=`<option>${g.id}</option>`);
+  else sr.innerHTML='<option>Tec. Juan Pérez</option><option>Tec. Ana López</option>';
+}
+function toggleAssign(){ populateAssign(); }
+function assignOT(){ alert('✅ OT asignada correctamente. Notificación enviada al grupo/técnico.'); }
+
+// M5 TRACKING
+function saveExecution(){
+  if(!selectedOT) return alert('Selecciona una OT primero');
+  const hh=parseFloat(document.getElementById('eHH').value)||0;
+  const est=document.getElementById('eEstado').value;
+  DB.execution.push({otId:selectedOT.id, hh, date:new Date().toISOString().split('T')[0], status:est});
+  alert(`💾 Avance guardado: ${hh} HH reportadas. Estado: ${est}`);
+  if(est==='cerrada') alert('📸 Recuerda adjuntar evidencia fotográfica para cierre válido.');
+}
+
+// M1 UPLOAD SIM
+function validateUpload(){
+  const log=document.getElementById('upload-log');
+  log.innerHTML=`<p>✅ Archivo recibido: SIC_2026_H1.csv</p><p>🔍 Validando integridad...</p><p>🆔 Revisando duplicados por hash...</p>`;
+  setTimeout(()=>{ log.innerHTML+=`<p style="color:var(--ok)">✅ 4 registros nuevos importados.</p><p style="color:var(--warn)">⚠️ 2 registros omitidos (duplicados detectados por ID PREVISION SIC).</p><button onclick="document.getElementById('uploadModal').style.display='flex'" style="margin-top:5px; width:auto;">✅ Confirmar Carga</button>`; }, 800);
+}
+
+// M6 KPIs
+function updateKPIs(){
+  // Simulated dynamic calculation
+  document.getElementById('kSLA').innerText = Math.floor(85 + Math.random()*10)+'%';
+  document.getElementById('kHH').innerText = Math.floor(95 + Math.random()*15)+'%';
+  document.getElementById('kClosed').innerText = 40 + Math.floor(Math.random()*15);
+}
+
+// Init
+applyFilters();
+</script>
+</body>
+</html>
