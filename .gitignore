@@ -7,14 +7,32 @@ logs/
 # Dependencias
 vendor/
 node_modules/
+composer.phar
 
 # IDE
 .vscode/
 .DS_Store
+.idea/
 
-# Base de datos local
+# Base de datos
 *.sql.local
 dump_*.sql
 
-# Uploads temporales
-public/uploads/temp/
+# Uploads
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Sesiones
+sessions/
+
+# Caché
+cache/
+*.cache
+
+# Temporal
+tmp/
+temp/
+*.tmp
+
+# Railway
+.railway/
