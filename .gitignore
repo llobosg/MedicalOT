@@ -36,3 +36,7 @@ temp/
 
 # Railway
 .railway/
+
+# .gitignore
+.env
+*.env.local
