@@ -1,13 +1,14 @@
 <?php
 /**
  * MedicalOT - Login
+ * Página de acceso al sistema
  */
 
 define('APP_ENTRY_POINT', true);
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/session.php';
 
-// Si ya está logueado, redirigir
+// Si ya está logueado, redirigir al dashboard
 if (isset($_SESSION['user_id'])) {
     header('Location: /index.php');
     exit;
@@ -20,12 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
     
-    // Validación básica (luego se conectará a BD)
     if (empty($username) || empty($password)) {
         $error = 'Por favor ingrese usuario y contraseña';
     } else {
-        // TODO: Validar contra base de datos
-        // Por ahora, credenciales de prueba
+        // Credenciales de prueba (luego se conectará a BD)
         $validUsers = [
             'adminhospital' => ['pass' => '12345', 'role' => 'admin_hosp', 'name' => 'Administrador Hospital'],
             'admicontratista' => ['pass' => '12345', 'role' => 'admin_cont', 'name' => 'Administrador Contratista'],
@@ -33,7 +32,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         
         if (isset($validUsers[$username]) && $validUsers[$username]['pass'] === $password) {
-            // Crear sesión
             $_SESSION['user_id'] = uniqid('usr_');
             $_SESSION['user_name'] = $validUsers[$username]['name'];
             $_SESSION['user_email'] = $username . '@medicalot.com';
@@ -41,7 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role_name'] = $validUsers[$username]['name'];
             $_SESSION['login_time'] = time();
             
-            // Redirigir
             header('Location: /index.php');
             exit;
         } else {
@@ -60,16 +57,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="icon" type="image/png" href="/img/logohospitalantofagasta.jpeg">
 </head>
 <body>
+    <!-- Background con imagen del hospital -->
     <div class="app-background"></div>
+    
+    <!-- Header minimalista para login -->
+    <header class="login-header">
+        <div class="header-brand">
+            <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital Antofagasta" class="header-logo-small">
+            <div class="header-text">
+                <strong>MedicalOT</strong>
+                <span>Gestión de Mantenimiento Hospitalario</span>
+            </div>
+        </div>
+    </header>
     
     <div class="login-container">
         <div class="login-box">
-            <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital Antofagasta" class="login-logo">
+            <!-- Logo oficial del Hospital Antofagasta -->
+            <img src="/img/logohospitalantofagasta.jpeg" 
+                 alt="Hospital Antofagasta" 
+                 class="login-logo"
+                 onerror="this.src='/img/logo-placeholder.png'; this.onerror=null;">
+            
             <h1 class="login-title">MedicalOT</h1>
             <p class="login-subtitle">Sistema de Gestión de Órdenes de Trabajo</p>
             
             <?php if ($error): ?>
-                <div style="background: #FEF2F2; border: 1px solid #FECACA; color: #DC2626; padding: 0.875rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                <div class="alert alert-error">
                     <?php echo htmlspecialchars($error); ?>
                 </div>
             <?php endif; ?>
@@ -96,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         id="password" 
                         name="password" 
                         class="form-input" 
-                        placeholder="Ingrese su contraseña"
+                        placeholder="••••••••"
                         required
                     >
                 </div>
@@ -109,12 +123,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </button>
             </form>
             
-            <div class="pulse-line" style="margin: 2rem 0;"></div>
+            <div class="pulse-line"></div>
             
-            <div style="text-align: center; font-size: 0.85rem; color: var(--gray-600);">
-                <p style="margin-bottom: 0.5rem;"><strong>Credenciales de prueba:</strong></p>
-                <p>adminhospital / admicontratista / tecnico</p>
-                <p>Contraseña: 12345</p>
+            <div class="login-credentials">
+                <p><strong>Credenciales de prueba:</strong></p>
+                <code>adminhospital</code> | <code>admicontratista</code> | <code>tecnico</code><br>
+                <span>Contraseña: <code>12345</code></span>
+            </div>
+            
+            <div class="login-footer">
+                <img src="/img/logo.png" alt="MedicalOT" class="footer-logo">
+                <span>© 2026 Hospital Antofagasta</span>
             </div>
         </div>
     </div>

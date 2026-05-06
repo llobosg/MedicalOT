@@ -538,3 +538,176 @@ body {
     min-width: auto;
   }
 }
+/* ========================================
+   BACKGROUND DE LA APLICACIÓN
+   ======================================== */
+.app-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    /* Ruta absoluta desde /public */
+    background-image: url('/img/hospitalantofagasta.jpeg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    /* Transparencia para no interferir con el contenido */
+    opacity: 0.06;
+    z-index: -1;
+    pointer-events: none;
+    /* Fallback para navegadores antiguos */
+    background-color: #f8fafc;
+}
+
+/* ========================================
+   HEADER MINIMALISTA PARA LOGIN
+   ======================================== */
+.login-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 2px solid var(--primary);
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-logo-small {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.header-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.header-text strong {
+    font-size: 1.1rem;
+    color: var(--primary-dark);
+    font-weight: 700;
+}
+
+.header-text span {
+    font-size: 0.8rem;
+    color: var(--gray-600);
+}
+
+/* ========================================
+   LOGIN BOX - AJUSTES DE LOGO
+   ======================================== */
+.login-logo {
+    width: 140px;
+    height: auto;
+    margin: 0 auto 1.25rem;
+    display: block;
+    object-fit: contain;
+    /* Fallback visual si la imagen no carga */
+    background: var(--gray-100);
+    border-radius: 12px;
+    padding: 8px;
+}
+
+.login-logo[onerror] {
+    border: 2px dashed var(--gray-300);
+}
+
+/* Footer del login */
+.login-footer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--gray-500);
+}
+
+.footer-logo {
+    height: 30px;
+    width: auto;
+    opacity: 0.7;
+}
+
+/* Credenciales de prueba */
+.login-credentials {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: var(--gray-50);
+    border-radius: 0.5rem;
+    border: 1px dashed var(--gray-300);
+}
+
+.login-credentials code {
+    background: var(--white);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+/* Alertas */
+.alert {
+    padding: 0.875rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    border-left: 4px solid;
+}
+
+.alert-error {
+    background: #FEF2F2;
+    border-left-color: var(--error);
+    color: #991B1B;
+}
+
+/* ========================================
+   RESPONSIVE PARA MÓVILES
+   ======================================== */
+@media (max-width: 768px) {
+    .login-header {
+        padding: 0.5rem 1rem;
+    }
+    
+    .header-logo-small {
+        height: 32px;
+    }
+    
+    .header-text strong {
+        font-size: 1rem;
+    }
+    
+    .header-text span {
+        display: none; /* Ocultar subtítulo en móvil */
+    }
+    
+    .login-logo {
+        width: 120px;
+    }
+    
+    .login-box {
+        padding: 2rem 1.5rem;
+    }
+}
