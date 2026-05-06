@@ -378,10 +378,17 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
             try {
                 const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData });
-                if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error || 'Error desconocido en servidor');
+                const rawText = await res.text(); // Leemos como texto primero
+
+                try {
+                    const data = JSON.parse(rawText); // Intentamos parsear JSON
+                } catch (jsonErr) {
+                    // Si falla, es HTML. Mostramos error útil y el contenido real en consola
+                    console.error("❌ Respuesta no JSON recibida:", rawText.substring(0, 500));
+                    throw new Error('El servidor respondió con HTML en lugar de JSON. Revisa los logs de Railway.');
+                }
+
+                if (!res.ok) throw new Error(data.error || `Error HTTP: ${res.status}`);
 
                 log.innerHTML = `
                     <p style="color:#10b981;">✅ Archivo recibido y procesado</p>
@@ -396,8 +403,8 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 const now = new Date();
                 tbody.insertAdjacentHTML('afterbegin', 
                     `<tr><td style="padding:0.75rem;">${now.toLocaleDateString()}</td><td>${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
-                     <td style="color:#10b981; font-weight:600;">${data.inserted}</td>
-                     <td style="color:#f59e0b;">${data.skipped}</td></tr>`
+                    <td style="color:#10b981; font-weight:600;">${data.inserted}</td>
+                    <td style="color:#f59e0b;">${data.skipped}</td></tr>`
                 );
                 Toast.success(`Carga completada: ${data.inserted} nuevos, ${data.skipped} omitidos`);
                 document.getElementById('sicFile').value = '';
