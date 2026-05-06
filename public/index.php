@@ -424,10 +424,11 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 Toast.success(`Carga completada: ${data.inserted} nuevos, ${data.skipped} omitidos`);
                 document.getElementById('sicFile').value = '';
 
-            } catch (err) {
-                log.innerHTML = `<p style="color:#ef4444;">❌ Error: ${err.message}</p>`;
-                Toast.error(err.message, 'Carga Fallida');
-            }
+                } catch (err) {
+                    log.innerHTML = `<p style="color:#ef4444;">❌ Error: ${err.message}</p>`;
+                    Toast.error(err.message || 'Error desconocido al cargar archivo', 'Carga Fallida');
+                    console.error("📦 Detalle error:", err);
+                }
         }
 
         function confirmLoad() {

@@ -2,8 +2,8 @@
 builder = "nixpacks"
 
 [deploy]
-# La bandera -c fuerza a PHP a leer nuestro php.ini
-startCommand = "php -c /app/php.ini -S 0.0.0.0:$PORT -t public"
+# Fuerza límites PHP directamente en el servidor CLI
+startCommand = "php -d upload_max_filesize=50M -d post_max_size=50M -d max_execution_time=180 -d memory_limit=256M -S 0.0.0.0:$PORT -t public"
 healthcheckPath = "/health.php"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
