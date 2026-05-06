@@ -145,7 +145,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <div class="card-body" style="text-align: center; padding: 3rem;">
                     <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
                     <h2 style="font-size: 2rem; color: var(--primary-dark); margin-bottom: 0.5rem;">
-                        Bienvenido a MedicalOT
+                        Bienvenido a MedicalOT v.1
                     </h2>
                     <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">
                         Sistema de Gestión de Órdenes de Trabajo Hospitalarias
