@@ -46,20 +46,27 @@ body {
   overflow-x: hidden;
 }
 
-/* Background con imagen del hospital */
+/* ========================================
+   BACKGROUND DE LA APLICACIÓN
+   ======================================== */
 .app-background {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('../img/hospitalantofagasta.jpeg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: 0.08;
-  z-index: -1;
-  pointer-events: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    /* Ruta absoluta desde /public */
+    background-image: url('/img/hospitalantofagasta.jpeg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    /* Transparencia para no interferir con el contenido */
+    opacity: 0.06;
+    z-index: -1;
+    pointer-events: none;
+    /* Fallback para navegadores antiguos */
+    background-color: #f8fafc;
 }
 
 /* Línea de pulso cardíaco */
@@ -537,28 +544,6 @@ body {
   .toast {
     min-width: auto;
   }
-}
-/* ========================================
-   BACKGROUND DE LA APLICACIÓN
-   ======================================== */
-.app-background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    /* Ruta absoluta desde /public */
-    background-image: url('/img/hospitalantofagasta.jpeg');
-    background-size: cover;
-    background-position: center center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    /* Transparencia para no interferir con el contenido */
-    opacity: 0.06;
-    z-index: -1;
-    pointer-events: none;
-    /* Fallback para navegadores antiguos */
-    background-color: #f8fafc;
 }
 
 /* ========================================
