@@ -365,12 +365,22 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         async function handleFile(file) {
             if (!file) return;
-            const ext = file.name.split('.').pop().toLowerCase();
-            if (ext !== 'csv') { Toast.error('Formato inválido. Solo se aceptan archivos .csv'); return; }
+            
+            // Extracción robusta de extensión
+            const fileName = file.name.trim();
+            const ext = fileName.split('.').pop().toLowerCase();
+            
+            // 🐛 LOG DE DEBUGGING (Revisa la consola del navegador con F12)
+            console.log('🔍 Extensión detectada:', ext, '| Nombre real:', fileName, '| Tamaño:', file.size);
+            
+            if (ext !== 'csv') {
+                Toast.error(`Formato no válido. Se detectó: "${ext}". Solo se aceptan archivos .csv`);
+                return;
+            }
             
             const summary = document.getElementById('sicSummary');
             const log = document.getElementById('sicLog');
-            log.innerHTML = `<p>📤 Enviando ${file.name} al servidor...</p>`;
+            log.innerHTML = `<p>📤 Enviando ${fileName} al servidor...</p>`;
             summary.classList.add('show');
 
             const formData = new FormData();
