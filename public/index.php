@@ -378,17 +378,22 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
             try {
                 const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData });
-                const rawText = await res.text(); // Leemos como texto primero
+                const rawText = await res.text();
 
+                let data;
                 try {
-                    const data = JSON.parse(rawText); // Intentamos parsear JSON
+                    data = JSON.parse(rawText);
                 } catch (jsonErr) {
-                    // Si falla, es HTML. Mostramos error útil y el contenido real en consola
-                    console.error("❌ Respuesta no JSON recibida:", rawText.substring(0, 500));
+                    console.error("❌ Respuesta no JSON recibida:", rawText.substring(0, 300));
                     throw new Error('El servidor respondió con HTML en lugar de JSON. Revisa los logs de Railway.');
                 }
 
-                if (!res.ok) throw new Error(data.error || `Error HTTP: ${res.status}`);
+                if (!data.success && data.error) {
+                    throw new Error(data.error);
+                }
+                if (!res.ok) {
+                    throw new Error(`Error HTTP: ${res.status}`);
+                }
 
                 log.innerHTML = `
                     <p style="color:#10b981;">✅ Archivo recibido y procesado</p>
