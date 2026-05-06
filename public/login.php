@@ -75,8 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  class="login-logo"
                  onerror="this.src='/img/logo-placeholder.png'; this.onerror=null;">
             
-            <h1 class="login-title">MedicalOT</h1>
-            <p class="login-subtitle">Gestión Órdenes de Trabajo</p>
+            <h1 class="login-title">Gestión Órdenes de Trabajo</h1>
             
             <?php if ($error): ?>
                 <div class="alert alert-error">
@@ -120,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
             
             <div class="pulse-line"></div>
-            <img src="/img/pulso.png" class="header-logo-pulso">
+            <!--- <img src="/img/pulso.png" class="header-logo-pulso"> --->
             
             <div class="login-credentials">
                 <p><strong>Credenciales de prueba:</strong></p>
@@ -129,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             
             <div class="login-footer">
-                <span>© 2026 MedicalOT</span>
+                <span><strong>© 2026 MedicalOT</strong></span>
             </div>
         </div>
     </div>

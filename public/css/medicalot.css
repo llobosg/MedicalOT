@@ -676,34 +676,77 @@ body {
 }
 
 /* ========================================
-   RESPONSIVE PARA MÓVILES
+   RESPONSIVE PARA MÓVILES (Zoom-out)
    ======================================== */
 @media (max-width: 768px) {
+    /* Reducir padding general */
+    .login-container {
+        padding: 1rem;
+    }
+
+    /* Ajuste del Header Móvil */
     .login-header {
         padding: 0.5rem 1rem;
     }
+    .header-logo-small {
+        height: 28px; /* Logo más pequeño en header */
+    }
+    .header-text strong {
+        font-size: 0.9rem;
+    }
+
+    /* Efecto Zoom-out en la Caja de Login */
+    .login-box {
+        /* 
+           scale(0.75) reduce el tamaño al 75%.
+           Puedes cambiar este número: 
+           0.7 = 70% (Más pequeño)
+           0.8 = 80% (Recomendado para legibilidad)
+        */
+        transform: scale(0.75); 
+        transform-origin: top center; /* Escala desde arriba hacia abajo */
+        width: 100%;
+        max-width: 420px;
+        padding: 2rem;
+        margin-top: 0px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1); /* Sombra más suave en móvil */
+    }
+
+    /* Ajustes de contenido interno para acompañar la escala */
+    .login-logo {
+        width: 90px; /* Reducir logo hospital */
+        margin-bottom: 1rem;
+    }
     
+    .login-title {
+        font-size: 1.2rem;
+    }
+    
+    .login-subtitle {
+        font-size: 0.8rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-input {
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+
+    .btn-primary {
+        padding: 0.8rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Ocultar detalles menos importantes en móvil */
+    .login-credentials code {
+        font-size: 0.75rem;
+    }
+
     .header-logo-small {
         height: 72px; /* 32 */
     }
 
     .header-logo-pulso {
-    height: 40px; /* 40 */
-}
-    
-    .header-text strong {
-        font-size: 1rem;
-    }
-    
-    .header-text span {
-        display: none; /* Ocultar subtítulo en móvil */
-    }
-    
-    .login-logo {
-        width: 120px;
-    }
-    
-    .login-box {
-        padding: 2rem 1.5rem;
+        height: 40px; /* 40 */
     }
 }
