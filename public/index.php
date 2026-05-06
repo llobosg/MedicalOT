@@ -169,6 +169,38 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             height: 20px;
             color: #ef4444;
         }
+
+        /* ✅ OTs */
+        .ots-layout { display: grid; grid-template-columns: 80% 20%; gap: 1rem; height: calc(100vh - 180px); }
+        .ots-left { display: grid; grid-template-rows: auto 1fr; gap: 1rem; }
+        .ots-right { background: #fff; border-radius: 1rem; padding: 1rem; overflow-y: auto; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .filters-panel { background: #fff; padding: 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
+        .search-container { position: relative; margin-bottom: 0.75rem; }
+        .search-input { width: 100%; padding: 0.75rem 1rem; border: 2px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; }
+        .search-input:focus { border-color: var(--primary); outline: none; }
+        .search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 0.5rem; max-height: 220px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-top: 4px; display: none; }
+        .search-dropdown.show { display: block; }
+        .search-item { padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; background: #fff; color: #156b7d; font-weight: 500; font-size: 0.9rem; }
+        .search-item:hover { background: #f8fafc; }
+        .filters-row { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 0.5rem; align-items: end; }
+        .filters-row select { padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.85rem; background: #f8fafc; }
+        .pagination-controls { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #475569; }
+        .btn-nav { padding: 0.4rem 0.8rem; background: #e2e8f0; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.8rem; }
+        .btn-nav:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-nav:hover:not(:disabled) { background: var(--primary); color: #fff; }
+        .table-scroll-wrapper { overflow: auto; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: #fff; }
+        .ots-table { width: 100%; min-width: 1400px; border-collapse: collapse; font-size: 0.8rem; }
+        .ots-table th { background: #f1f5f9; padding: 0.75rem; text-align: left; position: sticky; top: 0; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+        .ots-table td { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
+        .ots-table tr:hover { background: #f8fafc; cursor: pointer; }
+        .ots-table tr.selected { background: #dbeafe; border-left: 3px solid var(--primary); }
+        .badge { padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; color: #fff; font-weight: 600; }
+        .b-pen{background:#f59e0b} .b-asi{background:#5fb8d4} .b-pro{background:#10b981} .b-cer{background:#64748b}
+        .detail-form label { display: block; font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0.25rem; }
+        .detail-form input, .detail-form select, .detail-form textarea { width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.85rem; }
+        .detail-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+        .btn-save { background: #10b981; color: #fff; padding: 0.6rem; border-radius: 0.5rem; border: none; cursor: pointer; }
+        .btn-cancel { background: #6b7280; color: #fff; padding: 0.6rem; border-radius: 0.5rem; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -223,7 +255,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
              <!-- Bienvenida -->
             <div class="card" style="margin-bottom: 2rem;">
                 <div class="card-body" style="text-align: center; padding: 3rem;">
-                    <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
+                    <img src="/img/logomedicalot.png" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
                     <h2 style="font-size: 2rem; color: var(--primary-dark); margin-bottom: 0.5rem;">
                         Bienvenido a MedicalOT
                     </h2>
@@ -305,32 +337,49 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         <!-- OTs -->
         <section id="ots" class="module-section">
             <div class="ots-layout">
+                <!-- LEFT 80% -->
                 <div class="ots-left">
-                    <div style="background:#fff; padding:1rem; border-radius:0.75rem; border:1px solid #e2e8f0;">
+                    <!-- TOP 20%: Filtros y Búsqueda -->
+                    <div class="card filters-panel">
                         <div class="search-container">
-                            <input type="text" class="search-input" id="otSearch" placeholder="🔍 Buscar OT, protocolo, equipo, área..." oninput="handleSearch()">
+                            <input type="text" class="search-input" id="otSearch" placeholder="🔍 Buscar por OT, protocolo, equipo, área, especialidad..." oninput="handleSearch()">
                             <div class="search-dropdown" id="searchDropdown"></div>
                         </div>
                         <div class="filters-row">
-                            <select id="fEsp"><option>Todas Especialidades</option><option>M-CLIMATIZACION</option><option>M-ELECTROMECANICA</option></select>
-                            <select id="fEstado"><option>Todos Estados</option><option>pendiente</option><option>asignada</option><option>en_proceso</option><option>cerrada</option></select>
-                            <select id="fMes"><option>Todos Meses</option><option>Enero</option><option>Febrero</option><option>Marzo</option></select>
-                            <select id="fGrupo"><option>Todos Grupos</option><option>Pool ClimA</option><option>Pool ElecB</option></select>
-                            <select id="fTipo"><option>Todos Tipos</option><option>Preventiva</option><option>Correctiva</option></select>
+                            <select id="fEsp" onchange="applyFilters()"><option value="">Todas Especialidades</option></select>
+                            <select id="fEstado" onchange="applyFilters()"><option value="">Todos Estados</option><option value="pendiente">pendiente</option><option value="asignada">asignada</option><option value="en_proceso">en_proceso</option><option value="cerrada">cerrada</option></select>
+                            <select id="fMes" onchange="applyFilters()"><option value="">Todos Meses</option><option value="enero">Enero</option><option value="febrero">Febrero</option><option value="marzo">Marzo</option><option value="abril">Abril</option><option value="mayo">Mayo</option><option value="junio">Junio</option><option value="julio">Julio</option><option value="agosto">Agosto</option><option value="septiembre">Septiembre</option><option value="octubre">Octubre</option><option value="noviembre">Noviembre</option><option value="diciembre">Diciembre</option></select>
+                            <div class="pagination-controls" id="paginationControls">
+                                <button class="btn-nav" id="prevPage" onclick="changePage(-1)" disabled>◀ Anterior</button>
+                                <span id="pageInfo">-</span>
+                                <button class="btn-nav" id="nextPage" onclick="changePage(1)">Siguiente ▶</button>
+                            </div>
                         </div>
                     </div>
+                    
+                    <!-- BOTTOM 80%: Tabla Scrollable -->
                     <div class="table-scroll-wrapper">
                         <table class="ots-table">
-                            <thead><tr><th>OT</th><th>Fecha</th><th>ID SIC</th><th>Protocolo</th><th>Área</th><th>Equipo</th><th>Especialidad</th><th>HH</th><th>Grupo</th><th>Estado</th></tr></thead>
-                            <tbody id="otsTableBody"></tbody>
+                            <thead>
+                                <tr>
+                                    <th>OT</th><th>Fecha</th><th>ID SIC</th><th>Protocolo</th><th>Familia</th><th>Periodicidad</th><th>Nombre</th><th>Área</th><th>Equipo</th><th>Serie</th><th>Ubicación</th><th>Especialidad</th><th>Proveedor</th><th>HH</th><th>Estado</th><th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="otsTableBody">
+                                <tr><td colspan="16" style="text-align:center; padding:2rem; color:#64748b;">Cargando datos...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
+
+                <!-- RIGHT 20%: Detalle/Edición -->
                 <div class="ots-right detail-form" id="otDetailPanel">
-                    <h4 style="margin-bottom:1rem;">📝 Detalle / Edición</h4>
-                    <div id="otDetailContent"><p style="color:#94a3b8; text-align:center; margin-top:2rem;">Selecciona una OT para ver detalles</p></div>
+                    <h4 style="margin-bottom:1rem;">📝 Detalle / Edición OT</h4>
+                    <div id="otDetailContent">
+                        <p style="color:#94a3b8; text-align:center; margin-top:2rem;">Selecciona una OT para ver detalles</p>
+                    </div>
                     <div class="detail-actions" id="otActions" style="display:none;">
-                        <button class="btn-save" onclick="alert('Guardado correctamente')">💾 Guardar</button>
+                        <button class="btn-save" onclick="saveOT()">💾 Guardar</button>
                         <button class="btn-cancel" onclick="clearDetail()">❌ Cancelar</button>
                         <button class="btn-volver" style="background:#64748b; margin-top:0;" onclick="showModule('home')">🏠 Volver a Home</button>
                     </div>
@@ -485,6 +534,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             error(m, t) { this.show(m, 'error', t); }
         };
 
+        // ✅ FUNCIONES MÓDULO1 CARGA SIC
         // CARGA SIC
         const dropZone = document.getElementById('dropZone');
         if(dropZone) {
@@ -689,6 +739,154 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 window.location.href = '/login.php';
             });
         }
+
+        // ✅ FUNCIONES MÓDULO2 OTs
+        let currentFilters = { page: 1, search: '', esp: '', estado: '', mes: '' };
+        let searchTimeout;
+        let selectedOTData = null;
+
+        // Cargar datos desde API
+        async function loadOTs() {
+            const tbody = document.getElementById('otsTableBody');
+            tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:2rem;">⏳ Cargando datos reales...</td></tr>';
+            
+            const params = new URLSearchParams();
+            Object.entries(currentFilters).forEach(([k,v]) => { if(v) params.set(k, v); });
+            params.set('limit', '50');
+
+            try {
+                const res = await fetch(`/api/ots.php?${params.toString()}`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                renderOTTable(data.data);
+                updatePagination(data.page, data.totalPages, data.total);
+                populateSpecialtyFilter(data.data); // Llenar filtro dinámico
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="16" style="text-align:center; color:#ef4444; padding:2rem;">❌ ${err.message}</td></tr>`;
+                console.error('📦 Error OTs:', err);
+            }
+        }
+
+        function renderOTTable(ots) {
+            const tbody = document.getElementById('otsTableBody');
+            if (!ots || ots.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:2rem; color:#64748b;">No hay registros que coincidan</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = ots.map(o => {
+                const fecha = o.fecha_programada ? new Date(o.fecha_programada).toLocaleDateString('es-CL') : '-';
+                const badge = o.estado === 'pendiente' ? 'b-pen' : o.estado === 'asignada' ? 'b-asi' : o.estado === 'en_proceso' ? 'b-pro' : 'b-cer';
+                return `<tr onclick="selectOT('${o.codigo_ot}')">
+                    <td>${o.codigo_ot}</td><td>${fecha}</td><td>${o.codigo_ot}</td><td>${o.nombre_protocolo || '-'}</td>
+                    <td>${o.familia || '-'}</td><td>${o.periodicidad || '-'}</td><td>${o.nombre_equipo || '-'}</td>
+                    <td>${o.nombre_area || '-'}</td><td>${o.nombre_equipo || '-'}</td><td>${o.serie || '-'}</td>
+                    <td>${o.area_ubicacion || '-'}</td><td>${o.nombre_especialidad || '-'}</td>
+                    <td>${o.nombre_proveedor || '-'}</td><td>${o.hh_programadas || 0}</td>
+                    <td><span class="badge ${badge}">${o.estado}</span></td>
+                    <td><button style="padding:0.25rem 0.5rem; font-size:0.8rem; cursor:pointer;" onclick="event.stopPropagation(); selectOT('${o.codigo_ot}')">✏️</button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updatePagination(page, totalPages, total) {
+            document.getElementById('pageInfo').textContent = `📄 ${page}/${totalPages} | ${total} registros`;
+            document.getElementById('prevPage').disabled = page <= 1;
+            document.getElementById('nextPage').disabled = page >= totalPages;
+        }
+
+        function changePage(delta) {
+            currentFilters.page = Math.max(1, Math.min(currentFilters.page + delta, parseInt(document.getElementById('pageInfo').textContent.split('/')[1].split(' ')[0]) || 1));
+            loadOTs();
+        }
+
+        function applyFilters() {
+            currentFilters.search = document.getElementById('otSearch').value.trim();
+            currentFilters.esp    = document.getElementById('fEsp').value;
+            currentFilters.estado = document.getElementById('fEstado').value;
+            currentFilters.mes    = document.getElementById('fMes').value;
+            currentFilters.page   = 1;
+            loadOTs();
+        }
+
+        // Búsqueda inteligente con debounce
+        function handleSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => applyFilters(), 300);
+            
+            const val = document.getElementById('otSearch').value.trim().toLowerCase();
+            const dd = document.getElementById('searchDropdown');
+            if (!val) { dd.classList.remove('show'); return; }
+            
+            fetch(`/api/ots.php?search=${encodeURIComponent(val)}&limit=15&page=1`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success || !data.data.length) { dd.classList.remove('show'); return; }
+                    dd.innerHTML = data.data.map(o => `<div class="search-item" onclick="selectOT('${o.codigo_ot}'); dd.classList.remove('show');">${o.codigo_ot} - ${o.nombre_equipo || o.nombre_protocolo} (${o.nombre_especialidad})</div>`).join('');
+                    dd.classList.add('show');
+                })
+                .catch(() => {});
+        }
+
+        // Seleccionar OT y cargar detalle
+        function selectOT(codigoOt) {
+            document.querySelectorAll('.ots-table tr').forEach(r => r.classList.remove('selected'));
+            event.target.closest('tr').classList.add('selected');
+            
+            // Buscar en datos actuales o hacer fetch específico
+            fetch(`/api/ots.php?search=${encodeURIComponent(codigoOt)}&limit=1&page=1`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success || !data.data.length) return;
+                    selectedOTData = data.data[0];
+                    
+                    const panel = document.getElementById('otDetailContent');
+                    panel.innerHTML = `
+                        <label>Código OT</label><input value="${selectedOTData.codigo_ot}" readonly>
+                        <label>Fecha Programada</label><input type="date" value="${selectedOTData.fecha_programada || ''}">
+                        <label>Turno</label><input value="${selectedOTData.turno || '-'}">
+                        <label>Protocolo</label><input value="${selectedOTData.nombre_protocolo || '-'}">
+                        <label>Equipo</label><input value="${selectedOTData.nombre_equipo || '-'}">
+                        <label>Área</label><input value="${selectedOTData.nombre_area || '-'}">
+                        <label>Especialidad</label><input value="${selectedOTData.nombre_especialidad || '-'}">
+                        <label>HH Programadas</label><input type="number" value="${selectedOTData.hh_programadas || 0}" step="0.01">
+                        <label>Estado</label><select><option ${selectedOTData.estado==='pendiente'?'selected':''}>pendiente</option><option ${selectedOTData.estado==='asignada'?'selected':''}>asignada</option><option ${selectedOTData.estado==='en_proceso'?'selected':''}>en_proceso</option><option ${selectedOTData.estado==='cerrada'?'selected':''}>cerrada</option></select>
+                        <label>Observaciones</label><textarea rows="3" placeholder="Notas técnicas..."></textarea>
+                    `;
+                    document.getElementById('otActions').style.display = 'flex';
+                })
+                .catch(() => {});
+        }
+
+        function clearDetail() {
+            document.getElementById('otDetailContent').innerHTML = '<p style="color:#94a3b8; text-align:center; margin-top:2rem;">Selecciona una OT para ver detalles</p>';
+            document.getElementById('otActions').style.display = 'none';
+            document.querySelectorAll('.ots-table tr').forEach(r => r.classList.remove('selected'));
+            selectedOTData = null;
+        }
+
+        function saveOT() {
+            Toast.info('Funcionalidad de actualización se conectará en Módulo 4. Por ahora los datos se muestran en modo lectura.');
+        }
+
+        // Llenar filtro de especialidades dinámicamente
+        function populateSpecialtyFilter(data) {
+            const espSet = new Set(data.map(o => o.cod_especialidad).filter(Boolean));
+            const espMap = new Map(data.map(o => [o.cod_especialidad, o.nombre_especialidad]).filter(x=>x[0]));
+            const select = document.getElementById('fEsp');
+            const current = select.value;
+            select.innerHTML = '<option value="">Todas Especialidades</option>';
+            espSet.forEach(code => {
+                select.innerHTML += `<option value="${code}">${espMap.get(code)}</option>`;
+            });
+            select.value = current;
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOTs();
+        });
 
         // INIT
         renderOTs();
