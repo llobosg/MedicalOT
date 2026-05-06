@@ -571,7 +571,14 @@ body {
 }
 
 .header-logo-small {
-    height: 60px; /* 40 */
+    height: 120px; /* 40 */
+    width: auto;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.header-logo-pulso {
+    height: 20px; /* 40 */
     width: auto;
     object-fit: contain;
     border-radius: 4px;
@@ -677,8 +684,12 @@ body {
     }
     
     .header-logo-small {
-        height: 42px; /* 32 */
+        height: 72px; /* 32 */
     }
+
+    .header-logo-pulso {
+    height: 20px; /* 40 */
+}
     
     .header-text strong {
         font-size: 1rem;
