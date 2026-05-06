@@ -120,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
             
             <div class="pulse-line"></div>
+            <img src="/img/pulso.png" class="header-logo-small">
             
             <div class="login-credentials">
                 <p><strong>Credenciales de prueba:</strong></p>
