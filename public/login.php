@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Header minimalista para login -->
     <header class="login-header">
         <div class="header-brand">
-            <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital Antofagasta" class="header-logo-small">
+            <img src="/img/logomedicalot.png" alt="MedicalOT" class="header-logo-small">
             <div class="header-text">
                 <strong>MedicalOT</strong>
                 <span>Gestión de Mantenimiento Hospitalario</span>
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  onerror="this.src='/img/logo-placeholder.png'; this.onerror=null;">
             
             <h1 class="login-title">MedicalOT</h1>
-            <p class="login-subtitle">Sistema de Gestión de Órdenes de Trabajo</p>
+            <p class="login-subtitle">Gestión Órdenes de Trabajo</p>
             
             <?php if ($error): ?>
                 <div class="alert alert-error">
@@ -132,8 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             
             <div class="login-footer">
-                <img src="/img/logo.png" alt="MedicalOT" class="footer-logo">
-                <span>© 2026 Hospital Antofagasta</span>
+                <span>© 2026 MedicalOT</span>
             </div>
         </div>
     </div>
