@@ -277,7 +277,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     </main>
 
     <footer class="main-footer">
-        <img src="/img/logo.png" alt="MedicalOT" style="height:24px; opacity:0.8;">
+        <img src="/img/logomedicalot.png" alt="MedicalOT" style="height:24px; opacity:0.8;">
         <span>© 2026 Hospital de Antofagasta - Sistema MedicalOT</span>
     </footer>
 
