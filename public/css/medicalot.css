@@ -578,7 +578,7 @@ body {
 }
 
 .header-logo-pulso {
-    height: 20px; /* 40 */
+    height: 40px; /* 40 */
     width: auto;
     object-fit: contain;
     border-radius: 4px;
@@ -688,7 +688,7 @@ body {
     }
 
     .header-logo-pulso {
-    height: 20px; /* 40 */
+    height: 40px; /* 40 */
 }
     
     .header-text strong {
