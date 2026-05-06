@@ -220,10 +220,24 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     <main class="container">
         <!-- HOME -->
         <section id="home" class="module-section active">
-            <div style="text-align:center; margin-bottom:1.5rem;">
-                <h2 style="color:var(--primary-dark);">Bienvenido al Panel de Control</h2>
-                <p style="color:var(--gray-600);">Gestión integral de mantenimiento hospitalario</p>
+             <!-- Bienvenida -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div class="card-body" style="text-align: center; padding: 3rem;">
+                    <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
+                    <h2 style="font-size: 2rem; color: var(--primary-dark); margin-bottom: 0.5rem;">
+                        Bienvenido a MedicalOT
+                    </h2>
+                    <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">
+                        Sistema de Gestión de Órdenes de Trabajo Hospitalarias
+                    </p>
+                    <div class="pulse-line" style="max-width: 400px; margin: 2rem auto;"></div>
+                    <p style="color: var(--gray-700);">
+                        <strong><?php echo htmlspecialchars($user['name']); ?></strong> - 
+                        <?php echo htmlspecialchars($user['role_name']); ?>
+                    </p>
+                </div>
             </div>
+
             <div class="home-grid">
                 <?php if($isAdmin): ?>
                 <div class="home-card" onclick="showModule('carga-sic')">
@@ -610,6 +624,22 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         }
         function closeModal() { document.getElementById('contratistaModal').classList.remove('show'); }
 
+        // ✅ FUNCIÓN DE CIERRE DE SESIÓN
+        function logout() {
+            // Llamada silenciosa al servidor para destruir la sesión
+            fetch('/logout.php', { 
+                method: 'POST',
+                credentials: 'same-origin'
+            })
+            .then(() => {
+                window.location.href = '/login.php';
+            })
+            .catch(() => {
+                // Fallback seguro por si falla la petición
+                window.location.href = '/login.php';
+            });
+        }
+
         // INIT
         renderOTs();
         updateKPIs(document.querySelector('.pill-btn.active'), 'Especialidad');
@@ -625,7 +655,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     <!-- Footer -->
     <footer class="main-footer">
         <img src="/img/logomedicalot.png" alt="MedicalOT">
-        <span>© 2026 Hospital de Antofagasta - Sistema MedicalOT</span>
+        <span><strong>© 2026 Sistema MedicalOT - Hospital de Antofagasta</strong></span>
     </footer>
 </body>
 </html>
