@@ -18,12 +18,10 @@ class SICImportService
     {
         $this->stats = ['total' => 0, 'inserted' => 0, 'skipped' => 0, 'errors' => [], 'warnings' => []];
         
-        if (strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) !== 'csv') {
-            throw new Exception("Formato no válido. Solo se aceptan archivos .csv");
-        }
-
+        // ✅ VALIDACIÓN DE EXTENSIÓN YA SE HIZO EN import_sic.php. No repetir aquí.
+        
         // Crear registro de lote
-        $hash = md5_file($filePath); // ✅ CORREGIDO: usa la ruta real del archivo temporal
+        $hash = md5_file($filePath);
         $stmtLote = $this->db->prepare("INSERT INTO lote_carga_sic (nombre_archivo, hash_md5, registros_totales, registros_omision) VALUES (?, ?, 0, 0)");
         $stmtLote->execute([$originalName, $hash]);
         $loteId = (int)$this->db->lastInsertId();
@@ -46,7 +44,8 @@ class SICImportService
         if (!$handle) throw new Exception("No se pudo abrir el archivo temporal");
 
         // Saltar cabecera
-        fgetcsv($handle, 0, ',', '"', "\\");
+        $header = fgetcsv($handle, 0, ',', '"', "\\");
+        if (!$header) throw new Exception("El archivo CSV está vacío o mal formado");
 
         // Preparar statements para catálogos
         $stmtEsp  = $this->db->prepare("INSERT IGNORE INTO especialidades (codigo, nombre) VALUES (?, ?)");
