@@ -21,9 +21,12 @@ class SICImportService
         // ✅ VALIDACIÓN DE EXTENSIÓN YA SE HIZO EN import_sic.php. No repetir aquí.
         
         // Crear registro de lote
-        $hash = md5_file($filePath);
+           // ✅ HASH ÚNICO POR CARGA (incluye timestamp para permitir rehacargas al mismo archivo)
+        $fileHash = md5_file($filePath);
+        $uploadHash = $fileHash . '_' . time();
+        
         $stmtLote = $this->db->prepare("INSERT INTO lote_carga_sic (nombre_archivo, hash_md5, registros_totales, registros_omision) VALUES (?, ?, 0, 0)");
-        $stmtLote->execute([$originalName, $hash]);
+        $stmtLote->execute([$originalName, $uploadHash]);
         $loteId = (int)$this->db->lastInsertId();
 
         $this->db->beginTransaction();

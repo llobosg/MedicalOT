@@ -52,19 +52,27 @@ try {
     $result = $service->import($file['tmp_name'], basename($file['name']));
     
     http_response_code(200);
-    //  Limpiar buffers y forzar cabeceras limpias
+    // 🛡️ Limpieza total de buffers antes de responder
     while (ob_get_level()) ob_end_clean();
     header('Content-Type: application/json; charset=utf-8', true);
-    header('X-Content-Type-Options: nosniff');
     
-    // 📤 Respuesta JSON segura
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     exit;
     
-} catch (\Throwable $e) {
+} catch (\PDOException $e) {
+    error_log("❌ DB Error: " . $e->getMessage());
     while (ob_get_level()) ob_end_clean();
-    error_log("❌ API import_sic FATAL: " . $e->getMessage() . "\n" . $e->getTraceAsString());
-    http_response_code($e->getCode() ?: 500);
+    http_response_code(500);
+    echo json_encode([
+        'success' => false, 
+        'error' => 'Error de base de datos: ' . $e->getMessage(),
+        'debug' => $e->getCode()
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+} catch (\Throwable $e) {
+    error_log("❌ FATAL: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    while (ob_get_level()) ob_end_clean();
+    http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
     exit;
 }
