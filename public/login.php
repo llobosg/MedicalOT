@@ -63,11 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Header minimalista para login -->
     <header class="login-header">
         <div class="header-brand">
-            <img src="/img/logomedicalot.png" alt="MedicalOT" class="header-logo-small">
-            <div class="header-text">
-                <strong>MedicalOT</strong>
-                <span>Gestión de Mantenimiento Hospitalario</span>
-            </div>
+            <img src="/img/logotextomedicalot.png" alt="MedicalOT" class="header-logo-small">
         </div>
     </header>
     
