@@ -14,7 +14,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     <title>MedicalOT | Hospital de Antofagasta</title>
     <link rel="stylesheet" href="/css/medicalot.css">
     <style>
-        /* ✅ LAYOUT BASE (Flexbox contenedor) */
+                /* ✅ LAYOUT BASE (Flexbox contenedor) */
         body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
         .main-header { flex-shrink: 0; position: sticky; top: 0; z-index: 100; background: #fff; border-bottom: 2px solid var(--primary); padding: 0.75rem 1.5rem; display:flex; justify-content:space-between; align-items:center; }
         main.container { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 1.25rem; overflow: hidden; }
@@ -35,20 +35,23 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         .btn-volver { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: none; cursor: pointer; font-weight: 600; margin-top: 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s; }
         .btn-volver:hover { opacity: 0.9; transform: translateY(-2px); }
         
-        /* ✅ OTs LAYOUT 80/20 (Scroll aislado) */
-        .ots-layout { display: grid; grid-template-columns: 78% 22%; gap: 1rem; flex: 1; min-height: 0; }
-        .ots-left { display: grid; grid-template-rows: auto 1fr; gap: 0.75rem; min-height: 0; }
-        .ots-right { background: #fff; border-radius: 0.75rem; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
-        .ots-right .detail-form { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 1rem; }
-        #otDetailContent { flex: 1; overflow-y: auto; padding-right: 0.5rem; }
-        .detail-actions { flex-shrink: 0; margin-top: auto; padding: 1rem 0; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 0.5rem; }
+        /* ✅ OTs LAYOUT 80/20 (Scroll 100% aislado) */
+        .ots-layout { display: grid; grid-template-columns: 78% 22%; gap: 1rem; flex: 1; min-height: 0; overflow: hidden; }
+        .ots-left { display: grid; grid-template-rows: auto 1fr; gap: 0.75rem; min-height: 0; overflow: hidden; }
         
-        .table-scroll-wrapper { flex: 1; overflow: auto; border: 1px solid #e2e8f0; border-radius: 0.5rem; background: #fff; min-height: 0; }
+        /* ✅ TABLA SCROLLABLE INDEPENDIENTE */
+        .table-scroll-wrapper { flex: 1; overflow-y: auto; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 0.5rem; background: #fff; min-height: 0; }
         .ots-table { width: 100%; min-width: 1300px; border-collapse: collapse; font-size: 0.8rem; }
         .ots-table th { background: #f1f5f9; padding: 0.7rem; text-align: left; position: sticky; top: 0; font-weight: 600; border-bottom: 2px solid #e2e8f0; z-index: 5; }
         .ots-table td { padding: 0.7rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
         .ots-table tr:hover { background: #f8fafc; cursor: pointer; }
         .ots-table tr.selected { background: #dbeafe; border-left: 3px solid var(--primary); }
+        
+        /* ✅ PANEL DERECHO 20% (Bordes redondeados + padding interno) */
+        .ots-right { background: #fff; border-radius: 0.75rem; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; padding: 0.75rem 1rem; }
+        .ots-right .detail-form { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        #otDetailContent { flex: 1; overflow-y: auto; padding: 0 0.5rem; }
+        .detail-actions { flex-shrink: 0; margin-top: auto; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 0.5rem; }
         
         .filters-panel { background: #fff; padding: 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
         .search-container { position: relative; margin-bottom: 0.75rem; }
@@ -93,7 +96,11 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        #loadHistory th, #loadHistory td { text-align: center; vertical-align: middle; }
+        /* ✅ BITÁCORA: Espacio inferior extra */
+        #loadHistory { margin-bottom: 0; }
+        #loadHistory tbody { display: table; width: 100%; table-layout: fixed; }
+        #loadHistory tr:last-child td { padding-bottom: 1.25rem; }
+        
         .logout-btn { background: none; border: none; cursor: pointer; padding: 0.5rem; border-radius: 0.5rem; transition: background 0.3s ease; }
         .logout-btn:hover { background: #fee2e2; }
         .logout-btn svg { width: 20px; height: 20px; color: #ef4444; }
@@ -133,13 +140,21 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
     <main class="container">
         <section id="home" class="module-section active">
+             <!-- Bienvenida -->
             <div class="card" style="margin-bottom: 2rem;">
                 <div class="card-body" style="text-align: center; padding: 3rem;">
                     <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
-                    <h2 style="font-size: 2rem; color: var(--primary-dark); margin-bottom: 0.5rem;">Bienvenido a MedicalOT</h2>
-                    <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">Sistema de Gestión de Órdenes de Trabajo Hospitalarias</p>
+                    <h2 style="font-size: 2rem; color: var(--primary-dark); margin-bottom: 0.5rem;">
+                        Bienvenido a MedicalOT
+                    </h2>
+                    <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">
+                        Sistema de Gestión de Órdenes de Trabajo Hospitalarias
+                    </p>
                     <div class="pulse-line" style="max-width: 400px; margin: 2rem auto;"></div>
-                    <p style="color: var(--gray-700);"><strong><?php echo htmlspecialchars($user['name']); ?></strong> - <?php echo htmlspecialchars($user['role_name']); ?></p>
+                    <p style="color: var(--gray-700);">
+                        <strong><?php echo htmlspecialchars($user['name']); ?></strong> - 
+                        <?php echo htmlspecialchars($user['role_name']); ?>
+                    </p>
                 </div>
             </div>
             <div class="home-grid">
@@ -307,19 +322,36 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         function confirmLoad() { document.getElementById('sicSummary').classList.remove('show'); Toast.success('Carga confirmada y registrada en historial'); }
 
         async function loadOTs() {
-            const tbody = document.getElementById('otsTableBody'); if(!tbody) return;
+            const tbody = document.getElementById('otsTableBody');
+            if(!tbody) return;
             tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:2rem;">⏳ Cargando datos reales...</td></tr>';
-            const params = new URLSearchParams(); Object.entries(currentFilters).forEach(([k,v]) => { if(v) params.set(k, v); }); params.set('limit', '50');
+            
+            // Sincronizar estado global con filtros
+            currentFilters.page = currentPage;
+            const params = new URLSearchParams();
+            Object.entries(currentFilters).forEach(([k,v]) => { if(v) params.set(k, v); });
+            params.set('limit', '50');
+
             try {
-                const res = await fetch(`/api/ots.php?${params.toString()}`); const data = await res.json();
+                const res = await fetch(`/api/ots.php?${params.toString()}`);
+                const data = await res.json();
                 if(!data.success) throw new Error(data.error);
-                renderOTTable(data.data); updatePagination(data.page, data.totalPages, data.total); populateSpecialtyFilter(data.data);
-            } catch (err) { tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; color:#ef4444; padding:2rem;">❌ ${err.message}</td></tr>`; console.error('📦 Error OTs:', err); }
+
+                renderOTTable(data.data);
+                updatePagination(data.page, data.totalPages, data.total);
+                populateSpecialtyFilter(data.data);
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; color:#ef4444; padding:2rem;">❌ ${err.message}</td></tr>`;
+                console.error('📦 Error OTs:', err);
+            }
         }
 
         function renderOTTable(ots) {
             const tbody = document.getElementById('otsTableBody');
-            if(!ots || ots.length === 0) { tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:2rem; color:#64748b;">No hay registros que coincidan</td></tr>'; return; }
+            if(!ots || ots.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:2rem; color:#64748b;">No hay registros que coincidan</td></tr>';
+                return;
+            }
             const stateColors = { 'pendiente': '#f59e0b', 'asignada': '#5fb8d4', 'en_proceso': '#10b981', 'cerrada': '#64748b' };
             tbody.innerHTML = ots.map(o => {
                 const fecha = o.fecha_programada ? new Date(o.fecha_programada).toLocaleDateString('es-CL') : '-';
@@ -330,7 +362,9 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         }
 
         function updatePagination(page, totalPagesVal, total) {
-            currentPage = page; totalPages = totalPagesVal || 1;
+            currentPage = page;
+            totalPages = totalPagesVal || 1;
+            currentFilters.page = currentPage; // Sincronización crítica
             document.getElementById('pageInfo').textContent = `📄 ${currentPage}/${totalPages} | ${total} registros`;
             document.getElementById('prevPage').disabled = currentPage <= 1;
             document.getElementById('nextPage').disabled = currentPage >= totalPages;
@@ -338,11 +372,19 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         function changePage(delta) {
             const newPage = currentPage + delta;
-            if(newPage >= 1 && newPage <= totalPages) { currentPage = newPage; loadOTs(); }
+            if(newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                loadOTs(); // Ya sincroniza currentFilters.page internamente
+            }
         }
 
         function applyFilters() {
-            currentFilters.search = document.getElementById('otSearch').value.trim(); currentFilters.esp = document.getElementById('fEsp').value; currentFilters.estado = document.getElementById('fEstado').value; currentFilters.mes = document.getElementById('fMes').value; currentFilters.page = 1; loadOTs();
+            currentFilters.search = document.getElementById('otSearch').value.trim();
+            currentFilters.esp    = document.getElementById('fEsp').value;
+            currentFilters.estado = document.getElementById('fEstado').value;
+            currentFilters.mes    = document.getElementById('fMes').value;
+            currentPage = 1; // Reset a página 1 al cambiar filtros
+            loadOTs();
         }
 
         function handleSearch() {
