@@ -62,7 +62,7 @@ body {
     background-repeat: no-repeat;
     background-attachment: fixed;
     /* Transparencia para no interferir con el contenido */
-    opacity: 0.06;
+    opacity: 0.15;
     z-index: -1;
     pointer-events: none;
     /* Fallback para navegadores antiguos */
