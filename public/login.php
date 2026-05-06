@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  class="login-logo"
                  onerror="this.src='/img/logo-placeholder.png'; this.onerror=null;">
             
-            <h1 class="login-title">Gestión Órdenes de Trabajo</h1>
+            <h3 class="login-title">Gestión Órdenes de Trabajo</h3>
             
             <?php if ($error): ?>
                 <div class="alert alert-error">

@@ -688,9 +688,6 @@ body {
     .login-header {
         padding: 0.5rem 1rem;
     }
-    .header-logo-small {
-        height: 28px; /* Logo más pequeño en header */
-    }
     .header-text strong {
         font-size: 0.9rem;
     }
@@ -743,7 +740,7 @@ body {
     }
 
     .header-logo-small {
-        height: 72px; /* 32 */
+        height: 62px; /* 32 */
     }
 
     .header-logo-pulso {
