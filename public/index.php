@@ -171,9 +171,39 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         }
 
         /* ✅ OTs */
-        .ots-layout { display: grid; grid-template-columns: 80% 20%; gap: 1rem; height: calc(100vh - 180px); }
-        .ots-left { display: grid; grid-template-rows: auto 1fr; gap: 1rem; }
-        .ots-right { background: #fff; border-radius: 1rem; padding: 1rem; overflow-y: auto; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        /* ✅ LAYOUT BASE (Flexbox robusto para footer y secciones) */
+        body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
+        main.container { flex: 1; display: flex; flex-direction: column; padding: 1.5rem; min-height: 0; }
+        .module-section { flex: 1; display: none; min-height: 0; }
+        .module-section.active { display: flex; flex-direction: column; }
+
+        /* ✅ OTs LAYOUT 80/20 con scroll independiente */
+        .ots-layout { display: grid; grid-template-columns: 80% 20%; gap: 1rem; flex: 1; min-height: 0; }
+        .ots-left { display: grid; grid-template-rows: auto 1fr; gap: 1rem; min-height: 0; }
+        .ots-right { background: #fff; border-radius: 1rem; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
+        .ots-right .detail-form { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 1rem; }
+
+        /* ✅ BOTONES ANCLADOS AL PANEL DERECHO (no se mueven con la tabla) */
+        .detail-actions { 
+            flex-shrink: 0; 
+            margin-top: 0; 
+            padding: 1rem; 
+            border-top: 1px solid #e2e8f0; 
+            background: #f8fafc; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 0.5rem; 
+        }
+
+        /* ✅ TABLA SCROLLABLE INDEPENDIENTE */
+        .table-scroll-wrapper { flex: 1; overflow: auto; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: #fff; min-height: 0; }
+        .ots-table { width: 100%; min-width: 1400px; border-collapse: collapse; font-size: 0.8rem; }
+        .ots-table th { background: #f1f5f9; padding: 0.75rem; text-align: left; position: sticky; top: 0; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+        .ots-table td { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
+        .ots-table tr:hover { background: #f8fafc; cursor: pointer; }
+        .ots-table tr.selected { background: #dbeafe; border-left: 3px solid var(--primary); }
+
+        /* ✅ CONTROLES Y PAGINACIÓN */
         .filters-panel { background: #fff; padding: 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
         .search-container { position: relative; margin-bottom: 0.75rem; }
         .search-input { width: 100%; padding: 0.75rem 1rem; border: 2px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; }
@@ -185,22 +215,32 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         .filters-row { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 0.5rem; align-items: end; }
         .filters-row select { padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.85rem; background: #f8fafc; }
         .pagination-controls { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #475569; }
-        .btn-nav { padding: 0.4rem 0.8rem; background: #e2e8f0; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.8rem; }
-        .btn-nav:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-nav { padding: 0.4rem 0.8rem; background: #e2e8f0; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
         .btn-nav:hover:not(:disabled) { background: var(--primary); color: #fff; }
-        .table-scroll-wrapper { overflow: auto; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: #fff; }
-        .ots-table { width: 100%; min-width: 1400px; border-collapse: collapse; font-size: 0.8rem; }
-        .ots-table th { background: #f1f5f9; padding: 0.75rem; text-align: left; position: sticky; top: 0; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
-        .ots-table td { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
-        .ots-table tr:hover { background: #f8fafc; cursor: pointer; }
-        .ots-table tr.selected { background: #dbeafe; border-left: 3px solid var(--primary); }
+        .btn-nav:disabled { opacity: 0.5; cursor: not-allowed; background: #f1f5f9; }
+
+        /* ✅ FOOTER SIEMPRE AL PIE */
+        .main-footer { flex-shrink: 0; margin-top: auto; width: 100%; position: relative; z-index: 10; background: #fff; border-top: 1px solid #e2e8f0; padding: 1rem; text-align: center; font-size: 0.85rem; color: #47748b; display: flex; align-items: center; justify-content: center; gap: 0.75rem; box-shadow: 0 -2px 8px rgba(0,0,0,0.04); }
+        .main-footer img { height: 24px; opacity: 0.8; transition: opacity 0.3s; }
+        .main-footer img:hover { opacity: 1; }
+
+        /* ✅ BADGES & DETALLE */
         .badge { padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; color: #fff; font-weight: 600; }
         .b-pen{background:#f59e0b} .b-asi{background:#5fb8d4} .b-pro{background:#10b981} .b-cer{background:#64748b}
         .detail-form label { display: block; font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0.25rem; }
         .detail-form input, .detail-form select, .detail-form textarea { width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.85rem; }
-        .detail-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
         .btn-save { background: #10b981; color: #fff; padding: 0.6rem; border-radius: 0.5rem; border: none; cursor: pointer; }
         .btn-cancel { background: #6b7280; color: #fff; padding: 0.6rem; border-radius: 0.5rem; border: none; cursor: pointer; }
+        .btn-volver { background: #64748b; color: #fff; padding: 0.6rem; border-radius: 0.5rem; border: none; cursor: pointer; margin-top: 0; }
+
+        /* ✅ OVERLAY CARGA SIC */
+        .import-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); backdrop-filter: blur(3px); z-index: 9998; flex-direction: column; align-items: center; justify-content: center; }
+        .import-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+        .spinner { width: 48px; height: 48px; border: 4px solid #e2e8f0; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1.25rem; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .progress-container { height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-bottom: 1rem; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #10b981 0%, #fbbf24 50%, #ef4444 100%); width: 0%; transition: width 0.6s ease; }
     </style>
 </head>
 <body>
@@ -740,15 +780,16 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             });
         }
 
-        // ✅ ESTADO Y CONFIGURACIÓN OTs
+        // ✅ ESTADO OTs
         let currentFilters = { page: 1, search: '', esp: '', estado: '', mes: '' };
         let searchTimeout;
         let selectedOTData = null;
-        let totalPages = 1;
         let currentPage = 1;
+        let totalPages = 1;
 
         async function loadOTs() {
             const tbody = document.getElementById('otsTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:2rem;">⏳ Cargando datos reales...</td></tr>';
             
             const params = new URLSearchParams();
@@ -800,7 +841,9 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         }
 
         function changePage(delta) {
-            currentPage = Math.max(1, Math.min(currentPage + delta, totalPages));
+            const newPage = currentPage + delta;
+            if (newPage < 1 || newPage > totalPages) return; // Previene saltos inválidos
+            currentPage = newPage;
             loadOTs();
         }
 
@@ -881,9 +924,12 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             select.value = current;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // ✅ INICIALIZACIÓN ROBUSTA (evita el problema de 3 registros iniciales)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadOTs);
+        } else {
             loadOTs();
-        });
+        }
 
         // INIT
         renderOTs();
