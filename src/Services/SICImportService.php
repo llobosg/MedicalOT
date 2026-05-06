@@ -40,14 +40,13 @@ class SICImportService
 
     private function processStreaming(string $filePath, int $loteId): void
     {
+        $_SESSION['sic_progress'] = ['current' => 0, 'total' => 0, 'status' => 'processing'];
+        
         $handle = fopen($filePath, 'r');
         if (!$handle) throw new Exception("No se pudo abrir el archivo temporal");
+        fgetcsv($handle, 0, ',', '"', "\\"); // Saltar cabecera
 
-        // Saltar cabecera
-        $header = fgetcsv($handle, 0, ',', '"', "\\");
-        if (!$header) throw new Exception("El archivo CSV está vacío o mal formado");
-
-        // Preparar statements para catálogos
+        // Preparar statements (igual que antes)
         $stmtEsp  = $this->db->prepare("INSERT IGNORE INTO especialidades (codigo, nombre) VALUES (?, ?)");
         $stmtProt = $this->db->prepare("INSERT IGNORE INTO protocolos (codigo, nombre, familia, periodicidad) VALUES (?, ?, ?, ?)");
         $stmtArea = $this->db->prepare("INSERT IGNORE INTO areas (codigo, nombre) VALUES (?, ?)");
@@ -55,8 +54,6 @@ class SICImportService
         $stmtRuta = $this->db->prepare("INSERT IGNORE INTO rutas (codigo, nombre) VALUES (?, ?)");
         $stmtEq   = $this->db->prepare("INSERT IGNORE INTO equipos (codigo, nombre, marca, modelo, serie, umdns, id_area) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmtGetArea = $this->db->prepare("SELECT id FROM areas WHERE codigo = ? LIMIT 1");
-
-        // Statement principal OT
         $otStmt = $this->db->prepare("
             INSERT IGNORE INTO ordenes_trabajo (
                 codigo_ot, fecha_programada, turno, semana_num, dia_semana,
@@ -78,20 +75,16 @@ class SICImportService
         while (($row = fgetcsv($handle, 0, ',', '"', "\\")) !== false) {
             $rowNum++;
             $this->stats['total']++;
-            
-            // Rellenar array para evitar undefined index
+            $_SESSION['sic_progress']['total'] = $this->stats['total'];
             $row = array_pad($row, 30, '');
-
             $ot = trim($row[1] ?? '');
             if (empty($ot)) continue;
 
-            // Sincronizar catálogos al vuelo
             if (!empty($row[22])) $stmtEsp->execute([trim($row[22]), trim($row[23] ?? '')]);
             if (!empty($row[6]))  $stmtProt->execute([trim($row[6]), trim($row[7] ?? ''), trim($row[8] ?? ''), trim($row[10] ?? '')]);
             if (!empty($row[12])) $stmtArea->execute([trim($row[12]), trim($row[13] ?? '')]);
             if (!empty($row[24])) $stmtProv->execute([trim($row[24]), trim($row[25] ?? '')]);
             if (!empty($row[27])) $stmtRuta->execute([trim($row[27]), trim($row[28] ?? '')]);
-
             if (!empty($row[14])) {
                 $stmtGetArea->execute([trim($row[12] ?? '')]);
                 $areaId = $stmtGetArea->fetchColumn() ?: null;
@@ -99,7 +92,6 @@ class SICImportService
             }
 
             $fecha = !empty($row[0]) ? date('Y-m-d', strtotime(trim($row[0]))) : null;
-            
             try {
                 $otStmt->execute([
                     $ot, $fecha, trim($row[5] ?? 'Mañana'), (int)($row[3] ?? 0), trim($row[4] ?? ''),
@@ -110,10 +102,16 @@ class SICImportService
                 $this->stats['errors'][] = "Fila $rowNum (OT: $ot): " . $e->getMessage();
                 $this->stats['skipped']++;
             }
+
+            // Actualizar progreso cada 50 filas
+            if ($rowNum % 50 === 0) {
+                $_SESSION['sic_progress']['current'] = $this->stats['inserted'] + $this->stats['skipped'];
+                session_write_close(); session_start(); // Forzar guardado sin bloquear
+            }
         }
         fclose($handle);
-
-        // Actualizar estadísticas del lote
+        $_SESSION['sic_progress']['status'] = 'completed';
+        
         $this->db->prepare("UPDATE lote_carga_sic SET registros_totales = ?, registros_omision = ? WHERE id = ?")
             ->execute([$this->stats['inserted'] + $this->stats['skipped'], $this->stats['skipped'], $loteId]);
     }

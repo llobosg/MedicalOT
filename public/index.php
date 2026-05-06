@@ -488,24 +488,28 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             document.getElementById('sicFile').addEventListener('change', e => handleFile(e.target.files[0]));
         }
 
+        let pollingInterval = null;
+
         async function handleFile(file) {
             if (!file) return;
             const fileName = file.name.trim();
             const ext = fileName.split('.').pop().toLowerCase();
-            
-            console.log('🔍 Extensión detectada:', ext, '| Tamaño:', file.size);
-            if (ext !== 'csv') {
-                Toast.error(`Extensión inválida: "${ext}". Solo .csv`);
-                return;
-            }
+            if (ext !== 'csv') { Toast.error(`Extensión inválida: "${ext}". Solo .csv`); return; }
 
             const summary = document.getElementById('sicSummary');
             const log = document.getElementById('sicLog');
             const overlay = document.getElementById('importOverlay');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
             
             log.innerHTML = `<p>📤 Iniciando carga de ${fileName}...</p>`;
             summary.classList.add('show');
-            if(overlay) overlay.classList.add('active');
+            overlay.classList.add('active');
+            progressBar.style.width = '0%';
+            progressText.textContent = 'Preparando...';
+
+            // Iniciar polling de progreso
+            pollingInterval = setInterval(updateProgress, 500);
 
             const formData = new FormData();
             formData.append('sicFile', file);
@@ -514,51 +518,79 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData });
                 const rawText = await res.text();
                 
-                console.warn('🌐 Status HTTP:', res.status);
-
-                let data;
-                try {
-                    data = JSON.parse(rawText);
-                } catch (e) {
-                    throw new Error('El servidor no devolvió JSON válido. Revisa consola.');
+                // Validación robusta de JSON
+                if (!res.ok || !rawText.trim().startsWith('{')) {
+                    throw new Error(`Error HTTP ${res.status}. Verifica que la sesión no haya expirado.`);
                 }
-
-                if (!res.ok || !data.success) {
-                    throw new Error(data.error || `Error HTTP ${res.status}`);
-                }
+                
+                const data = JSON.parse(rawText);
+                if (!data.success) throw new Error(data.error);
 
                 // Actualizar UI con resultados
                 log.innerHTML = `
                     <p style="color:#10b981;">✅ Archivo recibido y procesado</p>
-                    <p>🔍 Validando integridad y columnas SIC...</p>
-                    <p>🆔 Revisando duplicados por hash...</p>
-                    <p style="color:#10b981;">✅ ${data.inserted} registros nuevos importados.</p>
-                    ${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} registros omitidos (duplicados).</p>` : ''}
-                    ${data.errors?.length ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores en filas específicas.</p>` : ''}
+                    <p>🔍 Validando integridad...</p>
+                    <p style="color:#10b981;">✅ ${data.inserted} registros nuevos.</p>
+                    ${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} omitidos (duplicados).</p>` : ''}
+                    ${data.errors?.length ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores.</p>` : ''}
                 `;
                 
-                const tbody = document.getElementById('loadHistory');
-                const now = new Date();
-                tbody.insertAdjacentHTML('afterbegin', 
-                    `<tr>
-                        <td>${now.toLocaleDateString()}</td>
-                        <td>${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
-                        <td style="color:#10b981; font-weight:600;">${data.inserted}</td>
-                        <td style="color:#f59e0b;">${data.skipped}</td>
-                    </tr>`
-                );
+                addToHistory(data.inserted, data.skipped);
                 Toast.success(`Carga completada: ${data.inserted} nuevos`);
                 document.getElementById('sicFile').value = '';
+                progressBar.style.width = '100%';
+                progressText.textContent = '¡Proceso finalizado!';
 
             } catch (err) {
                 log.innerHTML = `<p style="color:#ef4444;">❌ Error: ${err.message}</p>`;
                 Toast.error(err.message, 'Carga Fallida');
-                console.error('📦 Stack:', err);
+                progressBar.style.backgroundColor = '#ef4444';
             } finally {
-                // Cerrar overlay independientemente de éxito/fracaso
-                if(overlay) overlay.classList.remove('active');
+                clearInterval(pollingInterval);
+                setTimeout(() => overlay.classList.remove('active'), 1500);
             }
         }
+
+        function updateProgress() {
+            fetch('/api/sic_progress.php')
+                .then(r => r.json())
+                .then(p => {
+                    document.getElementById('progressBar').style.width = p.percent + '%';
+                    document.getElementById('progressText').textContent = 
+                        `${p.current} / ${p.total} registros procesados (${p.percent}%)`;
+                    if (p.status === 'completed' || p.status === 'error') clearInterval(pollingInterval);
+                })
+                .catch(() => {});
+        }
+
+        function addToHistory(inserted, skipped) {
+            const history = JSON.parse(localStorage.getItem('sic_history') || '[]');
+            const now = new Date();
+            history.unshift({
+                date: now.toLocaleDateString(),
+                time: now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+                inserted,
+                skipped
+            });
+            localStorage.setItem('sic_history', JSON.stringify(history.slice(0, 50))); // Últimas 50
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('sic_history') || '[]');
+            const tbody = document.getElementById('loadHistory');
+            tbody.innerHTML = history.map(h => `
+                <tr>
+                    <td>${h.date}</td>
+                    <td>${h.time}</td>
+                    <td style="color:#10b981; font-weight:600;">${h.inserted}</td>
+                    <td style="color:#f59e0b;">${h.skipped}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Inicializar historial al cargar
+        document.addEventListener('DOMContentLoaded', renderHistory);
 
         function confirmLoad() {
             document.getElementById('sicSummary').classList.remove('show');
@@ -649,7 +681,10 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     <div id="importOverlay" class="import-overlay">
         <div class="spinner"></div>
         <div class="import-text">Procesando archivo SIC...</div>
-        <div class="import-sub">Validando registros, catálogos y evitando duplicados</div>
+        <div class="import-sub" id="progressText">Validando registros y sincronizando catálogos</div>
+        <div class="progress-container" style="width:300px; margin-top:1rem;">
+            <div class="progress-bar" id="progressBar" style="width:0%;"></div>
+        </div>
     </div>
 
     <!-- Footer -->
