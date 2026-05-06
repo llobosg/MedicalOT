@@ -52,12 +52,19 @@ try {
     $result = $service->import($file['tmp_name'], basename($file['name']));
     
     http_response_code(200);
-    echo json_encode($result);
+    //  Limpiar buffers y forzar cabeceras limpias
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/json; charset=utf-8', true);
+    header('X-Content-Type-Options: nosniff');
+    
+    // 📤 Respuesta JSON segura
+    echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     exit;
     
 } catch (\Throwable $e) {
+    while (ob_get_level()) ob_end_clean();
     error_log("❌ API import_sic FATAL: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code($e->getCode() ?: 500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
     exit;
 }

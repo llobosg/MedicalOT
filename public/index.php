@@ -518,15 +518,24 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData });
                 const rawText = await res.text();
                 
-                // Validación robusta de JSON
-                if (!res.ok || !rawText.trim().startsWith('{')) {
-                    throw new Error(`Error HTTP ${res.status}. Verifica que la sesión no haya expirado.`);
-                }
-                
-                const data = JSON.parse(rawText);
-                if (!data.success) throw new Error(data.error);
+                // 🐛 DEBUG: Verás exactamente qué devuelve el servidor
+                console.warn('🌐 Raw Response:', rawText.substring(0, 300));
 
-                // Actualizar UI con resultados
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (jsonErr) {
+                    throw new Error(`Respuesta no JSON válida. Recibido: "${rawText.substring(0, 150)}..."`);
+                }
+
+                if (!res.ok) {
+                    throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
+                }
+                if (!data.success) {
+                    throw new Error(data.error || 'Operación fallida en servidor');
+                }
+
+                // ✅ UI Updates (mismo código que tenías)
                 log.innerHTML = `
                     <p style="color:#10b981;">✅ Archivo recibido y procesado</p>
                     <p>🔍 Validando integridad...</p>
@@ -544,7 +553,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             } catch (err) {
                 log.innerHTML = `<p style="color:#ef4444;">❌ Error: ${err.message}</p>`;
                 Toast.error(err.message, 'Carga Fallida');
-                progressBar.style.backgroundColor = '#ef4444';
+                console.error('📦 Stack:', err);
             } finally {
                 clearInterval(pollingInterval);
                 setTimeout(() => overlay.classList.remove('active'), 1500);
