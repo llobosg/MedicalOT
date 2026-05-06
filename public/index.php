@@ -366,21 +366,19 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         async function handleFile(file) {
             if (!file) return;
             
-            // Extracción robusta de extensión
             const fileName = file.name.trim();
             const ext = fileName.split('.').pop().toLowerCase();
             
-            // 🐛 LOG DE DEBUGGING (Revisa la consola del navegador con F12)
-            console.log('🔍 Extensión detectada:', ext, '| Nombre real:', fileName, '| Tamaño:', file.size);
+            console.log('🔍 Extensión detectada:', ext, '| Tamaño:', file.size);
             
             if (ext !== 'csv') {
-                Toast.error(`Formato no válido. Se detectó: "${ext}". Solo se aceptan archivos .csv`);
+                Toast.error(`Extensión inválida: "${ext}". Solo .csv`);
                 return;
             }
-            
+
             const summary = document.getElementById('sicSummary');
             const log = document.getElementById('sicLog');
-            log.innerHTML = `<p>📤 Enviando ${fileName} al servidor...</p>`;
+            log.innerHTML = `<p>📤 Enviando ${fileName} (${(file.size/1024).toFixed(1)} KB)...</p>`;
             summary.classList.add('show');
 
             const formData = new FormData();
@@ -389,46 +387,43 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             try {
                 const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData });
                 const rawText = await res.text();
+                
+                console.warn('🌐 Status HTTP:', res.status, '| Respuesta:', rawText.substring(0, 300));
 
                 let data;
                 try {
                     data = JSON.parse(rawText);
-                } catch (jsonErr) {
-                    console.error("❌ Respuesta no JSON recibida:", rawText.substring(0, 300));
-                    throw new Error('El servidor respondió con HTML en lugar de JSON. Revisa los logs de Railway.');
+                } catch (e) {
+                    throw new Error('El servidor no devolvió JSON. Revisa consola y logs de Railway.');
                 }
 
-                if (!data.success && data.error) {
-                    throw new Error(data.error);
-                }
-                if (!res.ok) {
-                    throw new Error(`Error HTTP: ${res.status}`);
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || `Error HTTP ${res.status}: ${res.statusText}`);
                 }
 
                 log.innerHTML = `
                     <p style="color:#10b981;">✅ Archivo recibido y procesado</p>
-                    <p>🔍 Validando integridad y columnas SIC...</p>
-                    <p>🆔 Revisando duplicados por hash...</p>
-                    <p style="color:#10b981;">✅ ${data.inserted} registros nuevos importados.</p>
-                    ${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} registros omitidos (duplicados).</p>` : ''}
-                    ${data.errors && data.errors.length > 0 ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores en filas específicas.</p>` : ''}
+                    <p>🔍 Validando integridad...</p>
+                    <p style="color:#10b981;">✅ ${data.inserted} registros nuevos.</p>
+                    ${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} omitidos (duplicados).</p>` : ''}
+                    ${data.errors?.length ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores.</p>` : ''}
                 `;
                 
                 const tbody = document.getElementById('loadHistory');
                 const now = new Date();
                 tbody.insertAdjacentHTML('afterbegin', 
-                    `<tr><td style="padding:0.75rem;">${now.toLocaleDateString()}</td><td>${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
-                    <td style="color:#10b981; font-weight:600;">${data.inserted}</td>
+                    `<tr><td>${now.toLocaleDateString()}</td><td>${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td style="color:#10b981;font-weight:600;">${data.inserted}</td>
                     <td style="color:#f59e0b;">${data.skipped}</td></tr>`
                 );
-                Toast.success(`Carga completada: ${data.inserted} nuevos, ${data.skipped} omitidos`);
+                Toast.success(`Carga completada: ${data.inserted} nuevos`);
                 document.getElementById('sicFile').value = '';
 
-                } catch (err) {
-                    log.innerHTML = `<p style="color:#ef4444;">❌ Error: ${err.message}</p>`;
-                    Toast.error(err.message || 'Error desconocido al cargar archivo', 'Carga Fallida');
-                    console.error("📦 Detalle error:", err);
-                }
+            } catch (err) {
+                log.innerHTML = `<p style="color:#ef4444;">❌ Error: ${err.message}</p>`;
+                Toast.error(err.message, 'Carga Fallida');
+                console.error('📦 Stack:', err);
+            }
         }
 
         function confirmLoad() {
