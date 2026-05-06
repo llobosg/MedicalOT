@@ -255,7 +255,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
              <!-- Bienvenida -->
             <div class="card" style="margin-bottom: 2rem;">
                 <div class="card-body" style="text-align: center; padding: 3rem;">
-                    <img src="/img/logomedicalot.png" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
+                    <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
                     <h2 style="font-size: 2rem; color: var(--primary-dark); margin-bottom: 0.5rem;">
                         Bienvenido a MedicalOT
                     </h2>
@@ -740,12 +740,13 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             });
         }
 
-        // ✅ FUNCIONES MÓDULO2 OTs
+        // ✅ ESTADO Y CONFIGURACIÓN OTs
         let currentFilters = { page: 1, search: '', esp: '', estado: '', mes: '' };
         let searchTimeout;
         let selectedOTData = null;
+        let totalPages = 1;
+        let currentPage = 1;
 
-        // Cargar datos desde API
         async function loadOTs() {
             const tbody = document.getElementById('otsTableBody');
             tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:2rem;">⏳ Cargando datos reales...</td></tr>';
@@ -761,7 +762,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
                 renderOTTable(data.data);
                 updatePagination(data.page, data.totalPages, data.total);
-                populateSpecialtyFilter(data.data); // Llenar filtro dinámico
+                populateSpecialtyFilter(data.data);
             } catch (err) {
                 tbody.innerHTML = `<tr><td colspan="16" style="text-align:center; color:#ef4444; padding:2rem;">❌ ${err.message}</td></tr>`;
                 console.error('📦 Error OTs:', err);
@@ -790,14 +791,16 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             }).join('');
         }
 
-        function updatePagination(page, totalPages, total) {
-            document.getElementById('pageInfo').textContent = `📄 ${page}/${totalPages} | ${total} registros`;
-            document.getElementById('prevPage').disabled = page <= 1;
-            document.getElementById('nextPage').disabled = page >= totalPages;
+        function updatePagination(page, totalPagesVal, total) {
+            currentPage = page;
+            totalPages = totalPagesVal || 1;
+            document.getElementById('pageInfo').textContent = `📄 ${currentPage}/${totalPages} | ${total} registros`;
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
         }
 
         function changePage(delta) {
-            currentFilters.page = Math.max(1, Math.min(currentFilters.page + delta, parseInt(document.getElementById('pageInfo').textContent.split('/')[1].split(' ')[0]) || 1));
+            currentPage = Math.max(1, Math.min(currentPage + delta, totalPages));
             loadOTs();
         }
 
@@ -810,7 +813,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             loadOTs();
         }
 
-        // Búsqueda inteligente con debounce
         function handleSearch() {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => applyFilters(), 300);
@@ -829,20 +831,17 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 .catch(() => {});
         }
 
-        // Seleccionar OT y cargar detalle
-        function selectOT(codigoOt) {
+        async function selectOT(codigoOt) {
             document.querySelectorAll('.ots-table tr').forEach(r => r.classList.remove('selected'));
             event.target.closest('tr').classList.add('selected');
             
-            // Buscar en datos actuales o hacer fetch específico
             fetch(`/api/ots.php?search=${encodeURIComponent(codigoOt)}&limit=1&page=1`)
                 .then(r => r.json())
                 .then(data => {
                     if (!data.success || !data.data.length) return;
                     selectedOTData = data.data[0];
                     
-                    const panel = document.getElementById('otDetailContent');
-                    panel.innerHTML = `
+                    document.getElementById('otDetailContent').innerHTML = `
                         <label>Código OT</label><input value="${selectedOTData.codigo_ot}" readonly>
                         <label>Fecha Programada</label><input type="date" value="${selectedOTData.fecha_programada || ''}">
                         <label>Turno</label><input value="${selectedOTData.turno || '-'}">
@@ -870,7 +869,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             Toast.info('Funcionalidad de actualización se conectará en Módulo 4. Por ahora los datos se muestran en modo lectura.');
         }
 
-        // Llenar filtro de especialidades dinámicamente
         function populateSpecialtyFilter(data) {
             const espSet = new Set(data.map(o => o.cod_especialidad).filter(Boolean));
             const espMap = new Map(data.map(o => [o.cod_especialidad, o.nombre_especialidad]).filter(x=>x[0]));
@@ -883,7 +881,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             select.value = current;
         }
 
-        // Inicializar
         document.addEventListener('DOMContentLoaded', () => {
             loadOTs();
         });
