@@ -134,6 +134,41 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .import-text { color: #1e293b; font-weight: 600; font-size: 1rem; }
         .import-sub { color: #64748b; font-size: 0.85rem; margin-top: 0.4rem; }
+        
+        /* ✅ FOOTER SIEMPRE AL PIE (Flexbox Layout) */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        main.container {
+            flex: 1; /* Empuja el footer hacia abajo */
+            padding-bottom: 2rem; /* Espacio extra para no pegar contenido */
+        }
+        .main-footer {
+            margin-top: auto;
+            width: 100%;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* ✅ BOTÓN SALIR (Estilo consistente con Home) */
+        .logout-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: background 0.3s ease;
+        }
+        .logout-btn:hover {
+            background: #fee2e2;
+        }
+        .logout-btn svg {
+            width: 20px;
+            height: 20px;
+            color: #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -146,14 +181,39 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <div class="header-module-title">Hospital de Antofagasta</div>
                 <div class="header-role"><?php echo htmlspecialchars($user['role_name']); ?></div>
             </div>
-            <button class="home-icon-btn" onclick="showModule('home')" title="Volver al Home" style="background:none;border:none;cursor:pointer;padding:0.5rem;margin-left:0.5rem;">
-                <svg width="22" height="22" fill="none" stroke="var(--primary)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            <button class="home-icon-btn" onclick="showModule('home')" title="Volver al Home">
+                <svg width="22" height="22" fill="none" stroke="var(--primary)" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
             </button>
         </div>
+
         <div class="header-right">
-            <div class="header-datetime"><div id="clock">--:--</div><div style="font-size:0.7rem;">MedicalOT v1.0</div></div>
-            <div class="header-user"><div class="user-avatar"><?php echo strtoupper(substr($user['name'], 0, 2)); ?></div><span><?php echo htmlspecialchars($user['name']); ?></span></div>
-            <div class="menu-dots"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg></div>
+            <!-- 1. Fecha y Hora -->
+            <div class="header-datetime">
+                <div id="clock">--:--</div>
+                <div style="font-size:0.7rem;">MedicalOT v1.0</div>
+            </div>
+            
+            <!-- 2. Botón Salir -->
+            <button class="logout-btn" onclick="logout()" title="Cerrar Sesión">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+            </button>
+            
+            <!-- 3. Menú (3 puntitos) -->
+            <div class="menu-dots">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                </svg>
+            </div>
+            
+            <!-- 4. Usuario Conectado (Fondo derecho) -->
+            <div class="header-user">
+                <div class="user-avatar"><?php echo strtoupper(substr($user['name'], 0, 2)); ?></div>
+                <span><?php echo htmlspecialchars($user['name']); ?></span>
+            </div>
         </div>
     </header>
 
