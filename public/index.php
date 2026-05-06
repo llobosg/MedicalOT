@@ -287,7 +287,14 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <button class="btn-volver" style="background:var(--primary); margin-top:0.5rem;" onclick="confirmLoad()">✅ Confirmar Carga</button>
                 </div>
                 <table style="width:100%; margin-top:1.5rem; border-collapse:collapse; background:#fff; border-radius:0.75rem; overflow:hidden;">
-                    <thead><tr style="background:#f1f5f9;"><th style="padding:0.75rem; text-align:left;">Fecha</th><th>Hora</th><th>Nuevos</th><th>Omitidos</th></tr></thead>
+                    <thead>
+                        <tr style="background:#f1f5f9;">
+                            <th style="padding:0.75rem; text-align:center;">Fecha</th>
+                            <th style="text-align:center;">Hora</th>
+                            <th style="text-align:center;">Nuevas</th>
+                            <th style="text-align:center;">Omitidas</th>
+                        </tr>
+                    </thead>
                     <tbody id="loadHistory"></tbody>
                 </table>
                 <button class="btn-volver" onclick="showModule('home')">🏠 Volver a Home</button>
@@ -537,14 +544,15 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
                 // ✅ UI Updates (mismo código que tenías)
                 log.innerHTML = `
-                    <p style="color:#10b981;">✅ Archivo recibido y procesado</p>
-                    <p>🔍 Validando integridad...</p>
-                    <p style="color:#10b981;">✅ ${data.inserted} registros nuevos.</p>
-                    ${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} omitidos (duplicados).</p>` : ''}
-                    ${data.errors?.length ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores.</p>` : ''}
+                    <p style="color:#10b981; font-weight:600;">✅ Proceso finalizado</p>
+                    <p>📥 Registros leídos: ${data.total}</p>
+                    <p style="color:#10b981;">✅ ${data.inserted} OTs nuevas importadas</p>
+                    ${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} OTs duplicadas omitidas (ya existen en base de datos)</p>` : ''}
+                    ${data.errors?.length ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores de validación</p>` : ''}
                 `;
                 
-                addToHistory(data.inserted, data.skipped);
+                addToHistory(data.inserted, data.skipped, data.total);
+
                 Toast.success(`Carga completada: ${data.inserted} nuevos`);
                 document.getElementById('sicFile').value = '';
                 progressBar.style.width = '100%';
@@ -572,16 +580,17 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 .catch(() => {});
         }
 
-        function addToHistory(inserted, skipped) {
+       function addToHistory(inserted, skipped, total) {
             const history = JSON.parse(localStorage.getItem('sic_history') || '[]');
             const now = new Date();
             history.unshift({
                 date: now.toLocaleDateString(),
                 time: now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+                total,
                 inserted,
-                skipped
+                duplicates: skipped
             });
-            localStorage.setItem('sic_history', JSON.stringify(history.slice(0, 50))); // Últimas 50
+            localStorage.setItem('sic_history', JSON.stringify(history.slice(0, 50)));
             renderHistory();
         }
 
@@ -593,7 +602,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <td>${h.date}</td>
                     <td>${h.time}</td>
                     <td style="color:#10b981; font-weight:600;">${h.inserted}</td>
-                    <td style="color:#f59e0b;">${h.skipped}</td>
+                    <td style="color:#f59e0b; font-weight:500;">${h.duplicates}</td>
                 </tr>
             `).join('');
         }

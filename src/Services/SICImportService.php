@@ -95,6 +95,14 @@ class SICImportService
             }
 
             $fecha = !empty($row[0]) ? date('Y-m-d', strtotime(trim($row[0]))) : null;
+            // ✅ VERIFICAR DUPLICADO EXPLÍCITO (para estadísticas exactas)
+            $checkStmt = $this->db->prepare("SELECT 1 FROM ordenes_trabajo WHERE codigo_ot = ? LIMIT 1");
+            $checkStmt->execute([$ot]);
+            if ($checkStmt->fetchColumn()) {
+                $this->stats['skipped']++;
+                continue; // Salta a la siguiente fila
+            }
+
             try {
                 $otStmt->execute([
                     $ot, $fecha, trim($row[5] ?? 'Mañana'), (int)($row[3] ?? 0), trim($row[4] ?? ''),
