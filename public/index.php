@@ -78,6 +78,62 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         
         @keyframes slideInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* HISTORIAL: Centrado de columnas y valores */
+        #loadHistory th, #loadHistory td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* FOOTER GLOBAL */
+        .main-footer {
+            background: #fff;
+            border-top: 1px solid #e2e8f0;
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #475569;
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            position: relative;
+            width: 100%;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+            z-index: 10;
+        }
+        .main-footer img {
+            height: 24px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        .main-footer img:hover { opacity: 1; }
+
+        /* OVERLAY DE CARGA SIC */
+        .import-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(3px);
+            z-index: 9998;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+        }
+        .import-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 1.25rem;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .import-text { color: #1e293b; font-weight: 600; font-size: 1rem; }
+        .import-sub { color: #64748b; font-size: 0.85rem; margin-top: 0.4rem; }
     </style>
 </head>
 <body>
@@ -276,11 +332,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         </section>
     </main>
 
-    <footer class="main-footer">
-        <img src="/img/logomedicalot.png" alt="MedicalOT" style="height:24px; opacity:0.8;">
-        <span>© 2026 Hospital de Antofagasta - Sistema MedicalOT</span>
-    </footer>
-
     <div class="modal-overlay" id="contratistaModal">
         <div class="modal-box">
             <h3 id="modalTitle">Nuevo Contratista</h3>
@@ -365,12 +416,10 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         async function handleFile(file) {
             if (!file) return;
-            
             const fileName = file.name.trim();
             const ext = fileName.split('.').pop().toLowerCase();
             
             console.log('🔍 Extensión detectada:', ext, '| Tamaño:', file.size);
-            
             if (ext !== 'csv') {
                 Toast.error(`Extensión inválida: "${ext}". Solo .csv`);
                 return;
@@ -378,8 +427,11 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
             const summary = document.getElementById('sicSummary');
             const log = document.getElementById('sicLog');
-            log.innerHTML = `<p>📤 Enviando ${fileName} (${(file.size/1024).toFixed(1)} KB)...</p>`;
+            const overlay = document.getElementById('importOverlay');
+            
+            log.innerHTML = `<p>📤 Iniciando carga de ${fileName}...</p>`;
             summary.classList.add('show');
+            if(overlay) overlay.classList.add('active');
 
             const formData = new FormData();
             formData.append('sicFile', file);
@@ -388,33 +440,38 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData });
                 const rawText = await res.text();
                 
-                console.warn('🌐 Status HTTP:', res.status, '| Respuesta:', rawText.substring(0, 300));
+                console.warn('🌐 Status HTTP:', res.status);
 
                 let data;
                 try {
                     data = JSON.parse(rawText);
                 } catch (e) {
-                    throw new Error('El servidor no devolvió JSON. Revisa consola y logs de Railway.');
+                    throw new Error('El servidor no devolvió JSON válido. Revisa consola.');
                 }
 
                 if (!res.ok || !data.success) {
-                    throw new Error(data.error || `Error HTTP ${res.status}: ${res.statusText}`);
+                    throw new Error(data.error || `Error HTTP ${res.status}`);
                 }
 
+                // Actualizar UI con resultados
                 log.innerHTML = `
                     <p style="color:#10b981;">✅ Archivo recibido y procesado</p>
-                    <p>🔍 Validando integridad...</p>
-                    <p style="color:#10b981;">✅ ${data.inserted} registros nuevos.</p>
-                    ${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} omitidos (duplicados).</p>` : ''}
-                    ${data.errors?.length ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores.</p>` : ''}
+                    <p>🔍 Validando integridad y columnas SIC...</p>
+                    <p>🆔 Revisando duplicados por hash...</p>
+                    <p style="color:#10b981;">✅ ${data.inserted} registros nuevos importados.</p>
+                    ${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} registros omitidos (duplicados).</p>` : ''}
+                    ${data.errors?.length ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores en filas específicas.</p>` : ''}
                 `;
                 
                 const tbody = document.getElementById('loadHistory');
                 const now = new Date();
                 tbody.insertAdjacentHTML('afterbegin', 
-                    `<tr><td>${now.toLocaleDateString()}</td><td>${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
-                    <td style="color:#10b981;font-weight:600;">${data.inserted}</td>
-                    <td style="color:#f59e0b;">${data.skipped}</td></tr>`
+                    `<tr>
+                        <td>${now.toLocaleDateString()}</td>
+                        <td>${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+                        <td style="color:#10b981; font-weight:600;">${data.inserted}</td>
+                        <td style="color:#f59e0b;">${data.skipped}</td>
+                    </tr>`
                 );
                 Toast.success(`Carga completada: ${data.inserted} nuevos`);
                 document.getElementById('sicFile').value = '';
@@ -423,6 +480,9 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 log.innerHTML = `<p style="color:#ef4444;">❌ Error: ${err.message}</p>`;
                 Toast.error(err.message, 'Carga Fallida');
                 console.error('📦 Stack:', err);
+            } finally {
+                // Cerrar overlay independientemente de éxito/fracaso
+                if(overlay) overlay.classList.remove('active');
             }
         }
 
@@ -495,5 +555,17 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         updateKPIs(document.querySelector('.pill-btn.active'), 'Especialidad');
         Toast.init();
     </script>
+    <!-- Overlay de Carga SIC -->
+    <div id="importOverlay" class="import-overlay">
+        <div class="spinner"></div>
+        <div class="import-text">Procesando archivo SIC...</div>
+        <div class="import-sub">Validando registros, catálogos y evitando duplicados</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <img src="/img/logomedicalot.png" alt="MedicalOT">
+        <span>© 2026 Hospital de Antofagasta - Sistema MedicalOT</span>
+    </footer>
 </body>
 </html>
