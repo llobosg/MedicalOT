@@ -1,17 +1,10 @@
-# railway.toml - Raíz del proyecto
 [build]
 builder = "nixpacks"
 
 [deploy]
-# Comando de inicio: PHP server en el puerto correcto
-startCommand = "php -S 0.0.0.0:$PORT -t public"
-
-# Health check: endpoint simple que siempre responde 200
+# La bandera -c fuerza a PHP a leer nuestro php.ini
+startCommand = "php -c /app/php.ini -S 0.0.0.0:$PORT -t public"
 healthcheckPath = "/health.php"
-healthcheckTimeout = 300  # 5 minutos para startups lentos
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-
-# Variables de entorno para PHP
-[deploy.envs]
-PHP_INI_SCAN_DIR = "/app/php.ini.d"
