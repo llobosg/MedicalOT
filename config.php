@@ -1,151 +1,100 @@
 <?php
 /**
- * config.php - Configuración de Base de Datos
- * Ubicación: RAÍZ del proyecto (fuera de /public)
+ * config.php - Configuración para Railway (Versión Final)
+ * Ubicación: RAÍZ del proyecto
  */
 
-// Cargar .env si existe
-if (file_exists(__DIR__ . '/.env')) {
-    $envVars = parse_ini_file(__DIR__ . '/.env');
-    foreach ($envVars as $key => $value) {
-        if (!getenv($key)) putenv("$key=$value");
-    }
-}
-
-// 1. SEGURIDAD: Prevenir acceso directo por navegador
 if (PHP_SAPI !== 'cli' && !defined('APP_ENTRY_POINT')) {
     http_response_code(403);
     exit('Acceso denegado');
 }
 
-// 2. FUNCIÓN HELPER: Obtener variable de entorno desde múltiples fuentes
+// Helper robusto para variables de entorno
 function env($key, $default = null) {
-    // Método 1: getenv()
-    $value = getenv($key);
-    if ($value !== false && $value !== null) return $value;
-    
-    // Método 2: $_ENV
-    if (isset($_ENV[$key])) return $_ENV[$key];
-    
-    // Método 3: $_SERVER
-    if (isset($_SERVER[$key])) return $_SERVER[$key];
-    
-    // Método 4: putenv fallback (para algunos entornos)
-    $value = putenv($key);
-    if ($value !== false) return $value;
-    
-    return $default;
+    $val = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+    return $val === false ? $default : $val;
 }
 
-// 3. DETECCIÓN DE ENTORNO
 $isProduction = false;
-$host = null; $dbname = null; $username = null; $password = null; $port = '3306';
+$host = null; $port = '3306'; $dbname = null; $username = null; $password = null;
 
-// --- Método A: DATABASE_URL (formato URI completo) ---
+// 🎯 PRIORIDAD ABSOLUTA: DATABASE_URL (formato estándar Railway)
 $databaseUrl = env('DATABASE_URL');
-if ($databaseUrl && strpos($databaseUrl, 'mysql://') === 0) {
+if ($databaseUrl && stripos($databaseUrl, 'mysql://') === 0) {
     $parsed = parse_url($databaseUrl);
+    
     $host = $parsed['host'] ?? null;
     $port = $parsed['port'] ?? '3306';
     $dbname = ltrim($parsed['path'] ?? '', '/');
     $username = $parsed['user'] ?? null;
     $password = $parsed['pass'] ?? null;
     
-    if ($host && $dbname && $username !== null) {
-        $isProduction = true;
-        error_log("✅ Conectando vía DATABASE_URL: $host:$port/$dbname");
-    }
-}
-
-// --- Método B: Variables MYSQL_* individuales ---
-if (!$isProduction && env('MYSQL_HOST')) {
-    $host = env('MYSQL_HOST');
-    $port = env('MYSQL_PORT', '3306');
-    $dbname = env('MYSQL_DATABASE');
-    $username = env('MYSQL_USER');
-    $password = env('MYSQL_PASSWORD');
+    // 🔧 CORRECCIÓN CRÍTICA: En Railway, si el host contiene 'proxy', 
+    // es una URL externa. Para conexiones internas entre servicios:
+    // - Host interno: mysql.railway.internal
+    // - Puerto interno: 3306
+    // Pero PHP en Railway puede necesitar la URL externa.
+    // Probamos primero con los valores parseados directamente.
     
     if ($host && $dbname && $username !== null) {
         $isProduction = true;
-        error_log("✅ Conectando vía MYSQL_* variables: $host:$port/$dbname");
+        error_log(" Railway: DATABASE_URL parseada -> $host:$port/$dbname");
     }
 }
 
-// --- Método C: Variables RAILWAY_MYSQL_* ---
-if (!$isProduction && env('RAILWAY_MYSQL_HOST')) {
-    $host = env('RAILWAY_MYSQL_HOST');
-    $port = env('RAILWAY_MYSQL_PORT', '3306');
-    $dbname = env('RAILWAY_MYSQL_DATABASE');
-    $username = env('RAILWAY_MYSQL_USER');
-    $password = env('RAILWAY_MYSQL_PASSWORD');
-    
-    if ($host && $dbname && $username !== null) {
-        $isProduction = true;
-        error_log("✅ Conectando vía RAILWAY_MYSQL_* variables: $host:$port/$dbname");
-    }
-}
-
-// --- Método D: .env file (para desarrollo local con php-dotenv) ---
-if (!$isProduction && file_exists(__DIR__ . '/.env')) {
-    $envVars = parse_ini_file(__DIR__ . '/.env');
-    if (!empty($envVars['DB_HOST'])) {
-        $host = $envVars['DB_HOST'];
-        $port = $envVars['DB_PORT'] ?? '3306';
-        $dbname = $envVars['DB_NAME'];
-        $username = $envVars['DB_USER'];
-        $password = $envVars['DB_PASS'] ?? '';
-        error_log("✅ Conectando vía archivo .env local: $host:$port/$dbname");
-    }
-}
-
-// --- Fallback: Configuración local XAMPP ---
+// Fallback: Configuración local XAMPP
 if (!$isProduction) {
-    $host = '127.0.0.1';  // Usar IP en lugar de localhost para evitar sockets
+    $host = '127.0.0.1';
+    $port = '3306';
     $dbname = 'medicalot_local';
     $username = 'root';
     $password = '';
-    $port = '3306';
-    error_log("⚠️ Usando configuración LOCAL: $host:$port/$dbname");
+    error_log("💻 Local: $host:$port/$dbname");
 }
 
-// 4. CONEXIÓN PDO
-try {
-    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
-    
-    $options = [
-        PDO::ATTR_ERRMODE => $isProduction ? PDO::ERRMODE_WARNING : PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false,
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone='+00:00'",
-        PDO::ATTR_TIMEOUT => 10
-    ];
-    
-    $pdo = new PDO($dsn, $username, $password, $options);
-    
-    // Test de conexión en producción (solo log)
-    if ($isProduction) {
-        error_log("✅ Conexión PDO exitosa a $dbname en $host");
+// 🔄 CONEXIÓN CON REINTENTOS (para race conditions en startup)
+$pdo = null;
+$lastError = null;
+
+for ($attempt = 1; $attempt <= 3; $attempt++) {
+    try {
+        $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+        
+        $pdo = new PDO($dsn, $username, $password, [
+            PDO::ATTR_ERRMODE => $isProduction ? PDO::ERRMODE_WARNING : PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::ATTR_TIMEOUT => 10,
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone='+00:00'"
+        ]);
+        
+        error_log("✅ PDO conectado (intento $attempt)");
+        break;
+        
+    } catch (PDOException $e) {
+        $lastError = $e->getMessage();
+        error_log("❌ Intento $attempt: $lastError");
+        
+        if ($attempt < 3) {
+            sleep(2);
+            // Segundo intento: probar con host interno si falló el externo
+            if ($attempt === 2 && stripos($host ?? '', 'proxy') !== false) {
+                $host = 'mysql.railway.internal';
+                $port = '3306';
+                error_log("🔄 Reintentando con host interno: $host:$port");
+            }
+        }
     }
+}
+
+// Si todo falla
+if (!$pdo) {
+    error_log(" FATAL: No se pudo conectar. Debug: host=$host port=$port db=$dbname user=$username");
     
-} catch (PDOException $e) {
-    $errorMsg = "DB Connection Failed: " . $e->getMessage();
-    $debugInfo = "Host:$host Port:$port DB:$dbname User:$username Prod:" . ($isProduction ? 'YES' : 'NO');
-    
-    error_log("❌ $errorMsg | $debugInfo");
-    
-    // En producción: mensaje genérico + variables disponibles para debug
     if ($isProduction) {
         http_response_code(500);
-        $availableVars = array_filter([
-            'DATABASE_URL' => env('DATABASE_URL') ? 'SET' : 'NOT SET',
-            'MYSQL_HOST' => env('MYSQL_HOST') ? 'SET' : 'NOT SET',
-            'RAILWAY_MYSQL_HOST' => env('RAILWAY_MYSQL_HOST') ? 'SET' : 'NOT SET',
-        ]);
-        error_log("🔍 Variables disponibles: " . json_encode($availableVars));
-        exit("⚠️ Error de conexión. Revisar logs de Railway para detalles.");
+        exit("⚠️ Error de conexión a base de datos. Revise configuración de Railway.");
     }
-    
-    // En local: mostrar error completo para depuración
-    throw $e;
+    throw new PDOException($lastError ?? 'Unknown connection error');
 }
 ?>
