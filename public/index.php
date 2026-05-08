@@ -21,7 +21,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         .module-section { flex: 1; display: none; min-height: 0; overflow: hidden; }
         .module-section.active { display: flex; flex-direction: column; }
         
-        .home-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; flex: 1; }
+        .home-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
         .home-card { background: #fff; border-radius: 1rem; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; border: 2px solid transparent; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .home-card:hover { transform: translateY(-4px); border-color: var(--primary); }
         .home-card-icon { font-size: 2rem; margin-bottom: 0.75rem; display: block; }

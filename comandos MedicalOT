@@ -4,7 +4,7 @@
   --user=root \
   --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
   --database=railway \
-  -e "UPDATE convenios SET estado = IF(activo = 1, 'activo', 'inactivo') WHERE estado IS NULL;"
+  -e "DESCRIBE test;"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
@@ -13,5 +13,5 @@ mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railw
 
   # Commit y push
 git add .
-git commit -m "feat: sitio en mantencion"
+git commit -m "fix: v1"
 git push origin main
