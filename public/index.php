@@ -14,7 +14,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     <title>MedicalOT | Hospital de Antofagasta</title>
     <link rel="stylesheet" href="/css/medicalot.css">
     <style>
-                /* ✅ LAYOUT BASE (Flexbox contenedor) */
+        /* ✅ LAYOUT BASE (Flexbox contenedor) */
         body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
         .main-header { flex-shrink: 0; position: sticky; top: 0; z-index: 100; background: #fff; border-bottom: 2px solid var(--primary); padding: 0.75rem 1.5rem; display:flex; justify-content:space-between; align-items:center; }
         main.container { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 1.25rem; overflow: hidden; }
@@ -234,6 +234,166 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <table style="width:100%; background:#fff; border-radius:0.75rem; overflow:hidden; border-collapse:collapse;"><thead><tr style="background:#f1f5f9;"><th style="padding:0.75rem; text-align:left;">RUT</th><th>Razón Social</th><th>Especialidad</th><th>Contacto</th><th>Acciones</th></tr></thead><tbody><tr><td style="padding:0.75rem;">76.543.210-K</td><td>Servicios ClimaSpa</td><td>M-CLIMATIZACION</td><td>contacto@clima.cl</td><td><button style="padding:0.25rem 0.5rem; cursor:pointer;" onclick="openModal('edit')">✏️</button> <button style="padding:0.25rem 0.5rem; cursor:pointer; color:#ef4444;">🗑️</button></td></tr><tr><td style="padding:0.75rem;">96.876.540-1</td><td>Mantenciones Valdivia</td><td>M-ELECTROMECANICA</td><td>admin@valdivia.cl</td><td><button style="padding:0.25rem 0.5rem; cursor:pointer;" onclick="openModal('edit')">✏️</button> <button style="padding:0.25rem 0.5rem; cursor:pointer; color:#ef4444;">🗑️</button></td></tr></tbody></table>
             </div>
         </section>
+        <!-- NUEVAS FICHAS PARA EL MOCKUP -->
+
+        <!-- MÓDULO 1: RECURSOS -->
+        <section id="recursos" class="module-section">
+            <div style="max-width:1000px; margin:0 auto;">
+                <h3 style="margin-bottom:1rem;">👥 Mantenedor de Recursos</h3>
+                <div style="display:flex; gap:1rem; margin-bottom:1rem;">
+                    <button onclick="alert('Modal Nuevo Técnico')" style="background:var(--primary); color:white; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">➕ Nuevo Técnico</button>
+                    <button onclick="alert('Modal Nuevo Grupo')" style="background:#64748b; color:white; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">➕ Nuevo Grupo</button>
+                </div>
+                
+                <!-- Tabla de Técnicos -->
+                <table style="width:100%; background:#fff; border-radius:0.75rem; overflow:hidden; border-collapse:collapse; box-shadow:var(--shadow);">
+                    <thead><tr style="background:#f1f5f9;"><th style="padding:0.75rem; text-align:left;">Técnico</th><th>RUT</th><th>Especialidad</th><th>Grupo</th><th>Turno</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        <tr><td style="padding:0.75rem;">Juan Pérez</td><td>12.345.678-9</td><td>M-CLIMATIZACION</td><td>Pool ClimA</td><td>2x2 Mañana</td><td><span class="badge b-pro">Activo</span></td><td><button style="cursor:pointer;">✏️</button></td></tr>
+                        <tr><td style="padding:0.75rem;">Maria González</td><td>11.222.333-4</td><td>M-ELECTROMECANICA</td><td>Pool ElecB</td><td>5x2 Tarde</td><td><span class="badge b-pen">Vacaciones</span></td><td><button style="cursor:pointer;">✏️</button></td></tr>
+                        <tr><td style="padding:0.75rem;">Carlos Ruiz</td><td>15.678.901-K</td><td>M-CLIMATIZACION</td><td>Pool ClimA</td><td>2x2 Noche</td><td><span class="badge b-cer">Licencia Médica</span></td><td><button style="cursor:pointer;">✏️</button></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- MÓDULO 2: PLANIFICACIÓN (Calendario Hotelero) -->
+        <section id="planificacion" class="module-section">
+            <div style="height:100%; display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h3 style="margin:0;">📅 Planificación Semanal (Semana 19)</h3>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button onclick="changeWeek(-1)" style="padding:0.4rem 0.8rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">◀ Anterior</button>
+                        <button onclick="changeWeek(1)" style="padding:0.4rem 0.8rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Siguiente ▶</button>
+                    </div>
+                </div>
+                
+                <!-- Contenedor del Calendario Scrollable -->
+                <div style="flex:1; overflow:auto; background:#fff; border:1px solid #e2e8f0; border-radius:0.75rem; position:relative;">
+                    <div id="calendarGrid" style="display:grid; grid-template-columns: 150px repeat(7, 1fr); min-height:100%;">
+                        <!-- Header Días -->
+                        <div style="position:sticky; top:0; left:0; z-index:10; background:#f1f5f9; padding:0.75rem; font-weight:600; border-bottom:2px solid #e2e8f0; border-right:2px solid #e2e8f0;">Recurso</div>
+                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Lunes</div>
+                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Martes</div>
+                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Miércoles</div>
+                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Jueves</div>
+                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Viernes</div>
+                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Sábado</div>
+                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Domingo</div>
+
+                        <!-- Fila Grupo 1 -->
+                        <div style="position:sticky; left:0; z-index:5; background:#fff; padding:0.75rem; border-bottom:1px solid #e2e8f0; border-right:2px solid #e2e8f0; font-weight:600;">Pool ClimA</div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Lunes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Martes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell has-event" onclick="showEventDetails()" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px; background:#dbeafe;">
+                            <div style="padding:0.5rem; font-size:0.75rem; color:#1e40af; background:#bfdbfe; border-radius:4px; margin:0.25rem;">OT-2026-001<br>08:00 - 16:00</div>
+                        </div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Jueves')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Viernes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Sábado')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Domingo')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+
+                        <!-- Fila Grupo 2 -->
+                        <div style="position:sticky; left:0; z-index:5; background:#fff; padding:0.75rem; border-bottom:1px solid #e2e8f0; border-right:2px solid #e2e8f0; font-weight:600;">Pool ElecB</div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Lunes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Martes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Miércoles')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell has-event" onclick="showEventDetails()" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px; background:#dcfce7;">
+                            <div style="padding:0.5rem; font-size:0.75rem; color:#166534; background:#bbf7d0; border-radius:4px; margin:0.25rem;">OT-2026-002<br>09:00 - 17:00</div>
+                        </div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Viernes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Sábado')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Domingo')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MÓDULO 3: PRESENTACIÓN (Dashboard Minimalista) -->
+        <section id="presentacion" class="module-section">
+            <div style="max-width:1000px; margin:0 auto;">
+                <h3 style="margin-bottom:1rem;">📊 Panel de Control de Carga</h3>
+                
+                <!-- KPIs Superiores -->
+                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem; margin-bottom:2rem;">
+                    <div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">HH Disponibles (Semana)</div><div class="kpi-val" style="color:var(--primary);">1,240</div></div>
+                    <div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">HH Planificadas</div><div class="kpi-val" style="color:var(--success);">980</div></div>
+                    <div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">% Ocupación</div><div class="kpi-val" style="color:var(--warning);">79%</div></div>
+                    <div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">Técnicos Activos</div><div class="kpi-val">18/23</div></div>
+                </div>
+
+                <!-- Gráfico de Barras Simple (CSS Only) -->
+                <h4 style="margin-bottom:1rem;">Carga por Grupo</h4>
+                <div style="background:#fff; padding:1.5rem; border-radius:0.75rem; box-shadow:var(--shadow);">
+                    <div style="margin-bottom:1rem;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.5rem;">
+                            <span>Pool ClimA</span>
+                            <span>85% (340/400 HH)</span>
+                        </div>
+                        <div style="height:12px; background:#e2e8f0; border-radius:6px; overflow:hidden;">
+                            <div style="width:85%; height:100%; background:linear-gradient(90deg, #10b981, #059669);"></div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.5rem;">
+                            <span>Pool ElecB</span>
+                            <span>60% (240/400 HH)</span>
+                        </div>
+                        <div style="height:12px; background:#e2e8f0; border-radius:6px; overflow:hidden;">
+                            <div style="width:60%; height:100%; background:linear-gradient(90deg, #3b82f6, #2563eb);"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.5rem;">
+                            <span>Pool PoliC</span>
+                            <span>45% (180/400 HH)</span>
+                        </div>
+                        <div style="height:12px; background:#e2e8f0; border-radius:6px; overflow:hidden;">
+                            <div style="width:45%; height:100%; background:linear-gradient(90deg, #f59e0b, #d97706);"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODAL DE PLANIFICACIÓN -->
+        <div id="planningModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:1.5rem; border-radius:1rem; width:90%; max-width:500px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                <h3 style="margin-top:0;">📅 Planificar OT</h3>
+                <form onsubmit="event.preventDefault(); savePlanning();">
+                    <label style="font-size:0.85rem; font-weight:600; color:#475569;">Seleccionar OT</label>
+                    <select style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; margin-bottom:1rem;">
+                        <option>OT-2026-001 - Mantenimiento UMA (40 HH)</option>
+                        <option>OT-2026-002 - Revisión Chillers (20 HH)</option>
+                    </select>
+                    
+                    <label style="font-size:0.85rem; font-weight:600; color:#475569;">Asignar a</label>
+                    <select style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; margin-bottom:1rem;">
+                        <option>Pool ClimA</option>
+                        <option>Técnico Juan Pérez</option>
+                    </select>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                        <div>
+                            <label style="font-size:0.85rem; font-weight:600; color:#475569;">Fecha Inicio</label>
+                            <input type="date" value="<?php echo date('Y-m-d'); ?>" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.85rem; font-weight:600; color:#475569;">Hora Inicio</label>
+                            <input type="time" value="09:00" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        </div>
+                    </div>
+
+                    <label style="font-size:0.85rem; font-weight:600; color:#475569;">HHs Totales</label>
+                    <input type="number" value="40" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; margin-bottom:1rem;">
+
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" onclick="document.getElementById('planningModal').style.display='none'" style="padding:0.5rem 1rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Cancelar</button>
+                        <button type="submit" style="padding:0.5rem 1rem; border:none; border-radius:0.5rem; background:var(--primary); color:#fff; cursor:pointer;">💾 Grabar Planificación</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </main>
 
     <div class="modal-overlay" id="contratistaModal">
@@ -429,6 +589,63 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         Toast.init();
         if(document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { if(document.getElementById('ots').classList.contains('active')) loadOTs(); }); }
         else { if(document.getElementById('ots').classList.contains('active')) loadOTs(); }
+
+        // NAVEGACIÓN A NUEVAS FICHAS
+function showModule(id) {
+    document.querySelectorAll('.module-section').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(id);
+    if(target) target.classList.add('active');
+    
+    // Carga específica si es necesario
+    if(id === 'ots') loadOTs();
+}
+
+// FUNCIONES DEL MOCKUP PLANIFICACIÓN
+function openPlanningModal(grupo, dia) {
+    console.log(`Abriendo planificación para ${grupo} en ${dia}`);
+    document.getElementById('planningModal').style.display = 'flex';
+}
+
+function savePlanning() {
+    alert('✅ Planificación guardada exitosamente.\n\nEn producción, esto distribuirá las HHs automáticamente según la periodicidad de la OT.');
+    document.getElementById('planningModal').style.display = 'none';
+    // Aquí iría la lógica para pintar las celdas dinámicamente
+}
+
+function showEventDetails() {
+    alert('📋 Detalle de OT:\n\nOT: 2026-001\nProtocolo: Mantenimiento UMA\nHHs Asignadas: 8\nEstado: Programado');
+}
+
+function changeWeek(delta) {
+    alert('🔄 Cambiando semana... (Simulación)');
+}
+
+// AGREGAR NUEVAS FICHAS AL HOME (Dinámico)
+document.addEventListener('DOMContentLoaded', () => {
+    const homeGrid = document.querySelector('.home-grid');
+    if(homeGrid) {
+        // Insertar después de la primera tarjeta
+        const newCards = `
+            <div class="home-card" onclick="showModule('recursos')">
+                <span class="home-card-icon">👥</span>
+                <div class="home-card-title">Recursos</div>
+                <div class="home-card-desc">Técnicos, Grupos y Turnos</div>
+            </div>
+            <div class="home-card" onclick="showModule('planificacion')">
+                <span class="home-card-icon">📅</span>
+                <div class="home-card-title">Planificación</div>
+                <div class="home-card-desc">Calendario y asignación HH</div>
+            </div>
+            <div class="home-card" onclick="showModule('presentacion')">
+                <span class="home-card-icon">📊</span>
+                <div class="home-card-title">Presentación</div>
+                <div class="home-card-desc">KPIs de carga y disponibilidad</div>
+            </div>
+        `;
+        // Insertar al final de la grilla
+        homeGrid.insertAdjacentHTML('beforeend', newCards);
+    }
+});
     </script>
 </body>
 </html>
