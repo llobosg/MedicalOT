@@ -189,13 +189,13 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <div class="home-card-desc">Indicadores y métricas</div>
                 </div>
                 <?php if($isAdmin || $user['role'] === 'admin_cont'): ?>
-                <div class="home-card" onclick="showModule('contratistas')">
-                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
-                        <img src="/img/icons/verticales.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-                    </div>
-                    <div class="home-card-title">Verticales</div>
-                    <div class="home-card-desc">Mantenedor de Verticales</div>
-                </div>
+                   <div class="home-card" onclick="showModule('presentacion')">
+                        <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                            <img src="/img/icons/presentacion.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                        </div>
+                        <div class="home-card-title">Presentación</div>
+                        <div class="home-card-desc">KPIs de carga y disponibilidad</div>
+                    </div>   
                 <?php endif; ?>
             </div>
         </section>
@@ -203,7 +203,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         <?php if($isAdmin): ?>
         <section id="carga-sic" class="module-section">
             <div style="max-width:800px; margin:0 auto;">
-                <h3 style="margin-bottom:1rem;">📥 Carga y Validación SIC</h3>
+                <h3 style="margin-bottom:1rem;">Carga y Validación SIC</h3>
                 <div class="upload-zone" id="dropZone"><input type="file" id="sicFile" accept=".csv" style="display:none"><p style="font-weight:600;">Arrastra tu archivo SIC o haz clic aquí</p><p style="font-size:0.8rem; color:var(--gray-600);">Solo archivos .csv | Máx 50MB</p></div>
                 <div id="sicSummary" class="summary-box"><h4>📋 Resumen de Validación</h4><div id="sicLog" style="font-size:0.9rem; margin:0.5rem 0;"></div><button class="btn-volver" style="background:var(--primary); margin-top:0.5rem;" onclick="confirmLoad()">✅ Confirmar Carga</button></div>
                 <table style="width:100%; margin-top:1.5rem; border-collapse:collapse; background:#fff; border-radius:0.75rem; overflow:hidden;"><thead><tr style="background:#f1f5f9;"><th style="padding:0.75rem; text-align:center;">Fecha</th><th style="text-align:center;">Hora</th><th style="text-align:center;">Nuevas</th><th style="text-align:center;">Omitidas</th></tr></thead><tbody id="loadHistory"></tbody></table>
@@ -229,7 +229,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                 </div>
                 <div class="ots-right detail-form" id="otDetailPanel">
-                    <h4 style="margin-bottom:1rem;">📝 Detalle / Edición OT</h4>
+                    <h4 style="margin-bottom:1rem;">Detalle / Edición OT</h4>
                     <div id="otDetailContent"><p style="color:#94a3b8; text-align:center; margin-top:2rem;">Selecciona una OT para ver detalles</p></div>
                     <div class="detail-actions" id="otActions" style="display:none;"><button class="btn-save" onclick="saveOT()">💾 Guardar</button><button class="btn-cancel" onclick="clearDetail()">❌ Cancelar</button><button class="btn-volver" style="background:#64748b; margin-top:0;" onclick="showModule('home')">🏠 Volver a Home</button></div>
                 </div>
@@ -238,7 +238,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         <section id="tracking" class="module-section">
             <div style="max-width:900px; margin:0 auto;">
-                <h3 style="margin-bottom:1rem;">📡 Tracking en Terreno</h3>
+                <h3 style="margin-bottom:1rem;">Tracking en Terreno</h3>
                 <div style="display:flex; gap:1rem; margin-bottom:1.5rem;"><select style="padding:0.5rem; border-radius:0.5rem; border:1px solid #e2e8f0; flex:1;"><option>Filtrar por Estado</option><option>en_proceso</option><option>pausada</option><option>cerrada</option></select><select style="padding:0.5rem; border-radius:0.5rem; border:1px solid #e2e8f0; flex:2;"><option>Seleccionar OT</option><option>OT-2026-003 - Estanque Criogénico</option><option>OT-2026-007 - Torres Enfriamiento</option></select></div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
                     <div style="background:#fff; padding:1.5rem; border-radius:0.75rem; border:1px solid #e2e8f0;"><h4>Progreso & Timeline</h4><div class="progress-container" style="margin:1rem 0;"><div class="progress-bar" style="width:65%;"></div></div><p style="font-size:0.85rem; margin-bottom:0.5rem;"><strong>65%</strong> completado - 18.2 HH / 28.0 HH</p><div style="border-left:2px solid #e2e8f0; padding-left:1rem; margin:1rem 0;"><div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:#64748b;">10/05/2026 08:30</div><div>Carga desde SIC - Admin Hospital</div></div><div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:#64748b;">11/05/2026 09:15</div><div>Asignado a Pool ClimA - Sup. Pérez</div></div><div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:#64748b;">12/05/2026 10:00</div><div>Inicio trabajo - Tec. Juan López</div></div></div></div>
@@ -249,7 +249,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         <section id="kpis" class="module-section">
             <div style="max-width:900px; margin:0 auto;">
-                <h3 style="margin-bottom:1rem;">📊 Indicadores de Gestión</h3>
+                <h3 style="margin-bottom:1rem;">Indicadores de Gestión</h3>
                 <div class="kpi-grid"><div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">SLA Cumplimiento</div><div class="kpi-val" style="color:#10b981;">94%</div></div><div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">HH Presup/Real</div><div class="kpi-val" style="color:#f59e0b;">102%</div></div><div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">OTs Cerradas/Mes</div><div class="kpi-val">47</div></div><div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">En Proceso</div><div class="kpi-val" style="color:var(--primary);">12</div></div></div>
                 <h4 style="margin-bottom:0.5rem;">Distribución de HH por Categoría</h4>
                 <div class="pills-container"><button class="pill-btn active" onclick="updateKPIs(this, 'Especialidad')">Especialidad</button><button class="pill-btn" onclick="updateKPIs(this, 'Área')">Área</button><button class="pill-btn" onclick="updateKPIs(this, 'Equipo')">Equipo</button></div>
@@ -269,7 +269,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         <!-- MÓDULO 1: RECURSOS -->
         <section id="recursos" class="module-section">
             <div style="max-width:1000px; margin:0 auto;">
-                <h3 style="margin-bottom:1rem;">👥 Mantenedor de Recursos</h3>
+                <h3 style="margin-bottom:1rem;">Mantenedor de Recursos</h3>
                 <div style="display:flex; gap:1rem; margin-bottom:1rem;">
                     <button onclick="alert('Modal Nuevo Técnico')" style="background:var(--primary); color:white; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">➕ Nuevo Técnico</button>
                     <button onclick="alert('Modal Nuevo Grupo')" style="background:#64748b; color:white; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">➕ Nuevo Grupo</button>
@@ -291,7 +291,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         <section id="planificacion" class="module-section">
             <div style="height:100%; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <h3 style="margin:0;">📅 Planificación Semanal (Semana 19)</h3>
+                    <h3 style="margin:0;">Planificación Semanal (Semana 19)</h3>
                     <div style="display:flex; gap:0.5rem;">
                         <button onclick="changeWeek(-1)" style="padding:0.4rem 0.8rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">◀ Anterior</button>
                         <button onclick="changeWeek(1)" style="padding:0.4rem 0.8rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Siguiente ▶</button>
@@ -342,7 +342,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         <!-- MÓDULO 3: PRESENTACIÓN (Dashboard Minimalista) -->
         <section id="presentacion" class="module-section">
             <div style="max-width:1000px; margin:0 auto;">
-                <h3 style="margin-bottom:1rem;">📊 Panel de Control de Carga</h3>
+                <h3 style="margin-bottom:1rem;">Panel de Control de Carga</h3>
                 
                 <!-- KPIs Superiores -->
                 <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem; margin-bottom:2rem;">
@@ -389,7 +389,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         <!-- MODAL DE PLANIFICACIÓN -->
         <div id="planningModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
             <div style="background:#fff; padding:1.5rem; border-radius:1rem; width:90%; max-width:500px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-                <h3 style="margin-top:0;">📅 Planificar OT</h3>
+                <h3 style="margin-top:0;">Planificar OT</h3>
                 <form onsubmit="event.preventDefault(); savePlanning();">
                     <label style="font-size:0.85rem; font-weight:600; color:#475569;">Seleccionar OT</label>
                     <select style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; margin-bottom:1rem;">
@@ -399,7 +399,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     
                     <label style="font-size:0.85rem; font-weight:600; color:#475569;">Asignar a</label>
                     <select style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; margin-bottom:1rem;">
-                        <option>Pool ClimA</option>
+                        <option>Pool Clima</option>
                         <option>Técnico Juan Pérez</option>
                     </select>
 
@@ -656,13 +656,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(homeGrid) {
         // Insertar después de la primera tarjeta
         const newCards = `
-            <div class="home-card" onclick="showModule('recursos')">
-                <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
-                    <img src="/img/icons/recursos.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-                </div>
-                <div class="home-card-title">Recursos</div>
-                <div class="home-card-desc">Técnicos, Grupos y Turnos</div>
-            </div>
             <div class="home-card" onclick="showModule('planificacion')">
                 <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
                     <img src="/img/icons/planificacion.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
@@ -670,12 +663,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="home-card-title">Planificación</div>
                 <div class="home-card-desc">Calendario y asignación HH</div>
             </div>
-            <div class="home-card" onclick="showModule('presentacion')">
+            <div class="home-card" onclick="showModule('contratistas')">
+                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                        <img src="/img/icons/verticales.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                    </div>
+                    <div class="home-card-title">Verticales</div>
+                    <div class="home-card-desc">Mantenedor de Verticales</div>
+            </div>
+            <div class="home-card" onclick="showModule('recursos')">
                 <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
-                    <img src="/img/icons/presentacion.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                    <img src="/img/icons/recursos.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
                 </div>
-                <div class="home-card-title">Presentación</div>
-                <div class="home-card-desc">KPIs de carga y disponibilidad</div>
+                <div class="home-card-title">Recursos</div>
+                <div class="home-card-desc">Técnicos, Grupos y Turnos</div>
             </div>
         `;
         // Insertar al final de la grilla
