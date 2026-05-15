@@ -159,7 +159,13 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             </div>
             <div class="home-grid">
                 <?php if($isAdmin): ?>
-                <div class="home-card" onclick="showModule('carga-sic')"><span class="home-card-icon">📥</span><div class="home-card-title">Carga SIC</div><div class="home-card-desc">Importar y validar planificaciones</div></div>
+                <div class="home-card" onclick="showModule('carga-sic')">
+                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                        <img src="/img/icons/carga_sic.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                    </div>
+                    <div class="home-card-title">Carga SIC</div>
+                    <div class="home-card-desc">Importar y validar planificaciones</div>
+                </div>
                 <?php endif; ?>
                 <div class="home-card" onclick="showModule('ots')"><span class="home-card-icon">📋</span><div class="home-card-title">OTs</div><div class="home-card-desc">Gestión y seguimiento</div></div>
                 <div class="home-card" onclick="showModule('tracking')"><span class="home-card-icon">📡</span><div class="home-card-title">Tracking</div><div class="home-card-desc">Avance en terreno</div></div>
