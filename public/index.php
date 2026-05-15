@@ -165,7 +165,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <div class="home-card" onclick="showModule('tracking')"><span class="home-card-icon">📡</span><div class="home-card-title">Tracking</div><div class="home-card-desc">Avance en terreno</div></div>
                 <div class="home-card" onclick="showModule('kpis')"><span class="home-card-icon">📊</span><div class="home-card-title">KPIs</div><div class="home-card-desc">Indicadores y métricas</div></div>
                 <?php if($isAdmin || $user['role'] === 'admin_cont'): ?>
-                <div class="home-card" onclick="showModule('contratistas')"><span class="home-card-icon">🤝</span><div class="home-card-title">Contratistas</div><div class="home-card-desc">Mantenedor de proveedores</div></div>
+                <div class="home-card" onclick="showModule('contratistas')"><span class="home-card-icon">🤝</span><div class="home-card-title">Verticales</div><div class="home-card-desc">Mantenedor de Verticales</div></div>
                 <?php endif; ?>
             </div>
         </section>
@@ -230,7 +230,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         <section id="contratistas" class="module-section">
             <div style="max-width:900px; margin:0 auto;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;"><h3>🤝 Mantenedor de Contratistas</h3><button style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem;" onclick="openModal()">➕ Nuevo Contratista</button></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;"><h3>🤝 Mantenedor de Verticales</h3><button style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem;" onclick="openModal()">➕ Nueva Vertical</button></div>
                 <table style="width:100%; background:#fff; border-radius:0.75rem; overflow:hidden; border-collapse:collapse;"><thead><tr style="background:#f1f5f9;"><th style="padding:0.75rem; text-align:left;">RUT</th><th>Razón Social</th><th>Especialidad</th><th>Contacto</th><th>Acciones</th></tr></thead><tbody><tr><td style="padding:0.75rem;">76.543.210-K</td><td>Servicios ClimaSpa</td><td>M-CLIMATIZACION</td><td>contacto@clima.cl</td><td><button style="padding:0.25rem 0.5rem; cursor:pointer;" onclick="openModal('edit')">✏️</button> <button style="padding:0.25rem 0.5rem; cursor:pointer; color:#ef4444;">🗑️</button></td></tr><tr><td style="padding:0.75rem;">96.876.540-1</td><td>Mantenciones Valdivia</td><td>M-ELECTROMECANICA</td><td>admin@valdivia.cl</td><td><button style="padding:0.25rem 0.5rem; cursor:pointer;" onclick="openModal('edit')">✏️</button> <button style="padding:0.25rem 0.5rem; cursor:pointer; color:#ef4444;">🗑️</button></td></tr></tbody></table>
             </div>
         </section>
@@ -398,7 +398,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
     <div class="modal-overlay" id="contratistaModal">
         <div class="modal-box">
-            <h3 id="modalTitle">Nuevo Contratista</h3>
+            <h3 id="modalTitle">Nueva Vertical</h3>
             <div style="display:grid; gap:0.75rem; margin-top:1rem;"><input placeholder="RUT" style="padding:0.5rem; border:1px solid #e2e8f0; border-radius:0.5rem;"><input placeholder="Razón Social" style="padding:0.5rem; border:1px solid #e2e8f0; border-radius:0.5rem;"><select style="padding:0.5rem; border:1px solid #e2e8f0; border-radius:0.5rem;"><option>Seleccionar Especialidad</option><option>M-CLIMATIZACION</option><option>M-GASFITERIA</option></select><input placeholder="Email Contacto" style="padding:0.5rem; border:1px solid #e2e8f0; border-radius:0.5rem;"></div>
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-save" onclick="closeModal(); Toast.success('Contratista guardado correctamente')">Guardar</button></div>
         </div>

@@ -13,5 +13,5 @@ mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railw
 
   # Commit y push
 git add .
-git commit -m "fix: v1"
+git commit -m "fix: mockup planificación y recursos, 1"
 git push origin main

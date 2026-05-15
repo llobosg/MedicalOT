@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Propuesta Técnica MedicalOT</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            background-color: #fff;
+        }
+
+        /* Estilos de Portada */
+        .cover-page {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            page-break-after: always;
+        }
+
+        .logo-container {
+            width: 80%;
+            max-width: 600px;
+            margin-bottom: 40px;
+        }
+        
+        .logo-img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        h1 {
+            font-size: 3em;
+            color: #0f172a;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 1.5em;
+            color: #0d9488;
+            font-weight: 300;
+            margin-top: 0;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #475569;
+            margin-top: 30px;
+            border-top: 2px solid #0d9488;
+            padding-top: 20px;
+            display: inline-block;
+        }
+
+        /* Estilos del Contenido */
+        .content-page {
+            padding: 40px 60px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h3 {
+            color: #0f172a;
+            border-bottom: 2px solid #cbd5e1;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        h4 {
+            color: #0d9488;
+            margin-top: 20px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        li::before {
+            content: "•";
+            color: #0d9488;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .highlight-box {
+            background-color: #f0fdfa;
+            border-left: 4px solid #0d9488;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid #cbd5e1;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 0.8em;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+        }
+
+        /* Utilidad para saltos de página */
+        .page-break {
+            page-break-before: always;
+        }
+        /* CONFIGURACIÓN DE IMPRESIÓN PARA QUITAR FECHA/HORA/URL */
+        @media print {
+            @page {
+                margin: 2cm; /* Margen estándar para impresión limpia */
+                size: auto;
+            }
+            
+            /* Asegura que el fondo se imprima correctamente si usas colores */
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PORTADA -->
+    <div class="cover-page">
+        <div class="logo-container">
+            <!-- LOGO REAL DE MEDICALOT -->
+            <img src="/Applications/XAMPP/xamppfiles/htdocs/medicalot/public/img/logotextomedicalot.png" alt="Logo MedicalOT" class="logo-img">
+        </div>
+        
+        <h1>PROPUESTA TÉCNICA Y ECONÓMICA</h1>
+        <h2>Desarrollo e Implementación de Plataforma Cloud</h2>
+        
+        <div class="subtitle">
+            Hospital de Antofagasta<br>
+            Mayo 2026
+        </div>
+    </div>
+
+    <!-- CONTENIDO -->
+    <div class="content-page">
+        
+        <h3>1. RESUMEN EJECUTIVO</h3>
+        <p>El presente documento detalla la solución tecnológica diseñada para digitalizar, automatizar y optimizar la gestión de las Órdenes de Trabajo (OTs) de mantención hospitalaria. La plataforma <strong>MedicalOT</strong> elimina la dependencia de planillas manuales, centralizando la planificación, ejecución, seguimiento y análisis de recursos técnicos.</p>
+        
+        <div class="highlight-box">
+            <strong>Objetivo Principal:</strong> Pasar de estimaciones manuales a datos duros y trazabilidad real, controlando HHs planificadas vs reales y la oferta real de técnicos disponibles.
+        </div>
+
+        <p>La solución se entrega como un servicio administrado en la nube (<strong>Cloud-Native</strong>), garantizando alta disponibilidad, seguridad de datos y escalabilidad sin requerir infraestructura física ni personal informático dedicado por parte del Hospital. El desarrollo se ejecutará bajo una metodología ágil intensiva de <strong>3 semanas</strong>.</p>
+
+        <h3>2. ARQUITECTURA TECNOLÓGICA</h3>
+        <p>La plataforma se construye sobre una arquitectura moderna, segura y desatendida (*Serverless/Managed Services*), asegurando estabilidad y rendimiento.</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Componente</th>
+                    <th>Tecnología / Servicio</th>
+                    <th>Beneficio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Backend</strong></td>
+                    <td>PHP 8.2+</td>
+                    <td>Lenguaje robusto, estándar industrial para aplicaciones empresariales.</td>
+                </tr>
+                <tr>
+                    <td><strong>Base de Datos</strong></td>
+                    <td>MySQL 8.0 (Gestionado)</td>
+                    <td>Alto rendimiento, transaccional y alojado en servicio gestionado.</td>
+                </tr>
+                <tr>
+                    <td><strong>Frontend</strong></td>
+                    <td>HTML5, CSS3, JS Vanilla</td>
+                    <td>Optimizado para velocidad de carga y compatibilidad total.</td>
+                </tr>
+                <tr>
+                    <td><strong>Infraestructura</strong></td>
+                    <td>Railway.app</td>
+                    <td>Plataforma PaaS que gestiona servidores, balanceo y escalamiento automático.</td>
+                </tr>
+                <tr>
+                    <td><strong>CI/CD</strong></td>
+                    <td>GitHub + Railway</td>
+                    <td>Despliegue automático al confirmar cambios (Zero Downtime).</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>Seguridad y Respaldo</h4>
+        <ul>
+            <li><strong>Autenticación Robusta:</strong> Sistema de login inteligente con identificación de roles (Hospital, Vertical, Técnico).</li>
+            <li><strong>Protección de Datos:</strong> Conexiones cifradas (HTTPS), validación estricta contra inyecciones SQL/XSS.</li>
+            <li><strong>Respaldos Automatizados:</strong> Copias de seguridad diarias automáticas de la base de datos.</li>
+        </ul>
+
+        <div class="page-break"></div>
+
+        <h3>3. ALCANCES FUNCIONALES (MÓDULOS)</h3>
+        <p>La plataforma consta de 8 módulos integrados que cubren el ciclo de vida completo de la OT:</p>
+
+        <h4>Módulo 1: Acceso Seguro y Roles Inteligentes</h4>
+        <ul>
+            <li>Login único con detección automática de perfil.</li>
+            <li><strong>Admin Hospital:</strong> Vista global, KPIs estratégicos.</li>
+            <li><strong>Jefe Vertical:</strong> Gestión de su equipo específico.</li>
+            <li><strong>Técnico:</strong> Ejecución de OTs y reporte de avances.</li>
+        </ul>
+
+        <h4>Módulo 2: Carga y Validación SIC</h4>
+        <ul>
+            <li>Importación masiva desde archivos <code>.CSV</code> generados por el sistema SIC.</li>
+            <li>Motor de validación automático (detecta duplicados y valida integridad).</li>
+            <li>Sincronización de catálogos (Equipos, Áreas, Protocolos) en tiempo real.</li>
+        </ul>
+
+        <h4>Módulo 3: Visión Global de OTs</h4>
+        <ul>
+            <li>Tabla dinámica interactiva con todas las OTs cargadas.</li>
+            <li>Buscador inteligente y filtros avanzados (Estado, Especialidad, Mes).</li>
+            <li>Paginación eficiente para miles de registros.</li>
+        </ul>
+
+        <h4>Módulo 4: Planificador de Recursos y HHs</h4>
+        <ul>
+            <li>Vista Calendario Hotelero semanal de carga horaria.</li>
+            <li>Asignación Drag & Drop de OTs a franjas horarias.</li>
+            <li>Cálculo automático de distribución de HHs según periodicidad.</li>
+        </ul>
+
+        <h4>Módulo 5: Tracking y Seguimiento</h4>
+        <ul>
+            <li>Línea de tiempo (*timeline*) de estados por OT.</li>
+            <li>Registro de inicio/fin con timestamp y carga de evidencias (fotos/PDF).</li>
+            <li>Reporte de incidencias (falta material, accesos).</li>
+        </ul>
+
+        <h4>Módulo 6: Presentación y Estado</h4>
+        <ul>
+            <li>Panel visual minimalista para supervisores.</li>
+            <li>Indicadores de progreso por OT (semáforo verde/amarillo/rojo).</li>
+        </ul>
+
+        <h4>Módulo 7: KPIs y Reportes Gerenciales</h4>
+        <p>Incluye 5 indicadores clave pre-configurados:</p>
+        <ol>
+            <li>Cumplimiento SLA (% OTs cerradas a tiempo).</li>
+            <li>Eficiencia de Horas (HH Presupuestadas vs Reales).</li>
+            <li>Volumen de Trabajo (OTs cerradas por mes/especialidad).</li>
+            <li>Carga de Recursos (% ocupación de grupos).</li>
+            <li>Top Incidencias (problemas recurrentes).</li>
+        </ol>
+
+        <h4>Módulo 8: Mantenedor de Recursos y Verticales</h4>
+        <ul>
+            <li>Gestión jerárquica: Verticales -> Grupos -> Técnicos.</li>
+            <li>Control de disponibilidad real (vacaciones, licencias).</li>
+            <li>Cálculo de "Oferta de HHs" disponible realmente.</li>
+        </ul>
+
+        <div class="page-break"></div>
+
+        <h3>4. CRONOGRAMA DE DESARROLLO (3 SEMANAS)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Semana</th>
+                    <th>Fase</th>
+                    <th>Actividades Clave</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Semana 1</strong></td>
+                    <td>Fundación & Core</td>
+                    <td>Configuración Cloud, Base de Datos, Login, Módulo Carga SIC.</td>
+                </tr>
+                <tr>
+                    <td><strong>Semana 2</strong></td>
+                    <td>Operatividad</td>
+                    <td>Módulos OTs, Planificador, Tracking, Mantenedores de Recursos.</td>
+                </tr>
+                <tr>
+                    <td><strong>Semana 3</strong></td>
+                    <td>Análisis & Cierre</td>
+                    <td>KPIs, Pruebas de estrés, Capacitación remota, Entrega final.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>5. MODELO DE SERVICIO Y SOPORTE</h3>
+        <p>Al ser una solución <strong>Cloud Administrada</strong>, el Hospital no requiere mantener servidores ni contratar informáticos para la operación diaria.</p>
+        
+        <ul>
+            <li><strong>Soporte Técnico:</strong> Horario hábil Lunes a Viernes, 09:00 a 18:00 hrs.</li>
+            <li><strong>Cobertura Crítica:</strong> Respuesta menor a 4 horas para incidentes graves.</li>
+            <li><strong>Mantenimiento:</strong> Incluye corrección de bugs y mejoras menores durante garantía.</li>
+            <li><strong>Capacitación:</strong> Sesión virtual de 2 horas para administradores.</li>
+        </ul>
+
+        <h3>6. INVERSIÓN ECONÓMICA</h3>
+        <p>La inversión contempla el diseño, desarrollo, implementación, puesta en marcha y primer mes de soporte garantizado.</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Concepto</th>
+                    <th>Valor (U.F.)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Desarrollo de Plataforma MedicalOT</strong><br><small>(Incluye 8 módulos, arquitectura cloud, BD, seguridad)</small></td>
+                    <td>[INSERTAR PRECIO]</td>
+                </tr>
+                <tr>
+                    <td><strong>Configuración Inicial de Datos</strong><br><small>(Carga histórica inicial)</small></td>
+                    <td>Incluido</td>
+                </tr>
+                <tr>
+                    <td><strong>Capacitación y Documentación</strong></td>
+                    <td>Incluido</td>
+                </tr>
+                <tr style="background-color: #f0fdfa; font-weight: bold;">
+                    <td>Total Inversión Única</td>
+                    <td>[TOTAL]</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <p style="font-size: 0.9em; color: #666;"><em>* Nota: Los costos de infraestructura cloud (Railway/DB) son responsabilidad del cliente o pueden incluirse en suscripción mensual. Costo estimado básico: $20-$50 USD/mes.</em></p>
+
+        <div class="footer">
+            <p><strong>MedicalOT</strong> - Soluciones Tecnológicas Hospitalarias<br>
+            Propuesta válida por 15 días.<br>
+            contacto@medicalot.com | +56936560392</p>
+            Sitio web: www.medicalot.com
+        </div>
+
+    </div>
+
+</body>
+</html>
