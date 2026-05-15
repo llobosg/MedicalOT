@@ -167,11 +167,35 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <div class="home-card-desc">Importar y validar planificaciones</div>
                 </div>
                 <?php endif; ?>
-                <div class="home-card" onclick="showModule('ots')"><span class="home-card-icon">📋</span><div class="home-card-title">OTs</div><div class="home-card-desc">Gestión y seguimiento</div></div>
-                <div class="home-card" onclick="showModule('tracking')"><span class="home-card-icon">📡</span><div class="home-card-title">Tracking</div><div class="home-card-desc">Avance en terreno</div></div>
-                <div class="home-card" onclick="showModule('kpis')"><span class="home-card-icon">📊</span><div class="home-card-title">KPIs</div><div class="home-card-desc">Indicadores y métricas</div></div>
+                <div class="home-card" onclick="showModule('ots')">
+                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                        <img src="/img/icons/ots.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                    </div>
+                    <div class="home-card-title">OTs</div>
+                    <div class="home-card-desc">Gestión y seguimiento</div>
+                </div>
+                <div class="home-card" onclick="showModule('tracking')">
+                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                        <img src="/img/icons/tracking.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                    </div>
+                    <div class="home-card-title">Tracking</div>
+                    <div class="home-card-desc">Avance en terreno</div>
+                </div>
+                <div class="home-card" onclick="showModule('kpis')">
+                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                        <img src="/img/icons/kpis.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                    </div>
+                    <div class="home-card-title">KPIs</div>
+                    <div class="home-card-desc">Indicadores y métricas</div>
+                </div>
                 <?php if($isAdmin || $user['role'] === 'admin_cont'): ?>
-                <div class="home-card" onclick="showModule('contratistas')"><span class="home-card-icon">🤝</span><div class="home-card-title">Verticales</div><div class="home-card-desc">Mantenedor de Verticales</div></div>
+                <div class="home-card" onclick="showModule('contratistas')">
+                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                        <img src="/img/icons/verticales.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                    </div>
+                    <div class="home-card-title">Verticales</div>
+                    <div class="home-card-desc">Mantenedor de Verticales</div>
+                </div>
                 <?php endif; ?>
             </div>
         </section>
@@ -638,12 +662,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="home-card-desc">Técnicos, Grupos y Turnos</div>
             </div>
             <div class="home-card" onclick="showModule('planificacion')">
-                <span class="home-card-icon">📅</span>
+                <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                    <img src="/img/icons/planificacion.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                </div>
                 <div class="home-card-title">Planificación</div>
                 <div class="home-card-desc">Calendario y asignación HH</div>
             </div>
             <div class="home-card" onclick="showModule('presentacion')">
-                <span class="home-card-icon">📊</span>
+                <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                    <img src="/img/icons/presentacion.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                </div>
                 <div class="home-card-title">Presentación</div>
                 <div class="home-card-desc">KPIs de carga y disponibilidad</div>
             </div>
