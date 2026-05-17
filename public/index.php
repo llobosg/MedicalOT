@@ -143,7 +143,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
              <!-- Bienvenida -->
             <div class="card" style="margin-bottom: 2rem;">
                 <div class="card-body" style="text-align: center; padding: 3rem;">
-                    <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
+                    <img src="/img/logo_siglo_21.png" alt="Hospital" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem; opacity: 0.8;">
                     <h2 style="font-size: 2rem; color: var(--primary-dark); margin-bottom: 0.5rem;">
                         Bienvenido a MedicalOT v.1
                     </h2>
