@@ -696,13 +696,43 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             }).catch(() => {});
         }
 
-        async function selectOT(codigoOt) {
-            document.querySelectorAll('.ots-table tr').forEach(r => r.classList.remove('selected')); event.target.closest('tr').classList.add('selected');
-            fetch(`/api/ots.php?search=${encodeURIComponent(codigoOt)}&limit=1&page=1`).then(r => r.json()).then(data => {
-                if(!data.success || !data.data.length) return; selectedOTData = data.data[0];
-                document.getElementById('otDetailContent').innerHTML = `<label>Código OT</label><input value="${selectedOTData.codigo_ot}" readonly><label>Fecha Programada</label><input type="date" value="${selectedOTData.fecha_programada || ''}"><label>Turno</label><input value="${selectedOTData.turno || '-'}"><label>Protocolo</label><input value="${selectedOTData.nombre_protocolo || '-'}"><label>Equipo</label><input value="${selectedOTData.nombre_equipo || '-'}"><label>Área</label><input value="${selectedOTData.nombre_area || '-'}"><label>Especialidad</label><input value="${selectedOTData.nombre_especialidad || '-'}"><label>HH Programadas</label><input type="number" value="${selectedOTData.hh_programadas || 0}" step="0.01"><label>Estado</label><select><option ${selectedOTData.estado==='pendiente'?'selected':''}>pendiente</option><option ${selectedOTData.estado==='asignada'?'selected':''}>asignada</option><option ${selectedOTData.estado==='en_proceso'?'selected':''}>en_proceso</option><option ${selectedOTData.estado==='cerrada'?'selected':''}>cerrada</option></select><label>Observaciones</label><textarea rows="4" placeholder="Notas técnicas..."></textarea>`;
+               async function selectOT(codigoOt) {
+            document.querySelectorAll('.ots-table tr').forEach(r => r.classList.remove('selected'));
+            event.target.closest('tr').classList.add('selected');
+            
+            try {
+                const res = await fetch(`/api/ots.php?search=${encodeURIComponent(codigoOt)}&limit=1&page=1`);
+                const data = await res.json();
+                
+                if (!data.success || !data.data.length) return;
+                selectedOTData = data.data[0];
+                
+                // ✅ INYECCIÓN SEGURA DE OBSERVACIONES
+                const obsTexto = selectedOTData.observaciones ? selectedOTData.observaciones.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+
+                document.getElementById('otDetailContent').innerHTML = `
+                    <label>Código OT</label><input value="${selectedOTData.codigo_ot}" readonly>
+                    <label>Fecha Programada</label><input type="date" value="${selectedOTData.fecha_programada || ''}">
+                    <label>Turno</label><input value="${selectedOTData.turno || '-'}">
+                    <label>Protocolo</label><input value="${selectedOTData.nombre_protocolo || '-'}">
+                    <label>Equipo</label><input value="${selectedOTData.nombre_equipo || '-'}">
+                    <label>Área</label><input value="${selectedOTData.nombre_area || '-'}">
+                    <label>Especialidad</label><input value="${selectedOTData.nombre_especialidad || '-'}">
+                    <label>HH Programadas</label><input type="number" value="${selectedOTData.hh_programadas || 0}" step="0.01">
+                    <label>Estado</label>
+                    <select id="otEstadoEdit">
+                        <option value="pendiente" ${selectedOTData.estado==='pendiente'?'selected':''}>Pendiente</option>
+                        <option value="asignada" ${selectedOTData.estado==='asignada'?'selected':''}>Asignada</option>
+                        <option value="en_proceso" ${selectedOTData.estado==='en_proceso'?'selected':''}>En Proceso</option>
+                        <option value="cerrada" ${selectedOTData.estado==='cerrada'?'selected':''}>Cerrada</option>
+                    </select>
+                    <label>Observaciones</label>
+                    <textarea id="otObsEdit" rows="4" placeholder="Notas técnicas..." style="resize:vertical;">${obsTexto}</textarea>
+                `;
                 document.getElementById('otActions').style.display = 'flex';
-            }).catch(() => {});
+            } catch (err) {
+                console.error("Error al cargar detalle:", err);
+            }
         }
 
         function clearDetail() { document.getElementById('otDetailContent').innerHTML = '<p style="color:#94a3b8; text-align:center; margin-top:2rem;">Selecciona una OT para ver detalles</p>'; document.getElementById('otActions').style.display = 'none'; document.querySelectorAll('.ots-table tr').forEach(r => r.classList.remove('selected')); selectedOTData = null; }

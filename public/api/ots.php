@@ -58,7 +58,7 @@ try {
                a.nombre as nombre_area, a.nombre as area_ubicacion,
                esp.nombre as nombre_especialidad, esp.codigo as cod_especialidad,
                prov.rut as cod_proveedor, prov.razon_social as nombre_proveedor,
-               o.hh_programadas, o.hh_reales, o.estado";
+               o.hh_programadas, o.hh_reales, o.estado, o.observaciones";
 
     $sql = "SELECT $fields FROM ordenes_trabajo o
             LEFT JOIN protocolos p ON o.id_protocolo = p.id
