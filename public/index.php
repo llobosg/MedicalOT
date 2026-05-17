@@ -121,7 +121,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
     <header class="main-header">
         <div class="header-left">
-            <img src="/img/logohospitalantofagasta.jpeg" alt="Hospital" class="header-logo">
+            <img src="/img/salud_siglo_xxi.png" alt="Hospital" class="header-logo">
             <div>
                 <div class="header-module-title">Hospital de Antofagasta</div>
                 <div class="header-role"><?php echo htmlspecialchars($user['role_name']); ?></div>
