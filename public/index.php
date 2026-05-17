@@ -1188,14 +1188,161 @@ function addIncidence() {
     Toast.success('Incidencia registrada correctamente');
 }
 
-// Simular carga de evidencia
+// Variable temporal para manejar el archivo seleccionado antes de enviar
+let currentEvidenceFile = null;
+
+// 1. Cuando el usuario selecciona un archivo en el input <input type="file">
 function uploadEvidence(input) {
     if (!currentTrackingOT) return alert('Selecciona una OT primero');
+    
     if (input.files && input.files[0]) {
-        const fileName = input.files[0].name;
-        Toast.info(`Archivo "${fileName}" listo para subir. (Conectar backend)`);
-        // Aquí iría el fetch para subir el archivo al servidor
+        const file = input.files[0];
+        
+        // Validar tamaño máximo (ej. 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            Toast.error('El archivo es muy grande. Máximo 5MB.', 'Error');
+            input.value = ''; 
+            currentEvidenceFile = null;
+            return;
+        }
+
+        currentEvidenceFile = file; // Guardamos referencia al objeto File
+        
+        // Feedback visual
+        Toast.success(`Archivo "${file.name}" listo para adjuntar`, 'Archivo cargado');
+        console.log("📎 Evidencia cargada en memoria:", file.name);
     }
+}
+// 2. Función principal para GUARDAR la incidencia con persistencia
+async function addIncidence() {
+    if (!currentTrackingOT) return alert('Selecciona una OT primero');
+    
+    const type = document.getElementById('incType').value;
+    const desc = document.getElementById('incDesc').value.trim();
+    
+    if (!desc) return Toast.error('Escribe un detalle para la incidencia', 'Campo requerido');
+
+    // Preparamos FormData para enviar texto + archivo binario
+    const formData = new FormData();
+    formData.append('ot_code', currentTrackingOT.codigo_ot);
+    formData.append('type', type);
+    formData.append('description', desc);
+    
+    // Si hay archivo seleccionado, lo agregamos al FormData
+    if (currentEvidenceFile) {
+        formData.append('evidence', currentEvidenceFile);
+    }
+
+    try {
+        const response = await fetch('/api/save_incidence.php', {
+            method: 'POST',
+            body: formData
+            // NOTA: No poner headers Content-Type aquí, el navegador lo pone automáticamente con boundary
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            Toast.success('Incidencia registrada correctamente', 'Éxito');
+            
+            // Limpiar formulario
+            document.getElementById('incDesc').value = '';
+            document.getElementById('fileInput').value = ''; // Resetear input file
+            currentEvidenceFile = null; // Limpiar variable temporal
+            
+            // Recargar la lista de incidencias para mostrar la nueva
+            loadIncidences(currentTrackingOT.codigo_ot);
+        } else {
+            Toast.error(data.error || 'Error al guardar', 'Error');
+        }
+
+    } catch (err) {
+        console.error(err);
+        Toast.error('Error de conexión al guardar', 'Error');
+    }
+}
+
+// 3. Cargar incidencias desde la BASE DE DATOS (Persistencia Real)
+async function loadIncidences(otCode) {
+    const list = document.getElementById('incidencesList');
+    list.innerHTML = '<div style="text-align:center; padding:1rem;">⏳ Cargando historial...</div>';
+
+    try {
+        // Llamamos a un endpoint que devuelve las incidencias de esta OT
+        // Puedes reutilizar api/ots.php si agregas una acción, o crear uno específico.
+        // Aquí asumimos que creamos una pequeña función en api/ots.php o usamos un fetch directo.
+        // Por simplicidad, crearemos un fetch a un endpoint hipotético /api/get_incidences.php
+        // SI NO TIENES ESTE ENDPOINT, usa el siguiente código temporal que simula o lee de localStorage como fallback:
+        
+        /* 
+           OPCIÓN A (Recomendada): Crear api/get_incidences.php
+           OPCIÓN B (Rápida): Si aún no quieres crear más archivos PHP, mantén el localStorage 
+           pero ahora que ya tenemos save_incidence.php, lo ideal es leerlo de la BD.
+        */
+
+        // Vamos a asumir que agregamos esto a api/ots.php o creamos get_incidences.php
+        // Por ahora, te dejo el código para que lo pegues en un nuevo archivo 
+        // public/api/get_incidences.php (ver Paso Extra abajo)
+        
+        const res = await fetch(`/api/get_incidences.php?ot=${encodeURIComponent(otCode)}`);
+        const data = await res.json();
+
+        if (!data.success || !data.incidencias.length) {
+            list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">Sin incidencias registradas</div>';
+            return;
+        }
+
+        list.innerHTML = data.incidencias.map(inc => {
+            // Formatear fecha
+            const dateObj = new Date(inc.fecha_registro);
+            const dateStr = dateObj.toLocaleString('es-CL');
+            
+            // Icono según tipo
+            let icon = '📝';
+            if(inc.tipo === 'acceso') icon = '🚫';
+            if(inc.tipo === 'material') icon = '📦';
+            if(inc.tipo === 'seguridad') icon = '⚠️';
+
+            // Link a evidencia si existe
+            let evidenceHtml = '';
+            if (inc.evidencia_path) {
+                // Asumiendo que los archivos están accesibles vía web en /uploads/...
+                const url = `/${inc.evidencia_path}`;
+                const isPdf = inc.evidencia_path.endsWith('.pdf');
+                
+                if (isPdf) {
+                    evidenceHtml = `<a href="${url}" target="_blank" class="inc-evidence">📄 Ver PDF</a>`;
+                } else {
+                    evidenceHtml = `<a href="${url}" target="_blank" class="inc-evidence">🖼️ Ver Foto</a>`;
+                }
+            }
+
+            return `
+                <div class="inc-card">
+                    <div class="inc-header">
+                        <span class="inc-type">${icon} ${getIncTypeName(inc.tipo)}</span>
+                        <span class="inc-date">${dateStr}</span>
+                    </div>
+                    <div class="inc-body">${inc.descripcion}</div>
+                    ${evidenceHtml}
+                </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error(err);
+        list.innerHTML = '<div style="text-align:center; color:red; padding:1rem;">Error al cargar historial</div>';
+    }
+}
+
+function getIncTypeName(type) {
+    const types = {
+        'acceso': 'ACCESO DENEGADO',
+        'material': 'FALTA MATERIAL',
+        'seguridad': 'SEGURIDAD',
+        'otro': 'OTRO'
+    };
+    return types[type] || 'INCIDENCIA';
 }
     </script>
 </body>
