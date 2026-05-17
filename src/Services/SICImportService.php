@@ -41,14 +41,16 @@ class SICImportService
         }
     }
 
-        private function processStreaming(string $filePath, int $loteId): void
+    private function processStreaming(string $filePath, int $loteId): void
     {
-        // Inicializar progreso en sesión
+        // Inicializar estado en sesión
         $_SESSION['sic_progress'] = [
             'status' => 'processing',
             'current' => 0,
-            'total' => 0, // Se actualizará cuando se conozca el total estimado o al final
-            'percent' => 0
+            'total' => 0,
+            'percent' => 0,
+            'inserted' => 0,
+            'skipped' => 0
         ];
 
         $handle = fopen($filePath, 'r');
@@ -57,7 +59,7 @@ class SICImportService
         // Saltar cabecera
         fgetcsv($handle, 0, ',', '"', "\\");
 
-        // Preparar statements (igual que antes)
+        // Preparar statements para catálogos (Igual que antes)
         $stmtEsp  = $this->db->prepare("INSERT IGNORE INTO especialidades (codigo, nombre) VALUES (?, ?)");
         $stmtProt = $this->db->prepare("INSERT IGNORE INTO protocolos (codigo, nombre, familia, periodicidad) VALUES (?, ?, ?, ?)");
         $stmtArea = $this->db->prepare("INSERT IGNORE INTO areas (codigo, nombre) VALUES (?, ?)");
@@ -66,8 +68,12 @@ class SICImportService
         $stmtEq   = $this->db->prepare("INSERT IGNORE INTO equipos (codigo, nombre, marca, modelo, serie, umdns, id_area) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmtGetArea = $this->db->prepare("SELECT id FROM areas WHERE codigo = ? LIMIT 1");
         
+        // Statement para verificar duplicados RÁPIDO
+        $stmtCheckDup = $this->db->prepare("SELECT 1 FROM ordenes_trabajo WHERE codigo_ot = ? LIMIT 1");
+
+        // Statement principal de inserción
         $otStmt = $this->db->prepare("
-            INSERT IGNORE INTO ordenes_trabajo (
+            INSERT INTO ordenes_trabajo (
                 codigo_ot, fecha_programada, turno, semana_num, dia_semana,
                 id_protocolo, id_equipo, id_area, id_especialidad, rut_proveedor, id_ruta,
                 hh_programadas, estado, id_lote
@@ -85,17 +91,37 @@ class SICImportService
 
         $rowNum = 1;
         $processedCount = 0;
-        $updateInterval = 50; // Actualizar sesión cada 50 filas para rendimiento
+        $updateInterval = 50; // Actualizar sesión cada 50 filas
 
         while (($row = fgetcsv($handle, 0, ',', '"', "\\")) !== false) {
             $rowNum++;
-            $this->stats['total']++;
+            $this->stats['total']++; // Total filas leídas
             $row = array_pad($row, 30, '');
             $ot = trim($row[1] ?? '');
             
             if (empty($ot)) continue;
 
-            // Sincronizar catálogos
+            // 1. VERIFICAR DUPLICADO ANTES DE NADA
+            $stmtCheckDup->execute([$ot]);
+            if ($stmtCheckDup->fetchColumn()) {
+                $this->stats['skipped']++;
+                $processedCount++;
+                
+                // Actualizar progreso en memoria
+                $_SESSION['sic_progress']['current'] = $this->stats['total'];
+                $_SESSION['sic_progress']['skipped'] = $this->stats['skipped'];
+                $_SESSION['sic_progress']['inserted'] = $this->stats['inserted'];
+                
+                // Liberar bloqueo de sesión cada intervalo para permitir polling
+                if ($processedCount % $updateInterval === 0) {
+                    session_write_close();
+                    usleep(1000); // Pequeña pausa para dejar respirar al servidor
+                    session_start();
+                }
+                continue; // Saltar a la siguiente fila
+            }
+
+            // 2. Sincronizar catálogos (Solo si es nueva)
             if (!empty($row[22])) $stmtEsp->execute([trim($row[22]), trim($row[23] ?? '')]);
             if (!empty($row[6]))  $stmtProt->execute([trim($row[6]), trim($row[7] ?? ''), trim($row[8] ?? ''), trim($row[10] ?? '')]);
             if (!empty($row[12])) $stmtArea->execute([trim($row[12]), trim($row[13] ?? '')]);
@@ -117,24 +143,22 @@ class SICImportService
                 ]);
                 $this->stats['inserted']++;
             } catch (Exception $e) {
+                // Si falla la inserción por cualquier otra razón, lo contamos como skipped/error
                 $this->stats['errors'][] = "Fila $rowNum (OT: $ot): " . $e->getMessage();
                 $this->stats['skipped']++;
             }
 
             $processedCount++;
 
-            // ✅ ACTUALIZAR PROGRESO EN SESIÓN CADA INTERVALO
+            // 3. ACTUALIZAR PROGRESO EN SESIÓN Y LIBERAR BLOQUEO
+            $_SESSION['sic_progress']['current'] = $this->stats['total'];
+            $_SESSION['sic_progress']['inserted'] = $this->stats['inserted'];
+            $_SESSION['sic_progress']['skipped'] = $this->stats['skipped'];
+            
             if ($processedCount % $updateInterval === 0) {
-                // Como no conocemos el total exacto hasta terminar, usamos un estimador o mostramos "procesados"
-                // Para una barra de progreso visual efectiva, podemos asumir un máximo o mostrar solo el contador subiendo.
-                // Aquí actualizamos el contador real. El frontend calculará el % basado en un estimado o mostrará el número absoluto.
-                
-                $_SESSION['sic_progress']['current'] = $this->stats['inserted'] + $this->stats['skipped'];
-                $_SESSION['sic_progress']['total'] = $this->stats['total']; // Total leído hasta ahora
-                
-                // Liberar bloqueo de sesión para permitir que el polling del frontend lea estos datos
-                session_write_close(); 
-                session_start(); 
+                session_write_close();
+                usleep(1000); 
+                session_start();
             }
         }
         
@@ -142,10 +166,12 @@ class SICImportService
         
         // Finalizar
         $_SESSION['sic_progress']['status'] = 'completed';
-        $_SESSION['sic_progress']['current'] = $this->stats['inserted'] + $this->stats['skipped'];
-        $_SESSION['sic_progress']['total'] = $this->stats['total'];
+        $_SESSION['sic_progress']['current'] = $this->stats['total'];
         $_SESSION['sic_progress']['percent'] = 100;
+        $_SESSION['sic_progress']['inserted'] = $this->stats['inserted'];
+        $_SESSION['sic_progress']['skipped'] = $this->stats['skipped'];
 
+        // Actualizar estadísticas del lote en BD
         $this->db->prepare("UPDATE lote_carga_sic SET registros_totales = ?, registros_omision = ? WHERE id = ?")
             ->execute([$this->stats['inserted'] + $this->stats['skipped'], $this->stats['skipped'], $loteId]);
     }
