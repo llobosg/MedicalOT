@@ -211,6 +211,47 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         .progress-low { background: linear-gradient(90deg, #ef4444 0%, #f87171 100%) !important; } /* Rojo < 20% */
         .progress-med { background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%) !important; } /* Amarillo 20-70% */
         .progress-high { background: linear-gradient(90deg, #10b981 0%, #34d399 100%) !important; } /* Verde > 70% */
+
+        /* ✅ ESTILOS TRACKING */
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+            padding-left: 1rem;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -1.65rem; /* Ajuste según border-left del contenedor */
+            top: 0.25rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid var(--primary);
+            z-index: 1;
+        }
+        .timeline-item.completed::before { background: var(--success); border-color: var(--success); }
+        .timeline-item.warning::before { background: #f59e0b; border-color: #f59e0b; }
+        .timeline-item.error::before { background: #ef4444; border-color: #ef4444; }
+
+        .timeline-date { font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.2rem; }
+        .timeline-title { font-size: 0.9rem; font-weight: 600; color: #1e293b; }
+        .timeline-desc { font-size: 0.8rem; color: #475569; margin-top: 0.1rem; }
+
+        .inc-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #ef4444;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .inc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+        .inc-type { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #ef4444; }
+        .inc-date { font-size: 0.7rem; color: #94a3b8; }
+        .inc-body { font-size: 0.85rem; color: #334155; line-height: 1.4; }
+        .inc-evidence { margin-top: 0.5rem; font-size: 0.75rem; color: #3b82f6; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; }
     </style>
 </head>
 <body>
@@ -334,12 +375,89 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         </section>
 
         <section id="tracking" class="module-section">
-            <div style="max-width:900px; margin:0 auto;">
-                <h3 style="margin-bottom:1rem;">Tracking en Terreno</h3>
-                <div style="display:flex; gap:1rem; margin-bottom:1.5rem;"><select style="padding:0.5rem; border-radius:0.5rem; border:1px solid #e2e8f0; flex:1;"><option>Filtrar por Estado</option><option>en_proceso</option><option>pausada</option><option>cerrada</option></select><select style="padding:0.5rem; border-radius:0.5rem; border:1px solid #e2e8f0; flex:2;"><option>Seleccionar OT</option><option>OT-2026-003 - Estanque Criogénico</option><option>OT-2026-007 - Torres Enfriamiento</option></select></div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
-                    <div style="background:#fff; padding:1.5rem; border-radius:0.75rem; border:1px solid #e2e8f0;"><h4>Progreso & Timeline</h4><div class="progress-container" style="margin:1rem 0;"><div class="progress-bar" style="width:65%;"></div></div><p style="font-size:0.85rem; margin-bottom:0.5rem;"><strong>65%</strong> completado - 18.2 HH / 28.0 HH</p><div style="border-left:2px solid #e2e8f0; padding-left:1rem; margin:1rem 0;"><div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:#64748b;">10/05/2026 08:30</div><div>Carga desde SIC - Admin Hospital</div></div><div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:#64748b;">11/05/2026 09:15</div><div>Asignado a Pool ClimA - Sup. Pérez</div></div><div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:#64748b;">12/05/2026 10:00</div><div>Inicio trabajo - Tec. Juan López</div></div></div></div>
-                    <div style="background:#fff; padding:1.5rem; border-radius:0.75rem; border:1px solid #e2e8f0;"><h4>Evidencias & Incidencias</h4><div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; margin:1rem 0;"><div style="background:#f1f5f9; border-radius:0.5rem; height:60px; display:flex; align-items:center; justify-content:center; font-size:0.8rem; color:#64748b; border:1px dashed #cbd5e1;">📷 Foto 1</div><div style="background:#f1f5f9; border-radius:0.5rem; height:60px; display:flex; align-items:center; justify-content:center; font-size:0.8rem; color:#64748b; border:1px dashed #cbd5e1;">📄 PDF</div><div style="background:#f1f5f9; border-radius:0.5rem; height:60px; display:flex; align-items:center; justify-content:center; font-size:0.8rem; color:#64748b; border:1px dashed #cbd5e1;">➕ Agregar</div></div><button style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; margin:1rem 0; width:100%; justify-content:center;">⚠️ Reportar Incidencia</button><table style="width:100%; border-collapse:collapse; font-size:0.8rem; margin-top:0.5rem;"><thead><tr><th style="padding:0.5rem; border:1px solid #e2e8f0; text-align:left;">Fecha</th><th style="padding:0.5rem; border:1px solid #e2e8f0; text-align:left;">Tipo</th><th style="padding:0.5rem; border:1px solid #e2e8f0; text-align:left;">Descripción</th></tr></thead><tbody><tr><td style="padding:0.5rem; border:1px solid #e2e8f0;">12/05 14:20</td><td style="padding:0.5rem; border:1px solid #e2e8f0; color:#f59e0b;">Material</td><td style="padding:0.5rem; border:1px solid #e2e8f0;">Falta filtro HEPA repuesto</td></tr></tbody></table></div>
+            <div style="max-width:1000px; margin:0 auto; height:100%; display:flex; flex-direction:column;">
+                <!-- Header & Buscador -->
+                <div style="margin-bottom:1rem;">
+                    <h3 style="margin-bottom:0.5rem;">📡 Tracking en Terreno</h3>
+                    <p style="font-size:0.9rem; color:#64748b; margin-top:0;">Busca una OT para ver su historial, evidencias e incidencias.</p>
+                </div>
+
+                <!-- Barra de Búsqueda Inteligente -->
+                <div class="search-container" style="position:relative; margin-bottom:1.5rem;">
+                    <input type="text" class="search-input" id="trackingSearch" placeholder="🔍 Buscar OT por código, equipo o área..." oninput="handleTrackingSearch()">
+                    <div class="search-dropdown" id="trackingDropdown"></div>
+                </div>
+
+                <!-- Contenedor Principal (Oculto hasta seleccionar OT) -->
+                <div id="trackingContent" style="display:none; flex:1; overflow-y:auto;">
+                    
+                    <!-- Info Cabecera OT -->
+                    <div class="card" style="margin-bottom:1rem; padding:1rem; border-left:4px solid var(--primary);">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <h4 style="margin:0; font-size:1.1rem;" id="trackOtCode">OT-XXXX</h4>
+                                <span style="font-size:0.85rem; color:#64748b;" id="trackOtDesc">Descripción...</span>
+                            </div>
+                            <span id="trackOtStatus" class="badge b-pen">Pendiente</span>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+                        
+                        <!-- COLUMNA IZQUIERDA: Timeline & Progreso -->
+                        <div class="card" style="padding:1.5rem;">
+                            <h4 style="margin-top:0;">📊 Progreso & Hitos</h4>
+                            
+                            <!-- Barra de Progreso HH -->
+                            <div style="margin-bottom:1.5rem;">
+                                <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.5rem;">
+                                    <span>HH Reales / HH Programadas</span>
+                                    <strong id="trackHhRatio">0 / 0</strong>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-bar" id="trackProgressBar" style="width:0%;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Timeline Vertical -->
+                            <div style="border-left:2px solid #e2e8f0; padding-left:1.5rem; margin-top:1rem;">
+                                <div id="timelineContainer">
+                                    <!-- Se llena dinámicamente -->
+                                    <div style="text-align:center; color:#94a3b8; padding:1rem;">Selecciona una OT para ver hitos</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COLUMNA DERECHA: Evidencias & Incidencias -->
+                        <div class="card" style="padding:1.5rem;">
+                            <h4 style="margin-top:0;">⚠️ Incidencias & Evidencias</h4>
+                            
+                            <!-- Formulario Rápido de Incidencia -->
+                            <div style="background:#f8fafc; padding:1rem; border-radius:0.5rem; margin-bottom:1rem; border:1px solid #e2e8f0;">
+                                <label style="font-size:0.8rem; font-weight:600; color:#475569;">Reportar Nueva Incidencia</label>
+                                <select id="incType" style="width:100%; padding:0.5rem; margin:0.5rem 0; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                                    <option value="acceso">🚫 Acceso Denegado</option>
+                                    <option value="material">📦 Falta Material/Repuesto</option>
+                                    <option value="seguridad">⚠️ Riesgo Seguridad</option>
+                                    <option value="otro">📝 Otro</option>
+                                </select>
+                                <textarea id="incDesc" rows="2" placeholder="Detalle la incidencia (ej: Encargado no permite entrada...)" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; resize:none;"></textarea>
+                                
+                                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                                    <button onclick="addIncidence()" style="flex:1; background:#ef4444; color:white; border:none; padding:0.5rem; border-radius:0.5rem; cursor:pointer; font-size:0.85rem;">⚠️ Registrar</button>
+                                    <button onclick="document.getElementById('fileInput').click()" style="flex:1; background:#fff; border:1px solid #cbd5e1; padding:0.5rem; border-radius:0.5rem; cursor:pointer; font-size:0.85rem;">📷 Foto/PDF</button>
+                                    <input type="file" id="fileInput" accept="image/*,.pdf" style="display:none" onchange="uploadEvidence(this)">
+                                </div>
+                            </div>
+
+                            <!-- Lista de Incidencias Recientes -->
+                            <h5 style="font-size:0.9rem; color:#475569; margin-bottom:0.5rem;">Historial de Incidencias</h5>
+                            <div id="incidencesList" style="max-height:300px; overflow-y:auto;">
+                                <!-- Se llena dinámicamente -->
+                                <div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">Sin incidencias registradas</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -887,6 +1005,198 @@ document.addEventListener('DOMContentLoaded', () => {
         homeGrid.insertAdjacentHTML('beforeend', newCards);
     }
 });
+// === ESTADO GLOBAL TRACKING ===
+let currentTrackingOT = null;
+
+// === BUSCADOR INTELIGENTE TRACKING ===
+function handleTrackingSearch() {
+    const val = document.getElementById('trackingSearch').value.trim().toLowerCase();
+    const dd = document.getElementById('trackingDropdown');
+    
+    if (!val) { 
+        dd.classList.remove('show'); 
+        return; 
+    }
+
+    // Reutilizamos la lógica de búsqueda de OTs
+    fetch(`/api/ots.php?search=${encodeURIComponent(val)}&limit=10&page=1`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success || !data.data.length) { 
+                dd.innerHTML = '<div class="search-item" style="color:#94a3b8;">No se encontraron OTs</div>';
+                dd.classList.add('show');
+                return; 
+            }
+            dd.innerHTML = data.data.map(o => 
+                `<div class="search-item" onclick="loadTrackingDetails('${o.codigo_ot}', '${o.nombre_equipo || o.nombre_protocolo}')">
+                    ${o.codigo_ot} - ${o.nombre_equipo || o.nombre_protocolo} (${o.estado})
+                </div>`
+            ).join('');
+            dd.classList.add('show');
+        })
+        .catch(() => {});
+}
+
+// === CARGAR DETALLES DE LA OT SELECCIONADA ===
+async function loadTrackingDetails(codigoOt, descripcion) {
+    // Ocultar dropdown y mostrar contenido
+    document.getElementById('trackingDropdown').classList.remove('show');
+    document.getElementById('trackingContent').style.display = 'flex';
+    
+    // Actualizar cabecera
+    document.getElementById('trackOtCode').textContent = codigoOt;
+    document.getElementById('trackOtDesc').textContent = descripcion || 'Sin descripción';
+    
+    // Obtener datos completos de la OT
+    try {
+        const res = await fetch(`/api/ots.php?search=${encodeURIComponent(codigoOt)}&limit=1&page=1`);
+        const data = await res.json();
+        
+        if (data.success && data.data.length > 0) {
+            currentTrackingOT = data.data[0];
+            
+            // Actualizar Badge Estado
+            const badgeMap = { 'pendiente': 'b-pen', 'asignada': 'b-asi', 'en_proceso': 'b-pro', 'cerrada': 'b-cer' };
+            const badgeClass = badgeMap[currentTrackingOT.estado] || 'b-pen';
+            const statusEl = document.getElementById('trackOtStatus');
+            statusEl.className = `badge ${badgeClass}`;
+            statusEl.textContent = currentTrackingOT.estado.replace('_', ' ').toUpperCase();
+
+            // Actualizar HH
+            const hhProg = parseFloat(currentTrackingOT.hh_programadas) || 0;
+            const hhReal = parseFloat(currentTrackingOT.hh_reales) || 0;
+            const percent = hhProg > 0 ? Math.min(100, (hhReal / hhProg) * 100) : 0;
+            
+            document.getElementById('trackHhRatio').textContent = `${hhReal} / ${hhProg} HH`;
+            document.getElementById('trackProgressBar').style.width = `${percent}%`;
+            
+            // Generar Timeline Simulado (Basado en campos de BD + Logs simulados)
+            generateTimeline(currentTrackingOT);
+            
+            // Cargar Incidencias (Simulado por ahora, luego conectaremos a DB)
+            loadIncidences(codigoOt);
+        }
+    } catch (err) {
+        console.error("Error cargando tracking:", err);
+    }
+}
+
+// === GENERAR TIMELINE VISUAL ===
+function generateTimeline(ot) {
+    const container = document.getElementById('timelineContainer');
+    let html = '';
+    
+    // Hito 1: Carga SIC (Fecha programada como referencia inicial si no hay log exacto)
+    const fechaCarga = ot.fecha_programada ? new Date(ot.fecha_programada).toLocaleString('es-CL') : 'Fecha desconocida';
+    html += createTimelineItem(fechaCarga, '📥 Carga desde SIC', 'Importada desde planilla CSV', 'completed');
+
+    // Hito 2: Asignación (Simulado basado en estado)
+    if (['asignada', 'en_proceso', 'cerrada'].includes(ot.estado)) {
+        // En producción, esto vendría de una tabla 'asignaciones' o log de cambios de estado
+        const fechaAsignacion = new Date(new Date().setDate(new Date().getDate() - 1)).toLocaleString('es-CL'); // Ejemplo: Ayer
+        html += createTimelineItem(fechaAsignacion, '👤 Asignación', `Asignada a ${ot.nombre_especialidad || 'Grupo General'}`, 'completed');
+    }
+
+    // Hito 3: Inicio Trabajo
+    if (['en_proceso', 'cerrada'].includes(ot.estado)) {
+        const fechaInicio = new Date().toLocaleString('es-CL'); // Hoy
+        html += createTimelineItem(fechaInicio, '🛠️ Inicio Trabajo', 'Técnico inició ejecución en terreno', 'warning');
+    }
+
+    // Hito 4: Cierre
+    if (ot.estado === 'cerrada') {
+        const fechaCierre = new Date().toLocaleString('es-CL');
+        html += createTimelineItem(fechaCierre, '✅ OT Cerrada', 'Trabajo finalizado y validado', 'completed');
+    }
+
+    // Si no hay hitos avanzados, mostrar mensaje
+    if (html === '') {
+        html = createTimelineItem(fechaCarga, '📥 Carga desde SIC', 'Esperando asignación', 'completed');
+    }
+
+    container.innerHTML = html;
+}
+
+function createTimelineItem(date, title, desc, statusClass) {
+    return `
+        <div class="timeline-item ${statusClass}">
+            <div class="timeline-date">${date}</div>
+            <div class="timeline-title">${title}</div>
+            <div class="timeline-desc">${desc}</div>
+        </div>
+    `;
+}
+
+// === GESTIÓN DE INCIDENCIAS ===
+
+// Cargar incidencias (Simulado con LocalStorage por ahora)
+function loadIncidences(otCode) {
+    const list = document.getElementById('incidencesList');
+    const allIncidences = JSON.parse(localStorage.getItem('ot_incidences') || '{}');
+    const incidents = allIncidences[otCode] || [];
+
+    if (incidents.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">Sin incidencias registradas para esta OT</div>';
+        return;
+    }
+
+    list.innerHTML = incidents.map(inc => `
+        <div class="inc-card">
+            <div class="inc-header">
+                <span class="inc-type">${getIncTypeName(inc.type)}</span>
+                <span class="inc-date">${inc.date}</span>
+            </div>
+            <div class="inc-body">${inc.desc}</div>
+            ${inc.evidence ? `<div class="inc-evidence">📎 Ver evidencia</div>` : ''}
+        </div>
+    `).join('');
+}
+
+function getIncTypeName(type) {
+    const types = {
+        'acceso': '🚫 ACCESO DENEGADO',
+        'material': '📦 FALTA MATERIAL',
+        'seguridad': '⚠️ SEGURIDAD',
+        'otro': '📝 OTRO'
+    };
+    return types[type] || 'INCIDENCIA';
+}
+
+// Agregar nueva incidencia
+function addIncidence() {
+    if (!currentTrackingOT) return alert('Selecciona una OT primero');
+    
+    const type = document.getElementById('incType').value;
+    const desc = document.getElementById('incDesc').value.trim();
+    
+    if (!desc) return alert('Escribe un detalle para la incidencia');
+
+    const now = new Date().toLocaleString('es-CL');
+    const newInc = { type, desc, date: now, evidence: false };
+
+    // Guardar en LocalStorage (Simulación de DB)
+    const allIncidences = JSON.parse(localStorage.getItem('ot_incidences') || '{}');
+    if (!allIncidences[currentTrackingOT.codigo_ot]) {
+        allIncidences[currentTrackingOT.codigo_ot] = [];
+    }
+    allIncidences[currentTrackingOT.codigo_ot].unshift(newInc); // Agregar al principio
+    localStorage.setItem('ot_incidences', JSON.stringify(allIncidences));
+
+    // Limpiar form y recargar
+    document.getElementById('incDesc').value = '';
+    loadIncidences(currentTrackingOT.codigo_ot);
+    Toast.success('Incidencia registrada correctamente');
+}
+
+// Simular carga de evidencia
+function uploadEvidence(input) {
+    if (!currentTrackingOT) return alert('Selecciona una OT primero');
+    if (input.files && input.files[0]) {
+        const fileName = input.files[0].name;
+        Toast.info(`Archivo "${fileName}" listo para subir. (Conectar backend)`);
+        // Aquí iría el fetch para subir el archivo al servidor
+    }
+}
     </script>
 </body>
 </html>
