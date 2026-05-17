@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="login-container">
         <div class="login-box">
             <!-- Logo oficial del Hospital Antofagasta -->
-            <img src="/img/logohospitalantofagasta.jpeg" 
+            <img src="/img/logo_siglo_21.png" 
                  alt="Hospital Antofagasta" 
                  class="login-logo"
                  onerror="this.src='/img/logo-placeholder.png'; this.onerror=null;">
