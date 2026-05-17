@@ -35,25 +35,85 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         .btn-volver { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: none; cursor: pointer; font-weight: 600; margin-top: 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s; }
         .btn-volver:hover { opacity: 0.9; transform: translateY(-2px); }
         
-        /* ✅ OTs LAYOUT 80/20 (Scroll 100% aislado) */
-        .ots-layout { display: grid; grid-template-columns: 78% 22%; gap: 1rem; flex: 1; min-height: 0; overflow: hidden; }
-        .ots-left { display: grid; grid-template-rows: auto 1fr; gap: 0.75rem; min-height: 0; overflow: hidden; }
+         /* ✅ LAYOUT OTs: Estructura Fija con Scroll Interno */
+        .ots-layout { 
+            display: grid; 
+            grid-template-columns: 78% 22%; 
+            gap: 1rem; 
+            flex: 1; /* Ocupa todo el espacio disponible verticalmente */
+            min-height: 0; /* CRÍTICO: Permite que el hijo haga scroll sin romper el padre */
+            height: calc(100vh - 180px); /* Altura fija relativa a la ventana */
+            overflow: hidden; /* Evita scroll en el layout completo */
+        }
+
+        .ots-left { 
+            display: flex; /* Cambiado a flex para mejor control vertical */
+            flex-direction: column; 
+            height: 100%; /* Ocupa toda la altura del grid */
+            min-height: 0;
+        }
         
         /* ✅ TABLA SCROLLABLE INDEPENDIENTE */
-        .table-scroll-wrapper { flex: 1; overflow-y: auto; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 0.5rem; background: #fff; min-height: 0; }
+          /* Contenedor de la Tabla: Hace el scroll */
+        .table-scroll-wrapper { 
+            flex: 1; /* Ocupa el espacio restante */
+            overflow-y: auto; /* Scroll VERTICAL solo aquí */
+            overflow-x: auto; /* Scroll HORIZONTAL si es necesario */
+            border: 1px solid #e2e8f0; 
+            border-radius: 0.5rem; 
+            background: #fff; 
+            min-height: 0; /* CRÍTICO para que funcione el flex:1 con overflow */
+        }
         .ots-table { width: 100%; min-width: 1300px; border-collapse: collapse; font-size: 0.8rem; }
         .ots-table th { background: #f1f5f9; padding: 0.7rem; text-align: left; position: sticky; top: 0; font-weight: 600; border-bottom: 2px solid #e2e8f0; z-index: 5; }
         .ots-table td { padding: 0.7rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
         .ots-table tr:hover { background: #f8fafc; cursor: pointer; }
         .ots-table tr.selected { background: #dbeafe; border-left: 3px solid var(--primary); }
         
-        /* ✅ PANEL DERECHO 20% (Bordes redondeados + padding interno) */
-        .ots-right { background: #fff; border-radius: 0.75rem; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; padding: 0.75rem 1rem; }
+        /* Panel Derecho: Fijo y con botones anclados abajo */
+        .ots-right { 
+            background: #fff; 
+            border-radius: 0.75rem; 
+            border: 1px solid #e2e8f0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100%; /* Ocupa toda la altura */
+            overflow: hidden; /* Evita que el contenido desborde el panel derecho */
+            padding: 0; /* Quitamos padding general para controlar interno */
+        }
         .ots-right .detail-form { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        #otDetailContent { flex: 1; overflow-y: auto; padding: 0 0.5rem; }
-        .detail-actions { flex-shrink: 0; margin-top: auto; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 0.5rem; }
+        /* Contenido del Detalle (Scrollable internamente si es muy largo) */
+        #otDetailContent { 
+            flex: 1; /* Ocupa el espacio disponible entre título y botones */
+            overflow-y: auto; /* Si hay muchas observaciones, hace scroll solo aquí */
+            padding: 0.5rem 1rem;
+        }
+        /* Título del Panel Derecho */
+        .ots-right h4 {
+            padding: 1rem 1rem 0 1rem;
+            margin: 0;
+        }
+        /* Botones del Panel Derecho: Anclados al fondo */
+        .detail-actions { 
+            flex-shrink: 0; /* No se encoge */
+            padding: 1rem; 
+            border-top: 1px solid #e2e8f0; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 0.5rem; 
+            background: #f8fafc; /* Fondo sutil para diferenciar zona de acción */
+            border-radius: 0 0 0.75rem 0.75rem; /* Bordes redondeados abajo */
+        }
         
-        .filters-panel { background: #fff; padding: 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
+          /* Panel de Filtros: Fijo arriba */
+        .filters-panel { 
+            background: #fff; 
+            padding: 1rem; 
+            border-radius: 0.75rem; 
+            border: 1px solid #e2e8f0; 
+            flex-shrink: 0; /* NO se encoge ni se mueve */
+            margin-bottom: 0.75rem;
+        }
         .search-container { position: relative; margin-bottom: 0.75rem; }
         .search-input { width: 100%; padding: 0.75rem 1rem; border: 2px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; }
         .search-input:focus { border-color: var(--primary); outline: none; }
