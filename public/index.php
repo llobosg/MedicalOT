@@ -114,6 +114,37 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         .main-footer { flex-shrink: 0; margin-top: auto; background: #fff; border-top: 1px solid #e2e8f0; padding: 0.75rem; text-align: center; font-size: 0.8rem; color: #475569; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 -2px 8px rgba(0,0,0,0.03); }
         .main-footer img { height: 24px; opacity: 0.8; transition: opacity 0.3s; }
         .main-footer img:hover { opacity: 1; }
+        /* ✅ BARRA DE PROGRESO DINÁMICA */
+        .progress-container {
+            height: 20px; /* Un poco más gruesa para mejor visibilidad */
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar {
+            height: 100%;
+            /* Gradiente inicial */
+            background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+            width: 0%;
+            transition: width 0.3s ease-out, background 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* Clases para cambiar color según avance */
+        .progress-low { background: linear-gradient(90deg, #ef4444 0%, #f87171 100%) !important; } /* Rojo < 20% */
+        .progress-med { background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%) !important; } /* Amarillo 20-70% */
+        .progress-high { background: linear-gradient(90deg, #10b981 0%, #34d399 100%) !important; } /* Verde > 70% */
     </style>
 </head>
 <body>
@@ -485,7 +516,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             if(ext !== 'csv') { Toast.error(`Extensión inválida: "${ext}". Solo .csv`); return; }
             const summary = document.getElementById('sicSummary'), log = document.getElementById('sicLog'), overlay = document.getElementById('importOverlay'), progressBar = document.getElementById('progressBar'), progressText = document.getElementById('progressText');
             log.innerHTML = `<p>📤 Iniciando carga de ${fileName}...</p>`; summary.classList.add('show'); overlay.classList.add('active'); progressBar.style.width = '0%'; progressText.textContent = 'Preparando...';
-            pollingInterval = setInterval(updateProgress, 600);
+            pollingInterval = setInterval(updateProgress, 1000);
             const formData = new FormData(); formData.append('sicFile', file);
             try {
                 const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData }); const rawText = await res.text();
@@ -497,7 +528,58 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             finally { clearInterval(pollingInterval); setTimeout(() => overlay.classList.remove('active'), 1500); }
         }
 
-        function updateProgress() { fetch('/api/sic_progress.php').then(r => r.json()).then(p => { document.getElementById('progressBar').style.width = p.percent + '%'; document.getElementById('progressText').textContent = `${p.current} / ${p.total} registros (${p.percent}%)`; if(p.status === 'completed' || p.status === 'error') clearInterval(pollingInterval); }).catch(() => {}); }
+        function updateProgress() {
+            fetch('/api/sic_progress.php')
+                .then(r => r.json())
+                .then(p => {
+                    const progressBar = document.getElementById('progressBar');
+                    const progressText = document.getElementById('progressText');
+                    
+                    if (!progressBar || !progressText) return;
+
+                    // Calcular porcentaje
+                    let percent = 0;
+                    if (p.total > 0 && p.current > 0) {
+                        percent = Math.min(100, Math.round((p.current / p.total) * 100));
+                    } else if (p.status === 'completed') {
+                        percent = 100;
+                    }
+
+                    // Actualizar ancho
+                    progressBar.style.width = percent + '%';
+                    
+                    // Actualizar texto dentro de la barra
+                    progressBar.textContent = percent > 5 ? percent + '%' : '';
+
+                    // Actualizar texto descriptivo
+                    progressText.innerHTML = `
+                        Procesando: <strong>${p.current.toLocaleString()}</strong> de ~${p.total.toLocaleString()} registros 
+                        (${percent}%)
+                    `;
+
+                    // Cambiar color según avance
+                    progressBar.classList.remove('progress-low', 'progress-med', 'progress-high');
+                    if (percent < 20) {
+                        progressBar.classList.add('progress-low');
+                    } else if (percent < 70) {
+                        progressBar.classList.add('progress-med');
+                    } else {
+                        progressBar.classList.add('progress-high');
+                    }
+
+                    // Detener polling si terminó
+                    if (p.status === 'completed' || p.status === 'error') {
+                        clearInterval(window.sicPolling);
+                        // Forzar actualización final al 100%
+                        progressBar.style.width = '100%';
+                        progressBar.textContent = '100%';
+                        progressBar.classList.remove('progress-low', 'progress-med');
+                        progressBar.classList.add('progress-high');
+                        progressText.textContent = '¡Proceso finalizado!';
+                    }
+                })
+                .catch(() => {});
+        }
 
         function addToHistory(inserted, skipped, total) {
             const history = JSON.parse(localStorage.getItem('sic_history') || '[]'); const now = new Date();
