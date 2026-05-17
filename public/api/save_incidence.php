@@ -1,12 +1,27 @@
 <?php
-// public/api/save_incidence.php
 header('Content-Type: application/json; charset=utf-8');
 while (ob_get_level()) ob_end_clean();
 
 try {
-    define('APP_ENTRY_POINT', true);
-    require_once __DIR__ . '/../../vendor/autoload.php';
-    require_once __DIR__ . '/../../includes/config.php'; // Ajusta ruta si es necesario
+    // 🔍 RESOLUCIÓN INTELIGENTE DE RUTAS
+    $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+    $projectRoot = dirname($docRoot);
+    
+    // Buscar autoload y config
+    $autoloadPath = file_exists("$projectRoot/vendor/autoload.php") 
+                  ? "$projectRoot/vendor/autoload.php" 
+                  : (file_exists("$docRoot/vendor/autoload.php") ? "$docRoot/vendor/autoload.php" : null);
+                  
+    $configPath = file_exists("$projectRoot/includes/config.php") 
+                ? "$projectRoot/includes/config.php" 
+                : (file_exists("$docRoot/includes/config.php") ? "$docRoot/includes/config.php" : null);
+                
+    if (!$autoloadPath || !$configPath) {
+        throw new Exception("Faltan archivos críticos (vendor/autoload.php o includes/config.php).");
+    }
+    
+    require_once $autoloadPath;
+    require_once $configPath;
 
     if (session_status() === PHP_SESSION_NONE) session_start();
     
@@ -31,9 +46,9 @@ try {
     // 1. Manejo de Archivo (Evidencia)
     $filePath = null;
     if (isset($_FILES['evidence']) && $_FILES['evidence']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = __DIR__ . '/../../uploads/incidencias/';
+        // Usar una ruta absoluta segura para uploads
+        $uploadDir = $projectRoot . '/public/uploads/incidencias/';
         
-        // Crear directorio si no existe
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
@@ -42,18 +57,16 @@ try {
         $fileName    = basename($_FILES['evidence']['name']);
         $fileExt     = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
         
-        // Validar extensión (solo imágenes y PDF)
         $allowedExts = ['jpg', 'jpeg', 'png', 'pdf'];
         if (!in_array($fileExt, $allowedExts)) {
             throw new Exception('Tipo de archivo no permitido. Solo JPG, PNG, PDF.');
         }
 
-        // Generar nombre único para evitar colisiones
         $uniqueName = uniqid('inc_') . '_' . time() . '.' . $fileExt;
         $destination = $uploadDir . $uniqueName;
 
         if (move_uploaded_file($fileTmpPath, $destination)) {
-            // Guardamos la ruta relativa para la BD (ej: uploads/incidencias/inc_xxx.jpg)
+            // Guardamos la ruta relativa web-accessible
             $filePath = 'uploads/incidencias/' . $uniqueName;
         } else {
             throw new Exception('Error al mover el archivo al servidor.');
@@ -77,7 +90,7 @@ try {
     exit;
 
 } catch (\Throwable $e) {
-    error_log("❌ API Incidencia Error: " . $e->getMessage());
+    error_log("❌ API Save Incidencia Fatal: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code($e->getCode() ?: 500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     exit;
