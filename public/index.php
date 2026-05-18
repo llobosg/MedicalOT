@@ -1408,13 +1408,18 @@ function getIncTypeName(type) {
 async function cargarVerticales() {
     const tbody = document.getElementById('tablaVerticalesBody');
     if (!tbody) return;
+
+     console.log("🔄 Iniciando carga de verticales..."); // Log de debug
     
     // Mostrar estado de carga
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">⏳ Cargando verticales...</td></tr>';
 
     try {
         const res = await fetch('/api/verticales.php?action=list');
+        console.log("📡 Respuesta HTTP:", res.status); // Log de debug
+
         const data = await res.json();
+        console.log("📦 Datos recibidos:", data); // Log de debug
         
         if (!data.success) throw new Error(data.error);
         
