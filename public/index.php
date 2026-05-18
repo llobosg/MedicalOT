@@ -484,15 +484,15 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <p style="font-size:0.9rem; color:#64748b; margin-top:0.25rem;">Gestión de áreas técnicas y responsables</p>
                     </div>
                     
-                    <!-- Botón Nueva Vertical: SOLO visible para Admin Hospital -->
-                    <!-- Mostrar botón solo si es Admin Hospital O si es el super-admin general -->
+                    <!-- Botón Nueva Vertical: Visible para Admin Hospital O Admin General -->
                     <?php 
-                        $esAdminHospital = (isset($_SESSION['rol']) && ($_SESSION['rol'] === 'admin_hospital' || $_SESSION['rol'] === 'admin'));
-                        if ($esAdminHospital): 
+                        // Verificamos si el rol es 'admin_hospital' (nuevo sistema) o 'admin' (sistema antiguo/legacy)
+                        $esAdmin = (isset($_SESSION['rol']) && ($_SESSION['rol'] === 'admin_hospital' || $_SESSION['rol'] === 'admin'));
                     ?>
-                        <button onclick="abrirModalVerticales()" style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-weight:600;">
-                            ➕ Nueva Vertical
-                        </button>
+                    <?php if ($esAdmin): ?>
+                    <button onclick="abrirModalVerticales()" style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-weight:600;">
+                        ➕ Nueva Vertical
+                    </button>
                     <?php endif; ?>
                 </div>
                 
@@ -506,10 +506,8 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                                 <th style="padding:1rem; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Especialidad Principal</th>
                                 <th style="padding:1rem; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Contacto Email</th>
                                 <th style="padding:1rem; text-align:center; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Estado</th>
-                                <!-- Columna Acciones: SOLO visible para Admin Hospital -->
-                                <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin_hospital'): ?>
-                                <th style="padding:1rem; text-align:center; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Acciones</th>
-                                <?php endif; ?>
+                                <!-- Columna Acción SIEMPRE visible para editar -->
+                                <th style="padding:1rem; text-align:center; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Acción</th>
                             </tr>
                         </thead>
                         <tbody id="tablaVerticalesBody">
@@ -832,25 +830,37 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 // Determinar permisos (ajusta según cómo guardes el rol en sesión)
                 const isAdmin = <?= json_encode(isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin_hospital') ?>;
 
-                tbody.innerHTML = data.verticales.map(v => `
-                    <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                        <td style="padding:1rem; font-weight:600; color:#1e293b;">${v.nombre_vertical}</td>
-                        <td style="padding:1rem; color:#475569;">${v.nombre_responsable || '<span style="color:#94a3b8;">Sin asignar</span>'}</td>
-                        <td style="padding:1rem;"><span class="badge b-pen">${v.cod_especialidad_principal || '-'}</span></td>
-                        <td style="padding:1rem; color:#64748b; font-size:0.9rem;">${v.contacto_email || '-'}</td>
-                        <td style="padding:1rem; text-align:center;">
-                            <span style="background:${v.activo ? '#dcfce7' : '#fee2e2'}; color:${v.activo ? '#166534' : '#991b1b'}; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:600;">
-                                ${v.activo ? 'Activa' : 'Inactiva'}
-                            </span>
-                        </td>
-                        ${isAdmin ? `
-                        <td style="padding:1rem; text-align:center;">
-                            <button onclick="editarVertical(${JSON.stringify(v).replace(/"/g, '&quot;')})" style="cursor:pointer; margin-right:5px;">✏️ Editar</button>
-                            <button onclick="eliminarVertical(${v.id_vertical}, '${v.nombre_vertical}')" style="cursor:pointer; color:#ef4444;">🗑️ Eliminar</button>
-                        </td>
-                        ` : ''}
-                    </tr>
-                `).join('');
+                tbody.innerHTML = data.verticales.map(v => {
+                    // Determinar si el usuario puede EDITAR (Solo Admins pueden crear/editar estructura base)
+                    // Si quieres que los Jefes de Vertical puedan editar su propia info, ajusta esta condición.
+                    // Por ahora, asumimos que solo Admin modifica la estructura de Verticales.
+                    const isAdmin = <?= json_encode($esAdmin ?? false) ?>; 
+
+                    return `
+                        <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                            <td style="padding:1rem; font-weight:600; color:#1e293b;">${v.nombre_vertical}</td>
+                            <td style="padding:1rem; color:#475569;">${v.nombre_responsable || '<span style="color:#94a3b8;">Sin asignar</span>'}</td>
+                            <td style="padding:1rem;"><span class="badge b-pen">${v.cod_especialidad_principal || '-'}</span></td>
+                            <td style="padding:1rem; color:#64748b; font-size:0.9rem;">${v.contacto_email || '-'}</td>
+                            <td style="padding:1rem; text-align:center;">
+                                <span style="background:${v.activo ? '#dcfce7' : '#fee2e2'}; color:${v.activo ? '#166534' : '#991b1b'}; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:600;">
+                                    ${v.activo ? 'Activa' : 'Inactiva'}
+                                </span>
+                            </td>
+                            <td style="padding:1rem; text-align:center;">
+                                ${isAdmin ? `
+                                    <button onclick="editarVertical(${JSON.stringify(v).replace(/"/g, '&quot;')})" 
+                                            title="Editar Vertical"
+                                            style="background:#eff6ff; color:#2563eb; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; display:inline-flex; align-items:center; justify-content:center; transition:background 0.2s;" 
+                                            onmouseover="this.style.background='#dbeafe'" 
+                                            onmouseout="this.style.background='#eff6ff'">
+                                        ✏️
+                                    </button>
+                                ` : ''}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
 
             } catch (err) {
                 console.error("❌ Error cargando verticales:", err);
