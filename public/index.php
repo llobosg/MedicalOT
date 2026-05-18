@@ -485,10 +485,14 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                     
                     <!-- Botón Nueva Vertical: SOLO visible para Admin Hospital -->
-                    <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin_hospital'): ?>
-                    <button onclick="abrirModalVerticales()" style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-weight:600;">
-                        ➕ Nueva Vertical
-                    </button>
+                    <!-- Mostrar botón solo si es Admin Hospital O si es el super-admin general -->
+                    <?php 
+                        $esAdminHospital = (isset($_SESSION['rol']) && ($_SESSION['rol'] === 'admin_hospital' || $_SESSION['rol'] === 'admin'));
+                        if ($esAdminHospital): 
+                    ?>
+                        <button onclick="abrirModalVerticales()" style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-weight:600;">
+                            ➕ Nueva Vertical
+                        </button>
                     <?php endif; ?>
                 </div>
                 
