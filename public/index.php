@@ -1215,8 +1215,8 @@ async function addIncidence() {
         });
 
         const text = await response.text();
+        const data = await response.json();
 
-        let data;
         try {
             data = JSON.parse(text);
         } catch (e) {
@@ -1224,7 +1224,7 @@ async function addIncidence() {
             throw new Error("El servidor no devolvió JSON válido");
         }
 
-        const data = await response.json();
+     
 
         if (data.success) {
             Toast.success('Incidencia registrada correctamente', 'Éxito');
