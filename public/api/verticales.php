@@ -22,9 +22,11 @@ try {
     if (!$configPath) {
         throw new Exception("config.php no encontrado en {$projectRoot} o {$docRoot}");
     }
-    
-    require_once $configPath;
 
+    // 👇 ESTA LÍNEA ES LA CLAVE
+    define('APP_ENTRY_POINT', true);
+    require_once $configPath;
+    
     // 3. VALIDACIÓN DE AUTENTICACIÓN ESTRICTA
     // Si no hay user_id en sesión, devolvemos 401 Unauthorized (no 403)
     if (!isset($_SESSION['user_id'])) {
