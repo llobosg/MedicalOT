@@ -474,17 +474,18 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         </section>
 
         <!-- MÓDULO 7: VERTICALES -->
-        <!-- DEBUG VERTICALES -->
-        <div style="background:#fff3cd; padding:10px; border:1px solid #ffeeba; color:#856404; margin-bottom:1rem;">
-            <strong>🔍 Debug Verticales:</strong><br>
-            <ul style="margin:0; padding-left:20px;">
-                <li>User ID: <?= htmlspecialchars($_SESSION['user_id'] ?? 'NO DEFINIDO') ?></li>
-                <li>Session Rol: <?= htmlspecialchars($_SESSION['rol'] ?? 'NO DEFINIDO') ?></li>
-                <li>Is Admin Hospital?: <?= ($_SESSION['rol'] === 'admin_hospital' || $_SESSION['rol'] === 'admin') ? 'SÍ ✅' : 'NO ❌' ?></li>
-                <li>Variable $esAdmin (PHP): <?= ($esAdmin ?? false) ? 'TRUE ✅' : 'FALSE ❌' ?></li>
-            </ul>
+        <?php 
+            // 1. Leer el rol desde la clave CORRECTA de la sesión (recinto_rol)
+            $rolActual = $_SESSION['recinto_rol'] ?? '';
+            
+            // 2. Definir si es Admin Hospital (o admin general) ANTES de usarlo en HTML
+            $esAdmin = ($rolActual === 'admin_hospital' || $rolActual === 'admin');
+        ?>
+
+        <!-- DEBUG TEMPORAL (Borrar después de verificar) -->
+        <div style="background:#fff3cd; padding:5px; font-size:0.8rem; color:#856404; margin-bottom:10px;">
+            Debug: Rol Session=<?= htmlspecialchars($rolActual) ?> | Es Admin=<?= $esAdmin ? 'SÍ' : 'NO' ?>
         </div>
-        <!-- FIN DEBUG -->
 
         <section id="verticales" class="module-section">
             <div style="max-width:900px; margin:0 auto; height:100%; display:flex; flex-direction:column;">
@@ -496,11 +497,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <p style="font-size:0.9rem; color:#64748b; margin-top:0.25rem;">Gestión de áreas técnicas y responsables</p>
                     </div>
                     
-                    <!-- Botón Nueva Vertical: Visible para Admin Hospital O Admin General -->
-                    <?php 
-                        // Verificamos si el rol es 'admin_hospital' (nuevo sistema) o 'admin' (sistema antiguo/legacy)
-                        $esAdmin = (isset($_SESSION['rol']) && ($_SESSION['rol'] === 'admin_hospital' || $_SESSION['rol'] === 'admin'));
-                    ?>
+                    <!-- Botón Nueva Vertical: Visible SOLO si $esAdmin es TRUE -->
                     <?php if ($esAdmin): ?>
                     <button onclick="abrirModalVerticales()" style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-weight:600;">
                         ➕ Nueva Vertical
@@ -518,7 +515,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                                 <th style="padding:1rem; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Especialidad Principal</th>
                                 <th style="padding:1rem; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Contacto Email</th>
                                 <th style="padding:1rem; text-align:center; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Estado</th>
-                                <!-- Columna Acción SIEMPRE visible para editar -->
+                                <!-- Columna Acción SIEMPRE visible para editar (si hay datos) -->
                                 <th style="padding:1rem; text-align:center; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Acción</th>
                             </tr>
                         </thead>
