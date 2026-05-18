@@ -931,7 +931,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             pollingInterval = setInterval(updateProgress, 1000);
             const formData = new FormData(); formData.append('sicFile', file);
             try {
-                const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData }); const rawText = await res.text();
+                const res = await fetch('/api/import_sic.php', { method: 'POST', body: formData, credentials: 'include' }); const rawText = await res.text();
                 let data; try { data = JSON.parse(rawText); } catch { throw new Error('El servidor no devolvió JSON válido.'); }
                 if(!res.ok || !data.success) throw new Error(data.error || `Error HTTP ${res.status}`);
                 log.innerHTML = `<p style="color:#10b981; font-weight:600;">✅ Proceso finalizado</p><p>📥 Registros leídos: ${data.total}</p><p style="color:#10b981;">✅ ${data.inserted} OTs nuevas importadas</p>${data.skipped > 0 ? `<p style="color:#f59e0b;">⚠️ ${data.skipped} OTs duplicadas omitidas</p>` : ''}${data.errors?.length ? `<p style="color:#ef4444;">❌ ${data.errors.length} errores de validación</p>` : ''}`;
@@ -1555,7 +1555,7 @@ async function guardarVertical(e) {
     formData.append('action', action);
 
     try {
-        const res = await fetch('/api/verticales.php', { method: 'POST', body: formData });
+        const res = await fetch('/api/verticales.php', { method: 'POST', body: formData, credentials: 'include' });
         const data = await res.json();
         
         if (data.success) {

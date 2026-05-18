@@ -38,7 +38,11 @@ try {
     // Obtener rol del usuario (ajustar clave según tu login actual)
     // En tu login_unificado.php guardabas $_SESSION['rol'] o similar.
     // Verifica qué clave usas. Asumiremos 'rol' o 'recinto_rol'.
-    $rolUsuario = $_SESSION['rol'] ?? $_SESSION['recinto_rol'] ?? '';
+    $rolUsuario = $_SESSION['rol'] 
+           ?? $_SESSION['recinto_rol'] 
+           ?? $_SESSION['user_role'] 
+           ?? $_SESSION['role_name'] 
+           ?? '';
 
     // Determinar acción
     $action = $_GET['action'] ?? ($_POST['action'] ?? 'list');
