@@ -754,11 +754,23 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         let searchTimeout, selectedOTData = null, currentPage = 1, totalPages = 1;
 
         function showModule(id) {
+            // Ocultar todas las secciones
             document.querySelectorAll('.module-section').forEach(s => s.classList.remove('active'));
+            
+            // Mostrar la seleccionada
             const target = document.getElementById(id);
-            if(target) target.classList.add('active');
-            if(id === 'ots') { currentPage = 1; loadOTs(); }
-            if(id === 'kpis') updateKPIs(document.querySelector('.pill-btn.active'), 'Especialidad');
+            if(target) {
+                target.classList.add('active');
+                
+                // CARGA DINÁMICA SEGÚN EL MÓDULO
+                if(id === 'ots') loadOTs();
+                if(id === 'verticales') cargarVerticales(); // <--- AGREGAR ESTA LÍNEA
+                if(id === 'tracking') {
+                    // Resetear tracking si se entra directo
+                    document.getElementById('trackingContent').style.display = 'none';
+                    document.getElementById('trackingSearch').value = '';
+                }
+            }
         }
 
         setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleString('es-CL', {weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}); }, 1000);
