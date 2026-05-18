@@ -4,17 +4,22 @@ header('Content-Type: application/json; charset=utf-8');
 while (ob_get_level()) ob_end_clean();
 
 try {
-    // 🔍 1. RESOLUCIÓN INTELIGENTE DE RUTAS (Igual que en convenios.php)
+    // 🔍 1. RESOLUCIÓN INTELIGENTE DE RUTAS (Corregida para config.php en raíz)
     $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
     $projectRoot = dirname($docRoot);
     
-    // Buscar config.php en includes/ o raíz
+    // Buscar config.php PRIMERO en la raíz del proyecto, luego en includes/ por si acaso
     $configPath = file_exists("$projectRoot/config.php") 
                 ? "$projectRoot/config.php" 
                 : (file_exists("$docRoot/config.php") ? "$docRoot/config.php" : null);
                 
+    // Si no lo encuentra en las raíces principales, intenta buscarlo relativo al script actual (fallback)
+    if (!$configPath && file_exists(dirname(__DIR__) . '/config.php')) {
+        $configPath = dirname(__DIR__) . '/config.php';
+    }
+
     if (!$configPath) {
-        throw new Exception("/config.php no encontrado. Verifica estructura.");
+        throw new Exception("config.php no encontrado en la raíz o includes/. Verifica estructura.");
     }
     
     require_once $configPath;
@@ -23,7 +28,7 @@ try {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-
+    
     // Verificar si el usuario está logueado
     if (!isset($_SESSION['user_id'])) {
         http_response_code(403);
