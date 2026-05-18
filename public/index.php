@@ -473,12 +473,100 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             </div>
         </section>
 
-        <section id="contratistas" class="module-section">
-            <div style="max-width:900px; margin:0 auto;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;"><h3>🤝 Mantenedor de Verticales</h3><button style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem;" onclick="openModal()">➕ Nueva Vertical</button></div>
-                <table style="width:100%; background:#fff; border-radius:0.75rem; overflow:hidden; border-collapse:collapse;"><thead><tr style="background:#f1f5f9;"><th style="padding:0.75rem; text-align:left;">RUT</th><th>Razón Social</th><th>Especialidad</th><th>Contacto</th><th>Acciones</th></tr></thead><tbody><tr><td style="padding:0.75rem;">76.543.210-K</td><td>Servicios ClimaSpa</td><td>M-CLIMATIZACION</td><td>contacto@clima.cl</td><td><button style="padding:0.25rem 0.5rem; cursor:pointer;" onclick="openModal('edit')">✏️</button> <button style="padding:0.25rem 0.5rem; cursor:pointer; color:#ef4444;">🗑️</button></td></tr><tr><td style="padding:0.75rem;">96.876.540-1</td><td>Mantenciones Valdivia</td><td>M-ELECTROMECANICA</td><td>admin@valdivia.cl</td><td><button style="padding:0.25rem 0.5rem; cursor:pointer;" onclick="openModal('edit')">✏️</button> <button style="padding:0.25rem 0.5rem; cursor:pointer; color:#ef4444;">🗑️</button></td></tr></tbody></table>
+        <!-- MÓDULO 7: VERTICALES -->
+        <section id="verticales" class="module-section">
+            <div style="max-width:900px; margin:0 auto; height:100%; display:flex; flex-direction:column;">
+                
+                <!-- Header del Módulo -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <div>
+                        <h3 style="margin:0;">🏢 Mantenedor de Verticales</h3>
+                        <p style="font-size:0.9rem; color:#64748b; margin-top:0.25rem;">Gestión de áreas técnicas y responsables</p>
+                    </div>
+                    
+                    <!-- Botón Nueva Vertical: SOLO visible para Admin Hospital -->
+                    <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin_hospital'): ?>
+                    <button onclick="abrirModalVerticales()" style="background:var(--primary); color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; font-weight:600;">
+                        ➕ Nueva Vertical
+                    </button>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- Tabla de Verticales -->
+                <div class="card" style="flex:1; overflow:auto; padding:0;">
+                    <table style="width:100%; border-collapse:collapse; min-width:600px;">
+                        <thead>
+                            <tr style="background:#f1f5f9; position:sticky; top:0;">
+                                <th style="padding:1rem; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Nombre Vertical</th>
+                                <th style="padding:1rem; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Responsable</th>
+                                <th style="padding:1rem; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Especialidad Principal</th>
+                                <th style="padding:1rem; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Contacto Email</th>
+                                <th style="padding:1rem; text-align:center; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Estado</th>
+                                <!-- Columna Acciones: SOLO visible para Admin Hospital -->
+                                <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin_hospital'): ?>
+                                <th style="padding:1rem; text-align:center; border-bottom:2px solid #e2e8f0; font-weight:600; color:#475569;">Acciones</th>
+                                <?php endif; ?>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaVerticalesBody">
+                            <tr><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
+
+        <!-- MODAL NUEVA/EDITAR VERTICAL -->
+        <div id="modalVerticales" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
+            <div style="background:#fff; padding:0; border-radius:1rem; width:90%; max-width:500px; box-shadow:0 20px 60px rgba(0,0,0,0.3); overflow:hidden;">
+                
+                <!-- Header Modal -->
+                <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+                    <h3 id="tituloModalVerticales" style="margin:0; font-size:1.1rem; font-weight:600; color:#2D3748;">Nueva Vertical</h3>
+                    <button onclick="cerrarModalVerticales()" style="background:none; border:none; font-size:1.5rem; color:#94a3b8; cursor:pointer; line-height:1;">&times;</button>
+                </div>
+
+                <!-- Formulario -->
+                <form id="formVerticales" onsubmit="guardarVertical(event)" style="padding:1.5rem;">
+                    <input type="hidden" id="v_id" name="id_vertical">
+                    
+                    <div style="margin-bottom:1rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Nombre de la Vertical *</label>
+                        <input type="text" id="v_nombre" name="nombre_vertical" required placeholder="Ej: Climatización, Electricidad..." style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
+                    </div>
+
+                    <div style="margin-bottom:1rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Nombre del Responsable *</label>
+                        <input type="text" id="v_responsable" name="nombre_responsable" required placeholder="Nombre completo del Jefe/Supervisor" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                        <div>
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Especialidad Principal</label>
+                            <select id="v_especialidad" name="cod_especialidad_principal" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; background:#fff;">
+                                <option value="">Seleccionar...</option>
+                                <option value="M-CLIMATIZACION">M-CLIMATIZACION</option>
+                                <option value="M-ELECTRICIDAD">M-ELECTRICIDAD</option>
+                                <option value="M-ELECTRONICA">M-ELECTRONICA</option>
+                                <option value="M-GASFITERIA">M-GASFITERIA</option>
+                                <option value="M-POLIVALENTE">M-POLIVALENTE</option>
+                                <option value="M-JARDINERIA">M-JARDINERIA</option>
+                                <option value="M-INFRAESTRUCTURA">M-INFRAESTRUCTURA</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Email Contacto</label>
+                            <input type="email" id="v_contacto" name="contacto_email" placeholder="correo@hospital.cl" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.5rem;">
+                        <button type="button" onclick="cerrarModalVerticales()" style="padding:0.6rem 1.2rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer; font-weight:500; color:#475569;">Cancelar</button>
+                        <button type="submit" style="padding:0.6rem 1.2rem; border:none; border-radius:0.5rem; background:var(--primary); color:#fff; cursor:pointer; font-weight:600;">💾 Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
         <!-- NUEVAS FICHAS PARA EL MOCKUP -->
 
         <!-- MÓDULO 1: RECURSOS -->
@@ -986,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="home-card-title">Planificación</div>
                 <div class="home-card-desc">Calendario y asignación HH</div>
             </div>
-            <div class="home-card" onclick="showModule('contratistas')">
+            <div class="home-card" onclick="showModule('verticales')">
                     <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
                         <img src="/img/icons/verticales.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
                     </div>
@@ -1302,6 +1390,130 @@ function getIncTypeName(type) {
     };
     return types[type] || 'INCIDENCIA';
 }
+// === GESTIÓN DE VERTICALES ===
+
+// Cargar lista de verticales al entrar al módulo
+async function cargarVerticales() {
+    const tbody = document.getElementById('tablaVerticalesBody');
+    if (!tbody) return;
+    
+    // Mostrar estado de carga
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">⏳ Cargando verticales...</td></tr>';
+
+    try {
+        const res = await fetch('/api/verticales.php?action=list');
+        const data = await res.json();
+        
+        if (!data.success) throw new Error(data.error);
+        
+        if (data.verticales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">No hay verticales registradas.</td></tr>';
+            return;
+        }
+
+        // Determinar si el usuario es admin para renderizar botones de acción
+        const isAdmin = <?= json_encode(isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin_hospital') ?>;
+
+        tbody.innerHTML = data.verticales.map(v => `
+            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                <td style="padding:1rem; font-weight:600; color:#1e293b;">${v.nombre_vertical}</td>
+                <td style="padding:1rem; color:#475569;">${v.nombre_responsable || '<span style="color:#94a3b8;">Sin asignar</span>'}</td>
+                <td style="padding:1rem;"><span class="badge b-pen">${v.cod_especialidad_principal || '-'}</span></td>
+                <td style="padding:1rem; color:#64748b; font-size:0.9rem;">${v.contacto_email || '-'}</td>
+                <td style="padding:1rem; text-align:center;">
+                    <span style="background:${v.activo ? '#dcfce7' : '#fee2e2'}; color:${v.activo ? '#166534' : '#991b1b'}; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:600;">
+                        ${v.activo ? 'Activa' : 'Inactiva'}
+                    </span>
+                </td>
+                ${isAdmin ? `
+                <td style="padding:1rem; text-align:center;">
+                    <button onclick="editarVertical(${JSON.stringify(v).replace(/"/g, '&quot;')})" style="background:#eff6ff; color:#2563eb; border:none; padding:0.4rem 0.8rem; border-radius:0.5rem; cursor:pointer; font-size:0.85rem; margin-right:0.5rem; transition:background 0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">✏️ Editar</button>
+                    <button onclick="eliminarVertical(${v.id_vertical}, '${v.nombre_vertical}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.4rem 0.8rem; border-radius:0.5rem; cursor:pointer; font-size:0.85rem; transition:background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">🗑️ Eliminar</button>
+                </td>
+                ` : ''}
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error al cargar: ${err.message}</td></tr>`;
+    }
+}
+
+// Abrir Modal para Crear
+function abrirModalVerticales() {
+    document.getElementById('formVerticales').reset();
+    document.getElementById('v_id').value = '';
+    document.getElementById('tituloModalVerticales').textContent = 'Nueva Vertical';
+    document.getElementById('modalVerticales').style.display = 'flex';
+}
+
+// Cerrar Modal
+function cerrarModalVerticales() {
+    document.getElementById('modalVerticales').style.display = 'none';
+}
+
+// Preparar Modal para Editar
+function editarVertical(v) {
+    document.getElementById('v_id').value = v.id_vertical;
+    document.getElementById('v_nombre').value = v.nombre_vertical;
+    document.getElementById('v_responsable').value = v.nombre_responsable || '';
+    document.getElementById('v_especialidad').value = v.cod_especialidad_principal || '';
+    document.getElementById('v_contacto').value = v.contacto_email || '';
+    document.getElementById('tituloModalVerticales').textContent = 'Editar Vertical';
+    document.getElementById('modalVerticales').style.display = 'flex';
+}
+
+// Guardar (Crear o Actualizar)
+async function guardarVertical(e) {
+    e.preventDefault();
+    const formData = new FormData(document.getElementById('formVerticales'));
+    
+    const action = document.getElementById('v_id').value ? 'update' : 'create';
+    formData.append('action', action);
+
+    try {
+        const res = await fetch('/api/verticales.php', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            Toast.success(data.message || 'Operación exitosa');
+            cerrarModalVerticales();
+            cargarVerticales(); // Recargar tabla
+        } else {
+            Toast.error(data.error || 'Error al guardar');
+        }
+    } catch (err) {
+        Toast.error('Error de conexión');
+    }
+}
+
+// Eliminar Vertical
+async function eliminarVertical(id, nombre) {
+    if (!confirm(`¿Estás seguro de eliminar la vertical "${nombre}"?\n\nNota: Si tiene usuarios asignados, no podrá ser eliminada.`)) return;
+    
+    try {
+        const res = await fetch(`/api/verticales.php?action=delete&id=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        
+        if (data.success) {
+            Toast.success('Vertical eliminada correctamente');
+            cargarVerticales();
+        } else {
+            Toast.error(data.error || 'Error al eliminar');
+        }
+    } catch (err) {
+        Toast.error('Error de conexión');
+    }
+}
+
+// Inicializar cuando se muestra el módulo
+document.addEventListener('DOMContentLoaded', () => {
+    // Si ya estamos en la sección verticales, cargar datos
+    if (document.getElementById('verticales').classList.contains('active')) {
+        cargarVerticales();
+    }
+});
     </script>
 </body>
 </html>

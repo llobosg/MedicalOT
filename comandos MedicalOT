@@ -4,7 +4,10 @@
   --user=root \
   --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
   --database=railway \
-  -e "DESCRIBE test;"
+  -e "SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS proveedor_especialidades;
+DROP TABLE IF EXISTS proveedores;
+SET FOREIGN_KEY_CHECKS = 1;"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
@@ -13,5 +16,5 @@ mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railw
 
   # Commit y push
 git add .
-git commit -m "fix: mockup planificación y recursos, 1"
+git commit -m "fix: corrección crítica 403 en save_incidence.php con validación de sesión y rutas, 8"
 git push origin main
