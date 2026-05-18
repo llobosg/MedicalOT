@@ -4,10 +4,15 @@
   --user=root \
   --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
   --database=railway \
-  -e "SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS proveedor_especialidades;
-DROP TABLE IF EXISTS proveedores;
-SET FOREIGN_KEY_CHECKS = 1;"
+  -e "INSERT INTO verticales (nombre_vertical, nombre_responsable, contacto_email, cod_especialidad_principal, activo) VALUES
+('Climatización', 'Hector Soto', 'hector.soto@hospital.cl', 'M-CLIMATIZACION FRIGORISTA', TRUE),
+('Electricidad', 'Reucar Obispo', 'reucar.obispo@hospital.cl', 'M-ELECTRICIDAD', TRUE),
+('Electrónica', 'Diego Muñoz', 'diego.munoz@hospital.cl', 'M-ELECTRONICA', TRUE),
+('Gasfitería', 'Juan Pérez', 'juan.perez@hospital.cl', 'M-GASFITERIA', TRUE),
+('Infraestructura', 'Victor Duarte', 'victor.duarte@hospital.cl', 'M-POLIVALENTE', TRUE),
+('Redes y Telecomunicaciones', 'Mack Trivik', 'mack.trivik@hospital.cl', 'M-ELECTRONICA', TRUE),
+('Jardinería', 'Carlos Ruiz', 'carlos.ruiz@hospital.cl', 'M-JARDINERIA', TRUE),
+('Ascensores y Transporte', 'Ana López', 'ana.lopez@hospital.cl', 'M-POLIVALENTE', TRUE);"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
@@ -16,5 +21,5 @@ mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railw
 
   # Commit y push
 git add .
-git commit -m "fix: corrección crítica 403 en save_incidence.php con validación de sesión y rutas, 8"
+git commit -m "fix: manejar error de duplicado en creación de verticales con mensaje amigable"
 git push origin main
