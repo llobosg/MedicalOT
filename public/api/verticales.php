@@ -4,30 +4,37 @@ header('Content-Type: application/json; charset=utf-8');
 while (ob_get_level()) ob_end_clean();
 
 try {
-    // 🔐 1. PROTECCIÓN DE SESIÓN Y RUTAS
-    if (session_status() === PHP_SESSION_NONE) session_start();
-    
+    // 🔍 1. RESOLUCIÓN INTELIGENTE DE RUTAS (Igual que en convenios.php)
     $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
     $projectRoot = dirname($docRoot);
     
-    $configPath = file_exists("$projectRoot/config.php") 
-                ? "$projectRoot/config.php" 
-                : (file_exists("$docRoot/config.php") ? "$docRoot/config.php" : null);
+    // Buscar config.php en includes/ o raíz
+    $configPath = file_exists("$projectRoot/includes/config.php") 
+                ? "$projectRoot/includes/config.php" 
+                : (file_exists("$docRoot/includes/config.php") ? "$docRoot/includes/config.php" : null);
                 
-    if (!$configPath) throw new Exception("config.php no encontrado.");
+    if (!$configPath) {
+        throw new Exception("includes/config.php no encontrado. Verifica estructura.");
+    }
+    
     require_once $configPath;
 
-    // Validar sesión
+    // 🔐 2. INICIAR SESIÓN Y VALIDAR AUTORIZACIÓN
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // Verificar si el usuario está logueado
     if (!isset($_SESSION['user_id'])) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'No autorizado']);
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Acceso denegado. Sesión expirada o inválida.']);
         exit;
     }
 
     $rolUsuario = $_SESSION['rol'] ?? ''; // 'admin_hospital' o 'jefe_vertical'
     $action = $_GET['action'] ?? ($_POST['action'] ?? 'list');
 
-    // 🛡️ CONTROL DE PERMISOS
+    // 🛡️ 3. CONTROL DE PERMISOS
     // Solo Admin Hospital puede crear, actualizar o eliminar
     if (in_array($action, ['create', 'update', 'delete']) && $rolUsuario !== 'admin_hospital') {
         http_response_code(403);
@@ -84,11 +91,11 @@ try {
             $id = $_GET['id'] ?? null;
             if (!$id) throw new Exception("ID requerido.");
             
-            // Verificar si hay usuarios vinculados antes de borrar (opcional, buena práctica)
+            // Verificar si hay usuarios vinculados antes de borrar
             $checkUser = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE id_vertical = ?");
             $checkUser->execute([$id]);
             if ($checkUser->fetchColumn() > 0) {
-                 throw new Exception("No se puede eliminar esta vertical porque tiene usuarios (Jefes) asignados. Desasigne los usuarios primero.");
+                 throw new Exception("No se puede eliminar esta vertical porque tiene usuarios asignados.");
             }
 
             $stmt = $pdo->prepare("DELETE FROM verticales WHERE id_vertical=?");
