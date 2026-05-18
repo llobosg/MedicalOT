@@ -9,12 +9,12 @@ try {
     $projectRoot = dirname($docRoot);
     
     // Buscar config.php en includes/ o raíz
-    $configPath = file_exists("$projectRoot/includes/config.php") 
-                ? "$projectRoot/includes/config.php" 
-                : (file_exists("$docRoot/includes/config.php") ? "$docRoot/includes/config.php" : null);
+    $configPath = file_exists("$projectRoot/config.php") 
+                ? "$projectRoot/config.php" 
+                : (file_exists("$docRoot/config.php") ? "$docRoot/config.php" : null);
                 
     if (!$configPath) {
-        throw new Exception("includes/config.php no encontrado. Verifica estructura.");
+        throw new Exception("/config.php no encontrado. Verifica estructura.");
     }
     
     require_once $configPath;
