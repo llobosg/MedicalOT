@@ -38,19 +38,19 @@ try {
     // Obtener rol del usuario (ajustar clave según tu login actual)
     // En tu login_unificado.php guardabas $_SESSION['rol'] o similar.
     // Verifica qué clave usas. Asumiremos 'rol' o 'recinto_rol'.
-    $rolUsuario = $_SESSION['rol'] 
-           ?? $_SESSION['recinto_rol'] 
-           ?? $_SESSION['user_role'] 
-           ?? $_SESSION['role_name'] 
-           ?? '';
+    // Obtener el rol desde la clave CORRECTA: user_role
+    $rolUsuario = $_SESSION['user_role'] ?? '';
+    
+    // Normalizar y validar roles permitidos
+    // Aceptamos: 'admin', 'admin_hospital', 'admin_hosp'
+    $rolesAdmin = ['admin', 'admin_hospital', 'admin_hosp'];
+    $isAdmin = in_array($rolUsuario, $rolesAdmin);
 
     // Determinar acción
     $action = $_GET['action'] ?? ($_POST['action'] ?? 'list');
 
-    // 4. CONTROL DE PERMISOS POR ROL
-    // Solo Admin Hospital puede modificar. Los demás solo leen.
-    // Ajusta 'admin_hospital' o 'admin' según cómo guardes el rol en sesión.
-    $isAdmin = ($rolUsuario === 'admin_hospital' || $rolUsuario === 'admin');
+  // Debug log en Railway para verificar qué rol llegó
+    error_log("🔍 API Verticales - Rol detectado: " . $rolUsuario . " | Es Admin: " . ($isAdmin ? 'SI' : 'NO'));
 
     if (in_array($action, ['create', 'update', 'delete']) && !$isAdmin) {
         http_response_code(403);

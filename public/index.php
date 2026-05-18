@@ -487,22 +487,18 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             <strong>🔍 Debug Sesión:</strong><br>
             <ul style="margin:0; padding-left:20px;">
                 <?php 
-                    // Forzar inicio de sesión si no existe
                     if (session_status() === PHP_SESSION_NONE) session_start();
                     
-                    $rolRecinto = $_SESSION['recinto_rol'] ?? 'NO DEFINIDO';
-                    $rolGeneral = $_SESSION['rol'] ?? 'NO DEFINIDO';
-                    $userId = $_SESSION['user_id'] ?? 'NO DEFINIDO';
+                    // Leer la clave REAL que usa tu login
+                    $rolActual = $_SESSION['user_role'] ?? 'NO DEFINIDO';
                     
-                    // Lógica de permisos flexible
-                    $esAdmin = ($rolRecinto === 'admin' || $rolRecinto === 'admin_hospital' || 
-                                $rolGeneral === 'admin' || $rolGeneral === 'admin_hospital');
+                    // Validar si es admin según la nueva lógica
+                    $esAdmin = in_array($rolActual, ['admin', 'admin_hospital', 'admin_hosp']);
                 ?>
-                <li>User ID: <?= htmlspecialchars($userId) ?></li>
-                <li>Sesión recinto_rol: <?= htmlspecialchars($rolRecinto) ?></li>
-                <li>Sesión rol (general): <?= htmlspecialchars($rolGeneral) ?></li>
+                <li>User ID: <?= htmlspecialchars($_SESSION['user_id'] ?? 'NO DEFINIDO') ?></li>
+                <li>Sesión user_role (Real): <?= htmlspecialchars($rolActual) ?></li>
                 <li>¿Es Admin?: <?= $esAdmin ? 'SÍ ✅' : 'NO ❌' ?></li>
-                <li>Todas las keys de sesión: <?= implode(', ', array_keys($_SESSION)) ?></li>
+                <li>Todas las keys: <?= implode(', ', array_keys($_SESSION)) ?></li>
             </ul>
         </div>
         <!-- FIN DEBUG -->
