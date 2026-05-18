@@ -482,27 +482,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             $esAdmin = ($rolActual === 'admin_hospital' || $rolActual === 'admin');
         ?>
 
-        <!-- DEBUG VERTICALES -->
-        <div style="background:#fff3cd; padding:10px; border:1px solid #ffeeba; color:#856404; margin-bottom:1rem;">
-            <strong>🔍 Debug Sesión:</strong><br>
-            <ul style="margin:0; padding-left:20px;">
-                <?php 
-                    if (session_status() === PHP_SESSION_NONE) session_start();
-                    
-                    // Leer la clave REAL que usa tu login
-                    $rolActual = $_SESSION['user_role'] ?? 'NO DEFINIDO';
-                    
-                    // Validar si es admin según la nueva lógica
-                    $esAdmin = in_array($rolActual, ['admin', 'admin_hospital', 'admin_hosp']);
-                ?>
-                <li>User ID: <?= htmlspecialchars($_SESSION['user_id'] ?? 'NO DEFINIDO') ?></li>
-                <li>Sesión user_role (Real): <?= htmlspecialchars($rolActual) ?></li>
-                <li>¿Es Admin?: <?= $esAdmin ? 'SÍ ✅' : 'NO ❌' ?></li>
-                <li>Todas las keys: <?= implode(', ', array_keys($_SESSION)) ?></li>
-            </ul>
-        </div>
-        <!-- FIN DEBUG -->
-
         <section id="verticales" class="module-section">
             <div style="max-width:900px; margin:0 auto; height:100%; display:flex; flex-direction:column;">
                 

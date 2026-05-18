@@ -75,8 +75,6 @@ try {
             echo json_encode(['success' => true, 'verticales' => $verticales]);
             
         } elseif ($action === 'create') {
-            if (!$isAdmin) throw new Exception("Permiso denegado.");
-            
             $nombre = trim($_POST['nombre_vertical'] ?? '');
             $responsable = trim($_POST['nombre_responsable'] ?? '');
             $esp = trim($_POST['cod_especialidad_principal'] ?? '');
@@ -84,13 +82,23 @@ try {
             
             if (empty($nombre)) throw new Exception("El nombre de la vertical es obligatorio.");
 
-            $stmt = $pdo->prepare("
-                INSERT INTO verticales (nombre_vertical, nombre_responsable, contacto_email, cod_especialidad_principal, activo) 
-                VALUES (?, ?, ?, ?, TRUE)
-            ");
-            $stmt->execute([$nombre, $responsable, $email, $esp]);
-            
-            echo json_encode(['success' => true, 'message' => 'Vertical creada', 'id' => $pdo->lastInsertId()]);
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO verticales (nombre_vertical, nombre_responsable, contacto_email, cod_especialidad_principal, activo) 
+                    VALUES (?, ?, ?, ?, TRUE)
+                ");
+                $stmt->execute([$nombre, $responsable, $email, $esp]);
+                
+                echo json_encode(['success' => true, 'message' => 'Vertical creada correctamente', 'id' => $pdo->lastInsertId()]);
+                
+            } catch (\PDOException $e) {
+                // Detectar si es error de duplicado (Código 23000 o mensaje con "Duplicate entry")
+                if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                    throw new Exception("Ya existe una Vertical con el nombre '{$nombre}'. Por favor, utiliza otro nombre único.");
+                } else {
+                    throw $e; // Re-lanzar otros errores de BD
+                }
+            }
             
         } elseif ($action === 'update') {
             if (!$isAdmin) throw new Exception("Permiso denegado.");
