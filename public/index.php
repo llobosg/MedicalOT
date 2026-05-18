@@ -753,23 +753,104 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         let currentFilters = { page: 1, search: '', esp: '', estado: '', mes: '' };
         let searchTimeout, selectedOTData = null, currentPage = 1, totalPages = 1;
 
-        function showModule(id) {
-            // Ocultar todas las secciones
-            document.querySelectorAll('.module-section').forEach(s => s.classList.remove('active'));
-            
-            // Mostrar la seleccionada
-            const target = document.getElementById(id);
-            if(target) {
-                target.classList.add('active');
+        // === FUNCIÓN DE NAVEGACIÓN Y CARGA DE MÓDULOS ===
+        function showModule(moduleId) {
+            // 1. Ocultar todas las secciones
+            document.querySelectorAll('.module-section').forEach(section => {
+                section.classList.remove('active');
+                section.style.display = 'none'; // Asegurar ocultado total
+            });
+
+            // 2. Mostrar la sección seleccionada
+            const targetSection = document.getElementById(moduleId);
+            if (targetSection) {
+                targetSection.classList.add('active');
+                targetSection.style.display = 'flex'; // O 'block' según tu CSS
                 
-                // CARGA DINÁMICA SEGÚN EL MÓDULO
-                if(id === 'ots') loadOTs();
-                if(id === 'verticales') cargarVerticales(); // <--- AGREGAR ESTA LÍNEA
-                if(id === 'tracking') {
-                    // Resetear tracking si se entra directo
-                    document.getElementById('trackingContent').style.display = 'none';
-                    document.getElementById('trackingSearch').value = '';
+                // 3. CARGAR DATOS ESPECÍFICOS SEGÚN EL MÓDULO
+                console.log(`🔄 Activando módulo: ${moduleId}`);
+                
+                if (moduleId === 'verticales') {
+                    console.log("📡 Llamando a cargarVerticales()...");
+                    cargarVerticales(); // <--- ESTO ES LO QUE FALTABA DISPARAR
                 }
+                
+                if (moduleId === 'ots') {
+                    loadOTs();
+                }
+                
+                if (moduleId === 'tracking') {
+                    // Resetear tracking si es necesario
+                    document.getElementById('trackingContent').style.display = 'none';
+                }
+            } else {
+                console.error(`❌ Sección #${moduleId} no encontrada en el DOM`);
+            }
+        }
+
+        // === FUNCION PARA CARGAR VERTICALES (Ya debería existir, pero asegurémonos) ===
+        async function cargarVerticales() {
+            const tbody = document.getElementById('tablaVerticalesBody');
+            if (!tbody) {
+                console.warn("⚠️ Elemento #tablaVerticalesBody no encontrado");
+                return;
+            }
+
+            console.log("🔄 Iniciando carga de verticales desde API...");
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">⏳ Cargando...</td></tr>';
+
+            try {
+                // Ajusta la ruta si tu API está en otra carpeta relativa
+                const response = await fetch('/api/verticales.php?action=list', {
+                    credentials: 'same-origin' // Importante para enviar cookies de sesión
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("✅ Datos recibidos:", data);
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+
+                if (!Array.isArray(data.verticales)) {
+                    throw new Error('Formato de respuesta inválido');
+                }
+
+                if (data.verticales.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">No hay verticales registradas.</td></tr>';
+                    return;
+                }
+
+                // Determinar permisos (ajusta según cómo guardes el rol en sesión)
+                const isAdmin = <?= json_encode(isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin_hospital') ?>;
+
+                tbody.innerHTML = data.verticales.map(v => `
+                    <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                        <td style="padding:1rem; font-weight:600; color:#1e293b;">${v.nombre_vertical}</td>
+                        <td style="padding:1rem; color:#475569;">${v.nombre_responsable || '<span style="color:#94a3b8;">Sin asignar</span>'}</td>
+                        <td style="padding:1rem;"><span class="badge b-pen">${v.cod_especialidad_principal || '-'}</span></td>
+                        <td style="padding:1rem; color:#64748b; font-size:0.9rem;">${v.contacto_email || '-'}</td>
+                        <td style="padding:1rem; text-align:center;">
+                            <span style="background:${v.activo ? '#dcfce7' : '#fee2e2'}; color:${v.activo ? '#166534' : '#991b1b'}; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:600;">
+                                ${v.activo ? 'Activa' : 'Inactiva'}
+                            </span>
+                        </td>
+                        ${isAdmin ? `
+                        <td style="padding:1rem; text-align:center;">
+                            <button onclick="editarVertical(${JSON.stringify(v).replace(/"/g, '&quot;')})" style="cursor:pointer; margin-right:5px;">✏️ Editar</button>
+                            <button onclick="eliminarVertical(${v.id_vertical}, '${v.nombre_vertical}')" style="cursor:pointer; color:#ef4444;">🗑️ Eliminar</button>
+                        </td>
+                        ` : ''}
+                    </tr>
+                `).join('');
+
+            } catch (err) {
+                console.error("❌ Error cargando verticales:", err);
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}<br><small>Revisa consola (F12)</small></td></tr>`;
             }
         }
 
@@ -1043,15 +1124,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         if(document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { if(document.getElementById('ots').classList.contains('active')) loadOTs(); }); }
         else { if(document.getElementById('ots').classList.contains('active')) loadOTs(); }
 
-        // NAVEGACIÓN A NUEVAS FICHAS
-function showModule(id) {
-    document.querySelectorAll('.module-section').forEach(s => s.classList.remove('active'));
-    const target = document.getElementById(id);
-    if(target) target.classList.add('active');
-    
-    // Carga específica si es necesario
-    if(id === 'ots') loadOTs();
-}
 
 // FUNCIONES DEL MOCKUP PLANIFICACIÓN
 function openPlanningModal(grupo, dia) {
@@ -1403,60 +1475,6 @@ function getIncTypeName(type) {
     return types[type] || 'INCIDENCIA';
 }
 // === GESTIÓN DE VERTICALES ===
-
-// Cargar lista de verticales al entrar al módulo
-async function cargarVerticales() {
-    const tbody = document.getElementById('tablaVerticalesBody');
-    if (!tbody) return;
-
-     console.log("🔄 Iniciando carga de verticales..."); // Log de debug
-    
-    // Mostrar estado de carga
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">⏳ Cargando verticales...</td></tr>';
-
-    try {
-        const res = await fetch('/api/verticales.php?action=list');
-        console.log("📡 Respuesta HTTP:", res.status); // Log de debug
-
-        const data = await res.json();
-        console.log("📦 Datos recibidos:", data); // Log de debug
-        
-        if (!data.success) throw new Error(data.error);
-        
-        if (data.verticales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">No hay verticales registradas.</td></tr>';
-            return;
-        }
-
-        // Determinar si el usuario es admin para renderizar botones de acción
-        const isAdmin = <?= json_encode(isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin_hospital') ?>;
-
-        tbody.innerHTML = data.verticales.map(v => `
-            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                <td style="padding:1rem; font-weight:600; color:#1e293b;">${v.nombre_vertical}</td>
-                <td style="padding:1rem; color:#475569;">${v.nombre_responsable || '<span style="color:#94a3b8;">Sin asignar</span>'}</td>
-                <td style="padding:1rem;"><span class="badge b-pen">${v.cod_especialidad_principal || '-'}</span></td>
-                <td style="padding:1rem; color:#64748b; font-size:0.9rem;">${v.contacto_email || '-'}</td>
-                <td style="padding:1rem; text-align:center;">
-                    <span style="background:${v.activo ? '#dcfce7' : '#fee2e2'}; color:${v.activo ? '#166534' : '#991b1b'}; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:600;">
-                        ${v.activo ? 'Activa' : 'Inactiva'}
-                    </span>
-                </td>
-                ${isAdmin ? `
-                <td style="padding:1rem; text-align:center;">
-                    <button onclick="editarVertical(${JSON.stringify(v).replace(/"/g, '&quot;')})" style="background:#eff6ff; color:#2563eb; border:none; padding:0.4rem 0.8rem; border-radius:0.5rem; cursor:pointer; font-size:0.85rem; margin-right:0.5rem; transition:background 0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">✏️ Editar</button>
-                    <button onclick="eliminarVertical(${v.id_vertical}, '${v.nombre_vertical}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.4rem 0.8rem; border-radius:0.5rem; cursor:pointer; font-size:0.85rem; transition:background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">🗑️ Eliminar</button>
-                </td>
-                ` : ''}
-            </tr>
-        `).join('');
-
-    } catch (err) {
-        console.error(err);
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error al cargar: ${err.message}</td></tr>`;
-    }
-}
-
 // Abrir Modal para Crear
 function abrirModalVerticales() {
     document.getElementById('formVerticales').reset();
