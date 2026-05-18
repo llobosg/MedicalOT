@@ -1128,30 +1128,6 @@ function createTimelineItem(date, title, desc, statusClass) {
 }
 
 // === GESTIÓN DE INCIDENCIAS ===
-
-// Cargar incidencias (Simulado con LocalStorage por ahora)
-function loadIncidences(otCode) {
-    const list = document.getElementById('incidencesList');
-    const allIncidences = JSON.parse(localStorage.getItem('ot_incidences') || '{}');
-    const incidents = allIncidences[otCode] || [];
-
-    if (incidents.length === 0) {
-        list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">Sin incidencias registradas para esta OT</div>';
-        return;
-    }
-
-    list.innerHTML = incidents.map(inc => `
-        <div class="inc-card">
-            <div class="inc-header">
-                <span class="inc-type">${getIncTypeName(inc.type)}</span>
-                <span class="inc-date">${inc.date}</span>
-            </div>
-            <div class="inc-body">${inc.desc}</div>
-            ${inc.evidence ? `<div class="inc-evidence">📎 Ver evidencia</div>` : ''}
-        </div>
-    `).join('');
-}
-
 function getIncTypeName(type) {
     const types = {
         'acceso': '🚫 ACCESO DENEGADO',

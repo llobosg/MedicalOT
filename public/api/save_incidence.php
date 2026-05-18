@@ -104,7 +104,7 @@ try {
     // Log detallado para debugging en Railway
     error_log("❌ API Save Incidencia Fatal: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
     
-    http_response_code($e->getCode() ?: 500);
+    http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     exit;
 }
