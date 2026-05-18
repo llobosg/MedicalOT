@@ -1243,6 +1243,7 @@ async function loadIncidences(otCode) {
         // public/api/get_incidences.php (ver Paso Extra abajo)
         
         const res = await fetch(`/api/get_incidences.php?ot=${encodeURIComponent(otCode)}`);
+        const data = await res.json();
 
         if (!data.success || !data.incidencias.length) {
             list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">Sin incidencias registradas</div>';
