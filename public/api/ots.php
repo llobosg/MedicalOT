@@ -91,27 +91,13 @@ try {
 
     // ✅ CONSULTA DE DATOS PRINCIPAL
     // Campos actualizados: quitamos prov.*, agregamos v.*
-    $fields = "
-        o.codigo_ot, 
-        o.fecha_programada, 
-        o.turno, 
-        o.dia_semana,
-        p.nombre as nombre_protocolo, 
-        p.familia, 
-        p.periodicidad,
-        e.nombre as nombre_equipo, 
-        e.serie,
-        a.nombre as nombre_area, 
-        a.nombre as area_ubicacion,
-        esp.nombre as nombre_especialidad, 
-        esp.codigo as cod_especialidad,
-        v.nombre_vertical as nombre_vertical,
-        v.nombre_responsable as responsable_vertical,
-        o.hh_programadas, 
-        o.hh_reales, 
-        o.estado, 
-        o.observaciones
-    ";
+    $fields = "o.codigo_ot, o.fecha_programada, o.turno, o.dia_semana,
+           p.nombre as nombre_protocolo, p.familia, p.periodicidad,
+           e.nombre as nombre_equipo, e.serie,
+           a.nombre as nombre_area, a.nombre as area_ubicacion,
+           esp.nombre as nombre_especialidad, esp.codigo as cod_especialidad,
+           v.nombre_vertical as nombre_vertical, v.nombre_responsable as responsable_vertical,
+           o.hh_programadas, o.hh_reales, o.estado, o.observaciones";
 
     $sql = "SELECT $fields FROM ordenes_trabajo o
             LEFT JOIN protocolos p ON o.id_protocolo = p.id
