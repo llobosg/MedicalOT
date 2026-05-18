@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_role'] = $validUsers[$username]['role'];
             $_SESSION['role_name'] = $validUsers[$username]['name'];
             $_SESSION['login_time'] = time();
+            $_SESSION['rol'] = $_SESSION['user_role'];
             
             header('Location: /index.php');
             exit;

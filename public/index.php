@@ -519,12 +519,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     
                     <!-- Botón Nueva Vertical: Visible SOLO si $esAdmin es TRUE -->
                     <?php 
-                        $rolUsuario = $_SESSION['recinto_rol'] 
-                                ?? $_SESSION['rol'] 
-                                ?? $_SESSION['user_role'] 
-                                ?? $_SESSION['role_name'] 
-                                ?? '';
-                                
+                        $rolUsuario = $_SESSION['user_role'] ?? $_SESSION['role_name'] ?? '';
                         $esAdmin = in_array($rolUsuario, ['admin', 'admin_hospital']);
                     ?>
 
