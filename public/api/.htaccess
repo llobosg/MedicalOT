@@ -1,0 +1,12 @@
+# public/api/.htaccess
+
+# Permitir ejecución de PHP en esta carpeta
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+# Opcional: Forzar cabecera JSON para todas las respuestas API
+Header set Content-Type "application/json; charset=utf-8"
+
+# Prevenir listado de directorios
+Options -Indexes

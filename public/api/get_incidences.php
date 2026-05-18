@@ -1,34 +1,33 @@
 <?php
 // public/api/get_incidences.php
-header('Content-Type: application/json; charset=utf-8');
+
+// 1. Limpiar cualquier output previo
 while (ob_get_level()) ob_end_clean();
 
+// 2. Forzar cabeceras
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *'); // Solo para debug, quitar en prod si no es necesario
+
 try {
-    // 🔐 1. PROTECCIÓN DE SESIÓN (Evita el 403/Acceso Denegado)
+    // 3. Iniciar sesión SIEMPRE primero
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    
-    // Verificar si el usuario está logueado
+
+    // 4. Validación de sesión estricta pero con JSON claro
     if (!isset($_SESSION['user_id'])) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Acceso denegado. Sesión expirada o inválida.']);
+        http_response_code(401); // Cambiado a 401 Unauthorized en lugar de 403
+        echo json_encode(['success' => false, 'error' => 'Sesión expirada o no iniciada']);
         exit;
     }
 
-    // 🔍 2. RESOLUCIÓN DE RUTAS SEGURA
-    $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
-    $projectRoot = dirname($docRoot);
+    // 5. Cargar config (Usando la ruta correcta que ya validamos)
+    $projectRoot = dirname(__DIR__, 2); // Sube 2 niveles desde public/api -> raiz proyecto
+    $configPath = $projectRoot . '/includes/config.php';
     
-    // Buscar config.php en la raíz del proyecto (según tu corrección anterior)
-    $configPath = file_exists("$projectRoot/config.php") 
-                ? "$projectRoot/config.php" 
-                : (file_exists("$docRoot/config.php") ? "$docRoot/config.php" : null);
-                
-    if (!$configPath) {
-        throw new Exception("config.php no encontrado.");
+    if (!file_exists($configPath)) {
+        throw new Exception("Config no encontrado en: {$configPath}");
     }
-    
     require_once $configPath;
 
     // Obtener parámetro OT
