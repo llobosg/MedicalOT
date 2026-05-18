@@ -474,6 +474,18 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         </section>
 
         <!-- MÓDULO 7: VERTICALES -->
+        <!-- DEBUG VERTICALES -->
+        <div style="background:#fff3cd; padding:10px; border:1px solid #ffeeba; color:#856404; margin-bottom:1rem;">
+            <strong>🔍 Debug Verticales:</strong><br>
+            <ul style="margin:0; padding-left:20px;">
+                <li>User ID: <?= htmlspecialchars($_SESSION['user_id'] ?? 'NO DEFINIDO') ?></li>
+                <li>Session Rol: <?= htmlspecialchars($_SESSION['rol'] ?? 'NO DEFINIDO') ?></li>
+                <li>Is Admin Hospital?: <?= ($_SESSION['rol'] === 'admin_hospital' || $_SESSION['rol'] === 'admin') ? 'SÍ ✅' : 'NO ❌' ?></li>
+                <li>Variable $esAdmin (PHP): <?= ($esAdmin ?? false) ? 'TRUE ✅' : 'FALSE ❌' ?></li>
+            </ul>
+        </div>
+        <!-- FIN DEBUG -->
+
         <section id="verticales" class="module-section">
             <div style="max-width:900px; margin:0 auto; height:100%; display:flex; flex-direction:column;">
                 
