@@ -519,12 +519,13 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     
                     <!-- Botón Nueva Vertical: Visible SOLO si $esAdmin es TRUE -->
                     <?php 
-                        // Definir permisos flexibles (acepta ambos nombres de sesión)
-                        $rolRecinto = $_SESSION['recinto_rol'] ?? '';
-                        $rolGeneral = $_SESSION['rol'] ?? '';
-                        
-                        $esAdmin = ($rolRecinto === 'admin' || $rolRecinto === 'admin_hospital' || 
-                                    $rolGeneral === 'admin' || $rolGeneral === 'admin_hospital');
+                        $rolUsuario = $_SESSION['recinto_rol'] 
+                                ?? $_SESSION['rol'] 
+                                ?? $_SESSION['user_role'] 
+                                ?? $_SESSION['role_name'] 
+                                ?? '';
+                                
+                        $esAdmin = in_array($rolUsuario, ['admin', 'admin_hospital']);
                     ?>
 
                     <!-- Botón Nueva Vertical -->
