@@ -1162,32 +1162,6 @@ function getIncTypeName(type) {
     return types[type] || 'INCIDENCIA';
 }
 
-// Agregar nueva incidencia
-function addIncidence() {
-    if (!currentTrackingOT) return alert('Selecciona una OT primero');
-    
-    const type = document.getElementById('incType').value;
-    const desc = document.getElementById('incDesc').value.trim();
-    
-    if (!desc) return alert('Escribe un detalle para la incidencia');
-
-    const now = new Date().toLocaleString('es-CL');
-    const newInc = { type, desc, date: now, evidence: false };
-
-    // Guardar en LocalStorage (Simulación de DB)
-    const allIncidences = JSON.parse(localStorage.getItem('ot_incidences') || '{}');
-    if (!allIncidences[currentTrackingOT.codigo_ot]) {
-        allIncidences[currentTrackingOT.codigo_ot] = [];
-    }
-    allIncidences[currentTrackingOT.codigo_ot].unshift(newInc); // Agregar al principio
-    localStorage.setItem('ot_incidences', JSON.stringify(allIncidences));
-
-    // Limpiar form y recargar
-    document.getElementById('incDesc').value = '';
-    loadIncidences(currentTrackingOT.codigo_ot);
-    Toast.success('Incidencia registrada correctamente');
-}
-
 // Variable temporal para manejar el archivo seleccionado antes de enviar
 let currentEvidenceFile = null;
 
@@ -1236,9 +1210,19 @@ async function addIncidence() {
     try {
         const response = await fetch('/api/save_incidence.php', {
             method: 'POST',
-            body: formData
-            // NOTA: No poner headers Content-Type aquí, el navegador lo pone automáticamente con boundary
+            body: formData,
+            credentials: 'include'
         });
+
+        const text = await response.text();
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error("Respuesta inválida:", text);
+            throw new Error("El servidor no devolvió JSON válido");
+        }
 
         const data = await response.json();
 
