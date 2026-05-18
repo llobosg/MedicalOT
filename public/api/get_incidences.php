@@ -28,6 +28,9 @@ try {
     if (!file_exists($configPath)) {
         throw new Exception("Config no encontrado en: {$configPath}");
     }
+
+    // antes de require
+    define('APP_ENTRY_POINT', true);
     require_once $configPath;
 
     // Obtener parámetro OT

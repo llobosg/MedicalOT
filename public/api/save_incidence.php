@@ -30,7 +30,9 @@ try {
         throw new Exception("config.php no encontrado en {$projectRoot} o {$docRoot}");
     }
     
+    define('APP_ENTRY_POINT', true);
     require_once $configPath;
+
 
     // Validar método POST
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

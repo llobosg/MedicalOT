@@ -1215,16 +1215,14 @@ async function addIncidence() {
         });
 
         const text = await response.text();
-        const data = await response.json();
 
+        let data;
         try {
             data = JSON.parse(text);
         } catch (e) {
             console.error("Respuesta inválida:", text);
-            throw new Error("El servidor no devolvió JSON válido");
+            throw new Error("No es JSON");
         }
-
-     
 
         if (data.success) {
             Toast.success('Incidencia registrada correctamente', 'Éxito');
@@ -1269,7 +1267,6 @@ async function loadIncidences(otCode) {
         // public/api/get_incidences.php (ver Paso Extra abajo)
         
         const res = await fetch(`/api/get_incidences.php?ot=${encodeURIComponent(otCode)}`);
-        const data = await res.json();
 
         if (!data.success || !data.incidencias.length) {
             list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">Sin incidencias registradas</div>';
