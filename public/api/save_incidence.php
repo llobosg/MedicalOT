@@ -12,12 +12,12 @@ try {
                   ? "$projectRoot/vendor/autoload.php" 
                   : (file_exists("$docRoot/vendor/autoload.php") ? "$docRoot/vendor/autoload.php" : null);
                   
-    $configPath = file_exists("$projectRoot/includes/config.php") 
-                ? "$projectRoot/includes/config.php" 
-                : (file_exists("$docRoot/includes/config.php") ? "$docRoot/includes/config.php" : null);
+    $configPath = file_exists("$projectRoot/config.php") 
+                ? "$projectRoot/config.php" 
+                : (file_exists("$docRoot/config.php") ? "$docRoot/config.php" : null);
                 
     if (!$autoloadPath || !$configPath) {
-        throw new Exception("Faltan archivos críticos (vendor/autoload.php o includes/config.php).");
+        throw new Exception("Faltan archivos críticos (vendor/autoload.php o /config.php).");
     }
     
     require_once $autoloadPath;
