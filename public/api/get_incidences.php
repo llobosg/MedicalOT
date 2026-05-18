@@ -23,7 +23,7 @@ try {
 
     // 5. Cargar config (Usando la ruta correcta que ya validamos)
     $projectRoot = dirname(__DIR__, 2); // Sube 2 niveles desde public/api -> raiz proyecto
-    $configPath = $projectRoot . '/includes/config.php';
+    $configPath = $projectRoot . '/config.php';
     
     if (!file_exists($configPath)) {
         throw new Exception("Config no encontrado en: {$configPath}");
