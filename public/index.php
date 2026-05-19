@@ -1924,8 +1924,9 @@ async function loadSelects() {
 
         const espSelect = document.getElementById('res_especialidad');
         if (espSelect) {
-            espSelect.innerHTML = '<option value="">Seleccionar...</option>' + 
-                espData.map(e => `<option value="${e.id}" style="color:#000; background:#fff;">${e.nombre}</option>`).join('');
+            // Forzamos estilo inline en cada option para evitar conflictos CSS globales
+            espSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Seleccionar...</option>' + 
+                espData.map(e => `<option value="${e.id}" style="background:#ffffff; color:#000000; padding:8px;">${e.nombre}</option>`).join('');
         }
 
         // 2. Cargar Verticales
@@ -1941,15 +1942,15 @@ async function loadSelects() {
         // Llenar select de Vertical para Técnico
         const vertTecSelect = document.getElementById('res_vertical_tecnico');
         if (vertTecSelect) {
-            vertTecSelect.innerHTML = '<option value="">Seleccionar Vertical...</option>' + 
-                vertData.map(v => `<option value="${v.id_vertical}" style="color:#000; background:#fff;">${v.nombre_vertical}</option>`).join('');
+            vertTecSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Seleccionar Vertical...</option>' + 
+                vertData.map(v => `<option value="${v.id_vertical}" style="background:#ffffff; color:#000000; padding:8px;">${v.nombre_vertical}</option>`).join('');
         }
 
         // Llenar select de Vertical para Grupo
         const vertGrpSelect = document.getElementById('res_vertical_grupo');
         if (vertGrpSelect) {
-            vertGrpSelect.innerHTML = '<option value="">Ninguna</option>' + 
-                vertData.map(v => `<option value="${v.id_vertical}" style="color:#000; background:#fff;">${v.nombre_vertical}</option>`).join('');
+            vertGrpSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Ninguna</option>' + 
+                vertData.map(v => `<option value="${v.id_vertical}" style="background:#ffffff; color:#000000; padding:8px;">${v.nombre_vertical}</option>`).join('');
         }
 
         // 3. Cargar Tipos de Turno
@@ -1964,8 +1965,8 @@ async function loadSelects() {
 
         const turnoSelect = document.getElementById('res_turno');
         if (turnoSelect) {
-            turnoSelect.innerHTML = '<option value="">Sin Turno Asignado</option>' + 
-                turnoData.map(t => `<option value="${t.id}" style="color:#000; background:#fff;">${t.codigo} - ${t.nombre}</option>`).join('');
+            turnoSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Sin Turno Asignado</option>' + 
+                turnoData.map(t => `<option value="${t.id}" style="background:#ffffff; color:#000000; padding:8px;">${t.codigo} - ${t.nombre}</option>`).join('');
         }
 
     } catch (err) {
