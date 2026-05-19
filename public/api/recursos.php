@@ -7,6 +7,9 @@ try {
     // 🔐 Seguridad y Rutas
     if (session_status() === PHP_SESSION_NONE) session_start();
     
+    // 🔐 Configuración de Seguridad y Rutas
+    define('APP_ENTRY_POINT', true);
+    
     $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
     $projectRoot = dirname($docRoot);
     $configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
