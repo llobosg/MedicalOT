@@ -4,15 +4,17 @@
   --user=root \
   --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
   --database=railway \
-  -e "INSERT INTO verticales (nombre_vertical, nombre_responsable, contacto_email, cod_especialidad_principal, activo) VALUES
-('Climatización', 'Hector Soto', 'hector.soto@hospital.cl', 'M-CLIMATIZACION FRIGORISTA', TRUE),
-('Electricidad', 'Reucar Obispo', 'reucar.obispo@hospital.cl', 'M-ELECTRICIDAD', TRUE),
-('Electrónica', 'Diego Muñoz', 'diego.munoz@hospital.cl', 'M-ELECTRONICA', TRUE),
-('Gasfitería', 'Juan Pérez', 'juan.perez@hospital.cl', 'M-GASFITERIA', TRUE),
-('Infraestructura', 'Victor Duarte', 'victor.duarte@hospital.cl', 'M-POLIVALENTE', TRUE),
-('Redes y Telecomunicaciones', 'Mack Trivik', 'mack.trivik@hospital.cl', 'M-ELECTRONICA', TRUE),
-('Jardinería', 'Carlos Ruiz', 'carlos.ruiz@hospital.cl', 'M-JARDINERIA', TRUE),
-('Ascensores y Transporte', 'Ana López', 'ana.lopez@hospital.cl', 'M-POLIVALENTE', TRUE);"
+  -e "CREATE TABLE recursos_turnos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_recurso INT NOT NULL,
+    tipo_recurso ENUM('tecnico', 'grupo') NOT NULL,
+    id_tipo_turno INT NOT NULL,
+    fecha_inicio_ciclo DATE NOT NULL,
+    notas VARCHAR(255),
+    
+    FOREIGN KEY (id_tipo_turno) REFERENCES tipos_turno(id),
+    INDEX idx_recurso (id_recurso, tipo_recurso)
+);"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
@@ -21,5 +23,5 @@ mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railw
 
   # Commit y push
 git add .
-git commit -m "fix: manejar error de duplicado en creación de verticales con mensaje amigable"
+git commit -m "fix: eliminar referencia a tabla proveedores en Carga SIC"
 git push origin main
