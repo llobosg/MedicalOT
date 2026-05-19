@@ -593,7 +593,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <!-- CONTENEDOR TÉCNICOS -->
                 <div id="view-tecnicos">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <p style="color:#64748b;">Gestión de técnicos y sus turnos asignados.</p>
+                        <p style="color:#64748b;">Gestión de técnicos y sus turnos asignados...</p>
                         <button onclick="openModal('tecnico')" style="background:var(--primary); color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">➕ Nuevo Técnico</button>
                     </div>
                     <table class="card-table">
@@ -1796,26 +1796,58 @@ function closeModal() {
 }
 
 async function loadSelects() {
-    // Cargar Especialidades
-    const espRes = await fetch('/api/especialidades.php?action=list'); // Asumiendo que tienes esta API
-    const espData = await espRes.json();
-    const espSelect = document.getElementById('res_especialidad');
-    espSelect.innerHTML = '<option value="">Seleccionar...</option>' + 
-        (espData.data || []).map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+    try {
+        // 1. Cargar Especialidades
+        let espData = [];
+        try {
+            const espRes = await fetch('/api/especialidades.php?action=list');
+            if (espRes.ok) {
+                const data = await espRes.json();
+                if (data.success) espData = data.data || [];
+            }
+        } catch (e) { console.warn("Error cargando especialidades", e); }
 
-    // Cargar Verticales
-    const vertRes = await fetch('/api/verticales.php?action=list');
-    const vertData = await vertRes.json();
-    const vertSelect = document.getElementById('res_vertical');
-    vertSelect.innerHTML = '<option value="">Ninguna</option>' + 
-        (vertData.verticales || []).map(v => `<option value="${v.id_vertical}">${v.nombre_vertical}</option>`).join('');
+        const espSelect = document.getElementById('res_especialidad');
+        if (espSelect) {
+            espSelect.innerHTML = '<option value="">Seleccionar...</option>' + 
+                espData.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+        }
 
-    // Cargar Tipos de Turno
-    const turnoRes = await fetch('/api/recursos.php?action=list_tipos_turno');
-    const turnoData = await turnoRes.json();
-    const turnoSelect = document.getElementById('res_turno');
-    turnoSelect.innerHTML = '<option value="">Sin Turno Asignado</option>' + 
-        (turnoData.data || []).map(t => `<option value="${t.id}">${t.codigo} - ${t.nombre}</option>`).join('');
+        // 2. Cargar Verticales
+        let vertData = [];
+        try {
+            const vertRes = await fetch('/api/verticales.php?action=list');
+            if (vertRes.ok) {
+                const data = await vertRes.json();
+                if (data.success) vertData = data.verticales || [];
+            }
+        } catch (e) { console.warn("Error cargando verticales", e); }
+
+        const vertSelect = document.getElementById('res_vertical');
+        if (vertSelect) {
+            vertSelect.innerHTML = '<option value="">Ninguna</option>' + 
+                vertData.map(v => `<option value="${v.id_vertical}">${v.nombre_vertical}</option>`).join('');
+        }
+
+        // 3. Cargar Tipos de Turno
+        let turnoData = [];
+        try {
+            const turnoRes = await fetch('/api/recursos.php?action=list_tipos_turno');
+            if (turnoRes.ok) {
+                const data = await turnoRes.json();
+                if (data.success) turnoData = data.data || [];
+            }
+        } catch (e) { console.warn("Error cargando turnos", e); }
+
+        const turnoSelect = document.getElementById('res_turno');
+        if (turnoSelect) {
+            turnoSelect.innerHTML = '<option value="">Sin Turno Asignado</option>' + 
+                turnoData.map(t => `<option value="${t.id}">${t.codigo} - ${t.nombre}</option>`).join('');
+        }
+
+    } catch (err) {
+        console.error("Error general en loadSelects:", err);
+    }
 }
 
 async function saveResource(e) {
