@@ -1925,8 +1925,8 @@ async function loadSelects() {
         const espSelect = document.getElementById('res_especialidad');
         if (espSelect) {
             // Forzamos estilo inline en cada option para evitar conflictos CSS globales
-            espSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Seleccionar...</option>' + 
-                espData.map(e => `<option value="${e.id}" style="background:#ffffff; color:#000000; padding:8px;">${e.nombre}</option>`).join('');
+            espSelect.innerHTML = '<option value="" style="background: #fff; color: #000;">Seleccionar...</option>' + 
+                espData.map(e => `<option value="${e.id}" style="background: #ffffff; color: #000000; padding:8px;">${e.nombre}</option>`).join('');
         }
 
         // 2. Cargar Verticales
@@ -1942,8 +1942,8 @@ async function loadSelects() {
         // Llenar select de Vertical para Técnico
         const vertTecSelect = document.getElementById('res_vertical_tecnico');
         if (vertTecSelect) {
-            vertTecSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Seleccionar Vertical...</option>' + 
-                vertData.map(v => `<option value="${v.id_vertical}" style="background:#ffffff; color:#000000; padding:8px;">${v.nombre_vertical}</option>`).join('');
+            vertTecSelect.innerHTML = '<option value="" style="background: #fff; color: #000;">Seleccionar Vertical...</option>' + 
+                vertData.map(v => `<option value="${v.id_vertical}" style="background: #ffffff; color: #000000; padding:8px;">${v.nombre_vertical}</option>`).join('');
         }
 
         // Llenar select de Vertical para Grupo
