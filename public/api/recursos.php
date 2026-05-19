@@ -6,7 +6,7 @@ while (ob_get_level()) ob_end_clean();
 try {
     // 🔐 Seguridad y Rutas
     if (session_status() === PHP_SESSION_NONE) session_start();
-    
+
     // 🔐 Configuración de Seguridad y Rutas
     define('APP_ENTRY_POINT', true);
     
@@ -62,19 +62,18 @@ try {
             $correo = trim($_POST['correo'] ?? '');
             $telefono = trim($_POST['telefono'] ?? '');
             $id_esp = $_POST['id_especialidad'] ?? null;
+            $id_vert = $_POST['id_vertical'] ?? null; // Nuevo campo
             $id_turno = $_POST['id_tipo_turno'] ?? null;
 
             if (empty($rut) || empty($nombre)) throw new Exception("RUT y Nombre son obligatorios.");
 
-            // Iniciar transacción
             $pdo->beginTransaction();
 
-            // 1. Insertar Técnico
-            $stmt = $pdo->prepare("INSERT INTO tecnicos (rut, nombre, correo, telefono, id_especialidad, activo) VALUES (?, ?, ?, ?, ?, TRUE)");
-            $stmt->execute([$rut, $nombre, $correo, $telefono, $id_esp]);
+            // Insertar Técnico con Vertical
+            $stmt = $pdo->prepare("INSERT INTO tecnicos (rut, nombre, correo, telefono, id_especialidad, id_vertical, activo) VALUES (?, ?, ?, ?, ?, ?, TRUE)");
+            $stmt->execute([$rut, $nombre, $correo, $telefono, $id_esp, $id_vert]);
             $id_tecnico = $pdo->lastInsertId();
 
-            // 2. Asignar Turno si se proporcionó
             if ($id_turno) {
                 $stmt = $pdo->prepare("INSERT INTO asignacion_turnos (id_tecnico, id_tipo_turno, fecha_desde) VALUES (?, ?, CURDATE())");
                 $stmt->execute([$id_tecnico, $id_turno]);
@@ -91,23 +90,20 @@ try {
             $correo = trim($_POST['correo'] ?? '');
             $telefono = trim($_POST['telefono'] ?? '');
             $id_esp = $_POST['id_especialidad'] ?? null;
+            $id_vert = $_POST['id_vertical'] ?? null; // Nuevo campo
             $id_turno = $_POST['id_tipo_turno'] ?? null;
 
             if (!$id) throw new Exception("ID requerido.");
 
             $pdo->beginTransaction();
 
-            // 1. Actualizar datos básicos
-            $stmt = $pdo->prepare("UPDATE tecnicos SET rut=?, nombre=?, correo=?, telefono=?, id_especialidad=? WHERE id=?");
-            $stmt->execute([$rut, $nombre, $correo, $telefono, $id_esp, $id]);
+            // Actualizar datos básicos incluyendo Vertical
+            $stmt = $pdo->prepare("UPDATE tecnicos SET rut=?, nombre=?, correo=?, telefono=?, id_especialidad=?, id_vertical=? WHERE id=?");
+            $stmt->execute([$rut, $nombre, $correo, $telefono, $id_esp, $id_vert, $id]);
 
-            // 2. Manejar cambio de turno (Cerrar anterior y abrir nuevo si cambió)
             if ($id_turno) {
-                // Cerrar turno vigente anterior
                 $stmtClose = $pdo->prepare("UPDATE asignacion_turnos SET fecha_hasta = CURDATE() WHERE id_tecnico = ? AND fecha_hasta IS NULL");
                 $stmtClose->execute([$id]);
-                
-                // Abrir nuevo turno
                 $stmtOpen = $pdo->prepare("INSERT INTO asignacion_turnos (id_tecnico, id_tipo_turno, fecha_desde) VALUES (?, ?, CURDATE())");
                 $stmtOpen->execute([$id, $id_turno]);
             }

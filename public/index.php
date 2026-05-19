@@ -639,58 +639,81 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         <!-- MODAL GENÉRICO PARA TÉCNICO / GRUPO -->
         <div id="modalRecursos" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
-            <div style="background:#fff; padding:1.5rem; border-radius:1rem; width:90%; max-width:500px;">
-                <h3 id="tituloModalRecursos" style="margin-top:0;">Nuevo Registro</h3>
-                <form id="formRecursos" onsubmit="saveResource(event)">
-                    <input type="hidden" id="res_type" value=""> <!-- 'tecnico' o 'grupo' -->
+            <div style="background:#fff; padding:1.5rem; border-radius:1rem; width:90%; max-width:500px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                <h3 id="tituloModalRecursos" style="margin-top:0; color:#1e293b;">Nuevo Registro</h3>
+                <form id="formRecursos" onsubmit="saveResource(event)" autocomplete="off">
+                    <input type="hidden" id="res_type" value="">
                     <input type="hidden" id="res_id" value="">
 
                     <!-- CAMPOS TÉCNICO -->
                     <div id="fields-tecnico" style="display:none;">
-                        <label>RUT *</label>
-                        <input type="text" id="res_rut" placeholder="12.345.678-9" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">RUT *</label>
+                            <input type="text" id="res_rut" placeholder="12.345.678-9" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
                         
-                        <label>Nombre Completo *</label>
-                        <input type="text" id="res_nombre" required style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
-                        
-                        <label>Especialidad</label>
-                        <select id="res_especialidad" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
-                            <option value="">Seleccionar...</option>
-                            <!-- Se llena dinámicamente -->
-                        </select>
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Nombre Completo *</label>
+                            <input type="text" id="res_nombre" placeholder="Nombre Apellido" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
 
-                        <label>Email</label>
-                        <input type="email" id="res_correo" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
-                        
-                        <label>Teléfono</label>
-                        <input type="text" id="res_telefono" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Vertical Asignada</label>
+                            <select id="res_vertical_tecnico" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b;">
+                                <option value="">Seleccionar Vertical...</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Especialidad</label>
+                            <select id="res_especialidad" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b;">
+                                <option value="">Seleccionar...</option>
+                            </select>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+                            <div>
+                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Email</label>
+                                <input type="email" id="res_correo" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Teléfono</label>
+                                <input type="text" id="res_telefono" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- CAMPOS GRUPO -->
                     <div id="fields-grupo" style="display:none;">
-                        <label>Nombre del Grupo *</label>
-                        <input type="text" id="res_nombre_grupo" required style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Nombre del Grupo *</label>
+                            <input type="text" id="res_nombre_grupo" placeholder="Ej: Equipo A Climatización" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
                         
-                        <label>Vertical Asociada</label>
-                        <select id="res_vertical" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
-                            <option value="">Ninguna</option>
-                            <!-- Se llena dinámicamente -->
-                        </select>
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Vertical Asociada</label>
+                            <select id="res_vertical_grupo" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b;">
+                                <option value="">Ninguna</option>
+                            </select>
+                        </div>
 
-                        <label>Descripción</label>
-                        <textarea id="res_desc" rows="2" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem;"></textarea>
+                        <div style="margin-bottom:0.75rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Descripción</label>
+                            <textarea id="res_desc" rows="2" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;"></textarea>
+                        </div>
                     </div>
 
                     <!-- CAMPO COMÚN: TURNO -->
-                    <label>Tipo de Turno</label>
-                    <select id="res_turno" style="width:100%; padding:0.5rem; margin-bottom:1rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
-                        <option value="">Sin Turno Asignado</option>
-                        <!-- Se llena dinámicamente -->
-                    </select>
+                    <div style="margin-bottom:1.5rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Tipo de Turno</label>
+                        <select id="res_turno" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b;">
+                            <option value="">Sin Turno Asignado</option>
+                        </select>
+                    </div>
 
-                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                        <button type="button" onclick="closeModal()" style="padding:0.5rem 1rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Cancelar</button>
-                        <button type="submit" style="padding:0.5rem 1rem; border:none; border-radius:0.5rem; background:var(--primary); color:#fff; cursor:pointer;">💾 Guardar</button>
+                    <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                        <button type="button" onclick="closeModal()" style="padding:0.6rem 1.2rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer; font-weight:500; color:#475569;">Cancelar</button>
+                        <button type="submit" style="padding:0.6rem 1.2rem; border:none; border-radius:0.5rem; background:var(--primary); color:#fff; cursor:pointer; font-weight:600;">💾 Guardar</button>
                     </div>
                 </form>
             </div>
@@ -1755,12 +1778,11 @@ async function openModal(type, item = null) {
     const modal = document.getElementById('modalRecursos');
     const form = document.getElementById('formRecursos');
     
-    // Resetear formulario
     form.reset();
     document.getElementById('res_id').value = '';
     document.getElementById('res_type').value = type;
     
-    // Mostrar campos correctos
+    // Mostrar/Ocultar campos según tipo
     document.getElementById('fields-tecnico').style.display = type === 'tecnico' ? 'block' : 'none';
     document.getElementById('fields-grupo').style.display = type === 'grupo' ? 'block' : 'none';
     
@@ -1770,18 +1792,18 @@ async function openModal(type, item = null) {
     await loadSelects();
 
     if (item) {
-        // Prellenar datos
         if (type === 'tecnico') {
             document.getElementById('res_rut').value = item.rut || '';
             document.getElementById('res_nombre').value = item.nombre || '';
             document.getElementById('res_especialidad').value = item.id_especialidad || '';
+            document.getElementById('res_vertical_tecnico').value = item.id_vertical || ''; // Nuevo
             document.getElementById('res_correo').value = item.correo || '';
             document.getElementById('res_telefono').value = item.telefono || '';
             document.getElementById('res_turno').value = item.id_tipo_turno || '';
             document.getElementById('res_id').value = item.id;
         } else {
             document.getElementById('res_nombre_grupo').value = item.nombre_grupo || '';
-            document.getElementById('res_vertical').value = item.id_vertical || '';
+            document.getElementById('res_vertical_grupo').value = item.id_vertical || '';
             document.getElementById('res_desc').value = item.descripcion || '';
             document.getElementById('res_turno').value = item.id_tipo_turno || '';
             document.getElementById('res_id').value = item.id;
@@ -1791,58 +1813,62 @@ async function openModal(type, item = null) {
     modal.style.display = 'flex';
 }
 
-function closeModal() {
-    document.getElementById('modalRecursos').style.display = 'none';
-}
-
 async function loadSelects() {
     try {
         // 1. Cargar Especialidades
         let espData = [];
         try {
-            const espRes = await fetch('/api/especialidades.php?action=list');
-            if (espRes.ok) {
-                const data = await espRes.json();
+            const res = await fetch('/api/especialidades.php?action=list');
+            if (res.ok) {
+                const data = await res.json();
                 if (data.success) espData = data.data || [];
             }
-        } catch (e) { console.warn("Error cargando especialidades", e); }
+        } catch (e) { console.warn("Error especialidades", e); }
 
         const espSelect = document.getElementById('res_especialidad');
         if (espSelect) {
             espSelect.innerHTML = '<option value="">Seleccionar...</option>' + 
-                espData.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+                espData.map(e => `<option value="${e.id}" style="color:#000; background:#fff;">${e.nombre}</option>`).join('');
         }
 
         // 2. Cargar Verticales
         let vertData = [];
         try {
-            const vertRes = await fetch('/api/verticales.php?action=list');
-            if (vertRes.ok) {
-                const data = await vertRes.json();
+            const res = await fetch('/api/verticales.php?action=list');
+            if (res.ok) {
+                const data = await res.json();
                 if (data.success) vertData = data.verticales || [];
             }
-        } catch (e) { console.warn("Error cargando verticales", e); }
+        } catch (e) { console.warn("Error verticales", e); }
 
-        const vertSelect = document.getElementById('res_vertical');
-        if (vertSelect) {
-            vertSelect.innerHTML = '<option value="">Ninguna</option>' + 
-                vertData.map(v => `<option value="${v.id_vertical}">${v.nombre_vertical}</option>`).join('');
+        // Llenar select de Vertical para Técnico
+        const vertTecSelect = document.getElementById('res_vertical_tecnico');
+        if (vertTecSelect) {
+            vertTecSelect.innerHTML = '<option value="">Seleccionar Vertical...</option>' + 
+                vertData.map(v => `<option value="${v.id_vertical}" style="color:#000; background:#fff;">${v.nombre_vertical}</option>`).join('');
+        }
+
+        // Llenar select de Vertical para Grupo
+        const vertGrpSelect = document.getElementById('res_vertical_grupo');
+        if (vertGrpSelect) {
+            vertGrpSelect.innerHTML = '<option value="">Ninguna</option>' + 
+                vertData.map(v => `<option value="${v.id_vertical}" style="color:#000; background:#fff;">${v.nombre_vertical}</option>`).join('');
         }
 
         // 3. Cargar Tipos de Turno
         let turnoData = [];
         try {
-            const turnoRes = await fetch('/api/recursos.php?action=list_tipos_turno');
-            if (turnoRes.ok) {
-                const data = await turnoRes.json();
+            const res = await fetch('/api/recursos.php?action=list_tipos_turno');
+            if (res.ok) {
+                const data = await res.json();
                 if (data.success) turnoData = data.data || [];
             }
-        } catch (e) { console.warn("Error cargando turnos", e); }
+        } catch (e) { console.warn("Error turnos", e); }
 
         const turnoSelect = document.getElementById('res_turno');
         if (turnoSelect) {
             turnoSelect.innerHTML = '<option value="">Sin Turno Asignado</option>' + 
-                turnoData.map(t => `<option value="${t.id}">${t.codigo} - ${t.nombre}</option>`).join('');
+                turnoData.map(t => `<option value="${t.id}" style="color:#000; background:#fff;">${t.codigo} - ${t.nombre}</option>`).join('');
         }
 
     } catch (err) {
@@ -1852,26 +1878,44 @@ async function loadSelects() {
 
 async function saveResource(e) {
     e.preventDefault();
-    const formData = new FormData(document.getElementById('formRecursos'));
+    
     const type = document.getElementById('res_type').value;
     const id = document.getElementById('res_id').value;
     
-    // Mapear campos según tipo
+    // Validación Manual (ya que quitamos required)
+    if (type === 'tecnico') {
+        const rut = document.getElementById('res_rut').value.trim();
+        const nombre = document.getElementById('res_nombre').value.trim();
+        if (!rut || !nombre) {
+            Toast.error('RUT y Nombre son obligatorios para Técnicos');
+            return;
+        }
+    } else {
+        const nombreGrp = document.getElementById('res_nombre_grupo').value.trim();
+        if (!nombreGrp) {
+            Toast.error('El nombre del grupo es obligatorio');
+            return;
+        }
+    }
+
+    const formData = new FormData();
+    formData.append('action', id ? `update_${type}` : `create_${type}`);
+    if (id) formData.append('id', id);
+    
     if (type === 'tecnico') {
         formData.append('rut', document.getElementById('res_rut').value);
         formData.append('nombre', document.getElementById('res_nombre').value);
         formData.append('correo', document.getElementById('res_correo').value);
         formData.append('telefono', document.getElementById('res_telefono').value);
         formData.append('id_especialidad', document.getElementById('res_especialidad').value);
+        formData.append('id_vertical', document.getElementById('res_vertical_tecnico').value); // Nuevo
     } else {
         formData.append('nombre_grupo', document.getElementById('res_nombre_grupo').value);
-        formData.append('id_vertical', document.getElementById('res_vertical').value);
+        formData.append('id_vertical', document.getElementById('res_vertical_grupo').value);
         formData.append('descripcion', document.getElementById('res_desc').value);
     }
     
     formData.append('id_tipo_turno', document.getElementById('res_turno').value);
-    formData.append('action', id ? `update_${type}` : `create_${type}`);
-    if (id) formData.append('id', id);
 
     try {
         const res = await fetch('/api/recursos.php', { method: 'POST', body: formData });
@@ -1883,11 +1927,16 @@ async function saveResource(e) {
             if (type === 'tecnico') cargarTecnicos();
             else cargarGrupos();
         } else {
-            Toast.error(data.error);
+            Toast.error(data.error || 'Error al guardar');
         }
     } catch (err) {
+        console.error(err);
         Toast.error('Error de conexión');
     }
+}
+
+function closeModal() {
+    document.getElementById('modalRecursos').style.display = 'none';
 }
 
 function editResource(type, item) {
