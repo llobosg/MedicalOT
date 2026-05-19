@@ -252,6 +252,66 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         .inc-date { font-size: 0.7rem; color: #94a3b8; }
         .inc-body { font-size: 0.85rem; color: #334155; line-height: 1.4; }
         .inc-evidence { margin-top: 0.5rem; font-size: 0.75rem; color: #3b82f6; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; }
+        /* Estilos para Pestañas de Recursos */
+        .resource-tab {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: -2px; /* Para superponer la línea inferior */
+        }
+
+        .resource-tab:hover {
+            color: #3b82f6;
+            background: #f8fafc;
+        }
+
+        .resource-tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        /* Botón Primario Genérico */
+        .btn-primary {
+            background: #3b82f6; /* Azul primario */
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Animación Modal */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Fix para Selects en algunos navegadores/temas oscuros */
+        select option {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
@@ -581,139 +641,158 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         <!-- MÓDULO 8: RECURSOS -->
         <section id="recursos" class="module-section">
-            <div style="max-width:1000px; margin:0 auto;">
-                <h3>👷 Mantenedor de Recursos</h3>
+            <div style="max-width:1200px; margin:0 auto; padding:1rem;">
+                <h3 style="margin-bottom:1.5rem; color:#1e293b;">👷 Mantenedor de Recursos</h3>
                 
-                <!-- Pestañas Navegación -->
-                <div style="display:flex; gap:1rem; margin-bottom:1rem; border-bottom:2px solid #e2e8f0; padding-bottom:0.5rem;">
-                    <button onclick="showResourceTab('tecnicos')" id="tab-tecnicos" class="btn-tab active">👨‍🔧 Técnicos</button>
-                    <button onclick="showResourceTab('grupos')" id="tab-grupos" class="btn-tab">👥 Grupos</button>
+                <!-- Pestañas Modernas -->
+                <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:2px solid #e2e8f0; padding-bottom:0;">
+                    <button onclick="showResourceTab('tecnicos')" id="tab-tecnicos" class="resource-tab active">
+                        👨‍🔧 Técnicos
+                    </button>
+                    <button onclick="showResourceTab('grupos')" id="tab-grupos" class="resource-tab">
+                        👥 Grupos
+                    </button>
                 </div>
 
                 <!-- CONTENEDOR TÉCNICOS -->
                 <div id="view-tecnicos">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <p style="color:#64748b;">Gestión de técnicos y sus turnos asignados...</p>
-                        <button onclick="openModal('tecnico')" style="background:var(--primary); color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">➕ Nuevo Técnico</button>
+                        <p style="color:#64748b; font-size:0.9rem;">Gestión de técnicos, especialidades y turnos.</p>
+                        <button onclick="openModal('tecnico')" class="btn-primary">➕ Nuevo Técnico</button>
                     </div>
-                    <table class="card-table">
-                        <thead>
-                            <tr>
-                                <th>RUT</th>
-                                <th>Nombre</th>
-                                <th>Especialidad</th>
-                                <th>Turno Actual</th>
-                                <th>Contacto</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaTecnicosBody">
-                            <tr><td colspan="6" style="text-align:center;">Cargando...</td></tr>
-                        </tbody>
-                    </table>
+                    
+                    <div class="card" style="padding:0; overflow-x:auto;">
+                        <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
+                            <thead>
+                                <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;">
+                                    <th style="padding:1rem; text-align:left; border-top-left-radius:0.5rem;">RUT</th>
+                                    <th style="padding:1rem; text-align:left;">Nombre Completo</th>
+                                    <th style="padding:1rem; text-align:left;">Especialidad</th>
+                                    <th style="padding:1rem; text-align:left;">Vertical</th>
+                                    <th style="padding:1rem; text-align:left;">Turno</th>
+                                    <th style="padding:1rem; text-align:left;">Contacto</th>
+                                    <th style="padding:1rem; text-align:center; border-top-right-radius:0.5rem;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaTecnicosBody">
+                                <tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- CONTENEDOR GRUPOS -->
                 <div id="view-grupos" style="display:none;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <p style="color:#64748b;">Gestión de grupos de trabajo.</p>
-                        <button onclick="openModal('grupo')" style="background:var(--primary); color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">➕ Nuevo Grupo</button>
+                        <p style="color:#64748b; font-size:0.9rem;">Gestión de grupos de trabajo y asignación vertical.</p>
+                        <button onclick="openModal('grupo')" class="btn-primary">➕ Nuevo Grupo</button>
                     </div>
-                    <table class="card-table">
-                        <thead>
-                            <tr>
-                                <th>Nombre Grupo</th>
-                                <th>Vertical</th>
-                                <th>Turno Asignado</th>
-                                <th>Descripción</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaGruposBody">
-                            <tr><td colspan="5" style="text-align:center;">Cargando...</td></tr>
-                        </tbody>
-                    </table>
+                    
+                    <div class="card" style="padding:0; overflow-x:auto;">
+                        <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
+                            <thead>
+                                <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;">
+                                    <th style="padding:1rem; text-align:left; border-top-left-radius:0.5rem;">Nombre Grupo</th>
+                                    <th style="padding:1rem; text-align:left;">Vertical Asociada</th>
+                                    <th style="padding:1rem; text-align:left;">Turno Asignado</th>
+                                    <th style="padding:1rem; text-align:left;">Descripción</th>
+                                    <th style="padding:1rem; text-align:center; border-top-right-radius:0.5rem;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaGruposBody">
+                                <tr><td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- MODAL GENÉRICO PARA TÉCNICO / GRUPO -->
-        <div id="modalRecursos" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
-            <div style="background:#fff; padding:1.5rem; border-radius:1rem; width:90%; max-width:500px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-                <h3 id="tituloModalRecursos" style="margin-top:0; color:#1e293b;">Nuevo Registro</h3>
-                <form id="formRecursos" onsubmit="saveResource(event)" autocomplete="off">
+        <div id="modalRecursos" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
+            <div style="background:#fff; padding:0; border-radius:1rem; width:90%; max-width:550px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow:hidden; animation: slideIn 0.3s ease-out;">
+                
+                <!-- Header Modal -->
+                <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+                    <h3 id="tituloModalRecursos" style="margin:0; font-size:1.1rem; font-weight:600; color:#1e293b;">Nuevo Registro</h3>
+                    <button onclick="closeModal()" style="background:none; border:none; font-size:1.5rem; color:#94a3b8; cursor:pointer; line-height:1; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">&times;</button>
+                </div>
+
+                <!-- Formulario -->
+                <form id="formRecursos" onsubmit="saveResource(event)" autocomplete="off" style="padding:1.5rem;">
                     <input type="hidden" id="res_type" value="">
                     <input type="hidden" id="res_id" value="">
 
                     <!-- CAMPOS TÉCNICO -->
                     <div id="fields-tecnico" style="display:none;">
-                        <div style="margin-bottom:0.75rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">RUT *</label>
-                            <input type="text" id="res_rut" placeholder="12.345.678-9" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">RUT *</label>
+                            <input type="text" id="res_rut" placeholder="12.345.678-9" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; transition:border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
                         </div>
                         
-                        <div style="margin-bottom:0.75rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Nombre Completo *</label>
-                            <input type="text" id="res_nombre" placeholder="Nombre Apellido" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Nombre Completo *</label>
+                            <input type="text" id="res_nombre" placeholder="Nombre Apellido" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; transition:border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
                         </div>
 
-                        <div style="margin-bottom:0.75rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Vertical Asignada</label>
-                            <select id="res_vertical_tecnico" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b;">
-                                <option value="">Seleccionar Vertical...</option>
-                            </select>
-                        </div>
-
-                        <div style="margin-bottom:0.75rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Especialidad</label>
-                            <select id="res_especialidad" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b;">
-                                <option value="">Seleccionar...</option>
-                            </select>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
                             <div>
-                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Email</label>
-                                <input type="email" id="res_correo" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Vertical</label>
+                                <select id="res_vertical_tecnico" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b; font-size:0.95rem;">
+                                    <option value="">Seleccionar...</option>
+                                </select>
                             </div>
                             <div>
-                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Teléfono</label>
-                                <input type="text" id="res_telefono" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Especialidad</label>
+                                <select id="res_especialidad" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b; font-size:0.95rem;">
+                                    <option value="">Seleccionar...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                            <div>
+                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Email</label>
+                                <input type="email" id="res_correo" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Teléfono</label>
+                                <input type="text" id="res_telefono" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
                             </div>
                         </div>
                     </div>
 
                     <!-- CAMPOS GRUPO -->
                     <div id="fields-grupo" style="display:none;">
-                        <div style="margin-bottom:0.75rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Nombre del Grupo *</label>
-                            <input type="text" id="res_nombre_grupo" placeholder="Ej: Equipo A Climatización" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Nombre del Grupo *</label>
+                            <input type="text" id="res_nombre_grupo" placeholder="Ej: Equipo A Climatización" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
                         </div>
                         
-                        <div style="margin-bottom:0.75rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Vertical Asociada</label>
-                            <select id="res_vertical_grupo" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b;">
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Vertical Asociada</label>
+                            <select id="res_vertical_grupo" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b; font-size:0.95rem;">
                                 <option value="">Ninguna</option>
                             </select>
                         </div>
 
-                        <div style="margin-bottom:0.75rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Descripción</label>
-                            <textarea id="res_desc" rows="2" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;"></textarea>
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Descripción</label>
+                            <textarea id="res_desc" rows="3" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; resize:vertical;"></textarea>
                         </div>
                     </div>
 
                     <!-- CAMPO COMÚN: TURNO -->
                     <div style="margin-bottom:1.5rem;">
-                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Tipo de Turno</label>
-                        <select id="res_turno" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Tipo de Turno</label>
+                        <select id="res_turno" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b; font-size:0.95rem;">
                             <option value="">Sin Turno Asignado</option>
                         </select>
                     </div>
 
-                    <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
-                        <button type="button" onclick="closeModal()" style="padding:0.6rem 1.2rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer; font-weight:500; color:#475569;">Cancelar</button>
-                        <button type="submit" style="padding:0.6rem 1.2rem; border:none; border-radius:0.5rem; background:var(--primary); color:#fff; cursor:pointer; font-weight:600;">💾 Guardar</button>
+                    <div style="display:flex; gap:0.75rem; justify-content:flex-end; padding-top:1rem; border-top:1px solid #f1f5f9;">
+                        <button type="button" onclick="closeModal()" style="padding:0.6rem 1.2rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer; font-weight:500; color:#475569; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">Cancelar</button>
+                        <button type="submit" style="padding:0.6rem 1.2rem; border:none; border-radius:0.5rem; background:var(--primary); color:#fff; cursor:pointer; font-weight:600; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">💾 Guardar</button>
                     </div>
                 </form>
             </div>
@@ -1707,10 +1786,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let currentResourceType = 'tecnico'; // 'tecnico' o 'grupo'
 
+// === GESTIÓN DE RECURSOS (TÉCNICOS Y GRUPOS) ===
+
 function showResourceTab(tab) {
     document.getElementById('view-tecnicos').style.display = tab === 'tecnicos' ? 'block' : 'none';
     document.getElementById('view-grupos').style.display = tab === 'grupos' ? 'block' : 'none';
     
+    // Actualizar clases de pestañas
     document.getElementById('tab-tecnicos').classList.toggle('active', tab === 'tecnicos');
     document.getElementById('tab-grupos').classList.toggle('active', tab === 'grupos');
 
@@ -1720,54 +1802,69 @@ function showResourceTab(tab) {
 
 async function cargarTecnicos() {
     const tbody = document.getElementById('tablaTecnicosBody');
-    tbody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando técnicos...</td></tr>';
     
     try {
         const res = await fetch('/api/recursos.php?action=list_tecnicos');
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
 
+        if (data.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">No hay técnicos registrados.</td></tr>';
+            return;
+        }
+
         tbody.innerHTML = data.data.map(t => `
-            <tr>
-                <td>${t.rut || '-'}</td>
-                <td style="font-weight:600;">${t.nombre}</td>
-                <td><span class="badge b-pen">${t.especialidad_nombre || '-'}</span></td>
-                <td>${t.turno_actual || '<span style="color:#94a3b8;">Sin turno</span>'}</td>
-                <td style="font-size:0.85rem;">${t.correo || '-'}<br>${t.telefono || ''}</td>
-                <td>
-                    <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" style="cursor:pointer; margin-right:5px;">✏️</button>
-                    <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" style="cursor:pointer; color:#ef4444;">🗑️</button>
+            <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-family:monospace; color:#64748b;">${t.rut || '-'}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${t.nombre}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;"><span class="badge b-pen">${t.especialidad_nombre || '-'}</span></td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#475569;">${t.nombre_vertical || '-'}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">${t.turno_actual || '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-size:0.9rem; color:#64748b;">
+                    ${t.correo ? `<div>📧 ${t.correo}</div>` : ''}
+                    ${t.telefono ? `<div>📱 ${t.telefono}</div>` : ''}
+                    ${(!t.correo && !t.telefono) ? '-' : ''}
+                </td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
+                    <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" title="Editar" style="background:#eff6ff; color:#2563eb; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; margin-right:5px; transition:background 0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">✏️</button>
+                    <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" title="Eliminar" style="background:#fef2f2; color:#dc2626; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; transition:background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">🗑️</button>
                 </td>
             </tr>
         `).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" style="color:red;">Error: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
 }
 
 async function cargarGrupos() {
     const tbody = document.getElementById('tablaGruposBody');
-    tbody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando grupos...</td></tr>';
     
     try {
         const res = await fetch('/api/recursos.php?action=list_grupos');
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
 
+        if (data.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8;">No hay grupos registrados.</td></tr>';
+            return;
+        }
+
         tbody.innerHTML = data.data.map(g => `
-            <tr>
-                <td style="font-weight:600;">${g.nombre_grupo}</td>
-                <td>${g.nombre_vertical || '-'}</td>
-                <td>${g.turno_actual || '<span style="color:#94a3b8;">Sin turno</span>'}</td>
-                <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${g.descripcion || '-'}</td>
-                <td>
-                    <button onclick="editResource('grupo', ${JSON.stringify(g).replace(/"/g, '&quot;')})" style="cursor:pointer; margin-right:5px;">✏️</button>
-                    <button onclick="deleteResource('grupo', ${g.id}, '${g.nombre_grupo}')" style="cursor:pointer; color:#ef4444;">🗑️</button>
+            <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${g.nombre_grupo}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#475569;">${g.nombre_vertical || '-'}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">${g.turno_actual || '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#64748b; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${g.descripcion || ''}">${g.descripcion || '-'}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
+                    <button onclick="editResource('grupo', ${JSON.stringify(g).replace(/"/g, '&quot;')})" title="Editar" style="background:#eff6ff; color:#2563eb; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; margin-right:5px; transition:background 0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">✏️</button>
+                    <button onclick="deleteResource('grupo', ${g.id}, '${g.nombre_grupo}')" title="Eliminar" style="background:#fef2f2; color:#dc2626; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; transition:background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">🗑️</button>
                 </td>
             </tr>
         `).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="5" style="color:red;">Error: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
 }
 
