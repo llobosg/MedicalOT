@@ -28,12 +28,14 @@ try {
     try {
         // --- LISTAR TÉCNICOS ---
         if ($action === 'list_tecnicos') {
+            // AGREGAR LEFT JOIN con verticales y seleccionar nombre_vertical
             $stmt = $pdo->query("
-                SELECT t.*, e.nombre as especialidad_nombre, tt.nombre as turno_actual
+                SELECT t.*, e.nombre as especialidad_nombre, tt.nombre as turno_actual, v.nombre_vertical
                 FROM tecnicos t
                 LEFT JOIN especialidades e ON t.id_especialidad = e.id
                 LEFT JOIN asignacion_turnos at ON t.id = at.id_tecnico AND at.fecha_hasta IS NULL
                 LEFT JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
+                LEFT JOIN verticales v ON t.id_vertical = v.id_vertical
                 ORDER BY t.nombre ASC
             ");
             echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
@@ -176,6 +178,35 @@ try {
             $stmt = $pdo->prepare("DELETE FROM grupos WHERE id=?");
             $stmt->execute([$id]);
             echo json_encode(['success' => true, 'message' => 'Grupo eliminado']);
+
+        // --- LISTAR RECURSOS CON TURNO ASIGNADO (TÉCNICOS Y GRUPOS) ---
+        } elseif ($action === 'list_con_turno') {
+            // Unir técnicos y grupos en una sola lista usando UNION ALL
+            $sql = "
+                SELECT 'tecnico' as tipo_recurso, t.id as id_recurso, t.nombre as nombre_display, 
+                       tt.nombre as turno_nombre, tt.codigo as turno_codigo,
+                       v.nombre_vertical as vertical_nombre, e.nombre as especialidad_nombre
+                FROM tecnicos t
+                INNER JOIN asignacion_turnos at ON t.id = at.id_tecnico AND at.fecha_hasta IS NULL
+                INNER JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
+                LEFT JOIN verticales v ON t.id_vertical = v.id_vertical
+                LEFT JOIN especialidades e ON t.id_especialidad = e.id
+                
+                UNION ALL
+                
+                SELECT 'grupo' as tipo_recurso, g.id as id_recurso, g.nombre_grupo as nombre_display,
+                       tt.nombre as turno_nombre, tt.codigo as turno_codigo,
+                       v.nombre_vertical as vertical_nombre, NULL as especialidad_nombre
+                FROM grupos g
+                INNER JOIN asignacion_turnos at ON g.id = at.id_grupo AND at.fecha_hasta IS NULL
+                INNER JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
+                LEFT JOIN verticales v ON g.id_vertical = v.id_vertical
+                
+                ORDER BY nombre_display ASC
+            ";
+            
+            $stmt = $pdo->query($sql);
+            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 
         } else {
             throw new Exception("Acción no válida");

@@ -312,6 +312,17 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             color: #1e293b !important;
             padding: 10px;
         }
+        /* FIX CRÍTICO: Forzar colores claros en selects del modal */
+        #modalRecursos select,
+        #modalRecursos select option {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        /* Asegurar que el placeholder del select sea visible */
+        #modalRecursos select option[value=""] {
+            color: #64748b !important;
+        }
     </style>
 </head>
 <body>
@@ -646,12 +657,18 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 
                 <!-- Pestañas Modernas -->
                 <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:2px solid #e2e8f0; padding-bottom:0;">
-                    <button onclick="showResourceTab('tecnicos')" id="tab-tecnicos" class="resource-tab active">
-                        👨‍🔧 Técnicos
-                    </button>
-                    <button onclick="showResourceTab('grupos')" id="tab-grupos" class="resource-tab">
-                        👥 Grupos
-                    </button>
+                    <button onclick="showResourceTab('tecnicos')" id="tab-tecnicos" class="resource-tab active">👨‍🔧 Técnicos</button>
+                    <button onclick="showResourceTab('grupos')" id="tab-grupos" class="resource-tab">👥 Grupos</button>
+                    <button onclick="showResourceTab('turnos')" id="tab-turnos" class="resource-tab">⏱️ Turnos Activos</button>
+                </div>
+
+                <!-- BUSCADOR INTELIGENTE -->
+                <div style="margin-bottom:1rem; position:relative;">
+                    <input type="text" id="searchRecursos" placeholder="🔍 Buscar por nombre, grupo o turno..." 
+                        onkeyup="filterResources()"
+                        style="width:100%; padding:0.75rem 1rem 0.75rem 2.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; box-sizing:border-box; transition:border-color 0.2s;"
+                        onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
+                    <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8;">🔍</span>
                 </div>
 
                 <!-- CONTENEDOR TÉCNICOS -->
@@ -660,7 +677,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <p style="color:#64748b; font-size:0.9rem;">Gestión de técnicos, especialidades y turnos.</p>
                         <button onclick="openModal('tecnico')" class="btn-primary">➕ Nuevo Técnico</button>
                     </div>
-                    
                     <div class="card" style="padding:0; overflow-x:auto;">
                         <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
                             <thead>
@@ -687,7 +703,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <p style="color:#64748b; font-size:0.9rem;">Gestión de grupos de trabajo y asignación vertical.</p>
                         <button onclick="openModal('grupo')" class="btn-primary">➕ Nuevo Grupo</button>
                     </div>
-                    
                     <div class="card" style="padding:0; overflow-x:auto;">
                         <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
                             <thead>
@@ -701,6 +716,28 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                             </thead>
                             <tbody id="tablaGruposBody">
                                 <tr><td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CONTENEDOR TURNOS ACTIVOS -->
+                <div id="view-turnos" style="display:none;">
+                    <div style="margin-bottom:1rem;">
+                        <p style="color:#64748b; font-size:0.9rem;">Lista unificada de todos los recursos con turno activo.</p>
+                    </div>
+                    <div class="card" style="padding:0; overflow-x:auto;">
+                        <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
+                            <thead>
+                                <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;">
+                                    <th style="padding:1rem; text-align:left; border-top-left-radius:0.5rem;">Tipo</th>
+                                    <th style="padding:1rem; text-align:left;">Nombre</th>
+                                    <th style="padding:1rem; text-align:left;">Turno</th>
+                                    <th style="padding:1rem; text-align:left;">Vertical / Especialidad</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaTurnosBody">
+                                <tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1782,22 +1819,25 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarVerticales();
     }
 });
-// === GESTIÓN DE RECURSOS (TÉCNICOS Y GRUPOS) ===
-
-let currentResourceType = 'tecnico'; // 'tecnico' o 'grupo'
 
 // === GESTIÓN DE RECURSOS (TÉCNICOS Y GRUPOS) ===
+let currentResourceType = 'tecnico'; 
 
 function showResourceTab(tab) {
     document.getElementById('view-tecnicos').style.display = tab === 'tecnicos' ? 'block' : 'none';
     document.getElementById('view-grupos').style.display = tab === 'grupos' ? 'block' : 'none';
+    document.getElementById('view-turnos').style.display = tab === 'turnos' ? 'block' : 'none';
     
-    // Actualizar clases de pestañas
     document.getElementById('tab-tecnicos').classList.toggle('active', tab === 'tecnicos');
     document.getElementById('tab-grupos').classList.toggle('active', tab === 'grupos');
+    document.getElementById('tab-turnos').classList.toggle('active', tab === 'turnos');
+
+    // Limpiar buscador al cambiar de pestaña
+    document.getElementById('searchRecursos').value = '';
 
     if (tab === 'tecnicos') cargarTecnicos();
     if (tab === 'grupos') cargarGrupos();
+    if (tab === 'turnos') cargarTurnosActivos();
 }
 
 async function cargarTecnicos() {
@@ -1827,8 +1867,8 @@ async function cargarTecnicos() {
                     ${(!t.correo && !t.telefono) ? '-' : ''}
                 </td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
-                    <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" title="Editar" style="background:#eff6ff; color:#2563eb; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; margin-right:5px; transition:background 0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">✏️</button>
-                    <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" title="Eliminar" style="background:#fef2f2; color:#dc2626; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; transition:background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">🗑️</button>
+                    <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
+                    <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" title="Eliminar" style="cursor:pointer; color:#ef4444;">🗑️</button>
                 </td>
             </tr>
         `).join('');
@@ -1858,14 +1898,71 @@ async function cargarGrupos() {
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">${g.turno_actual || '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}</td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#64748b; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${g.descripcion || ''}">${g.descripcion || '-'}</td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
-                    <button onclick="editResource('grupo', ${JSON.stringify(g).replace(/"/g, '&quot;')})" title="Editar" style="background:#eff6ff; color:#2563eb; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; margin-right:5px; transition:background 0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">✏️</button>
-                    <button onclick="deleteResource('grupo', ${g.id}, '${g.nombre_grupo}')" title="Eliminar" style="background:#fef2f2; color:#dc2626; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1rem; transition:background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">🗑️</button>
+                    <button onclick="editResource('grupo', ${JSON.stringify(g).replace(/"/g, '&quot;')})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
+                    <button onclick="deleteResource('grupo', ${g.id}, '${g.nombre_grupo}')" title="Eliminar" style="cursor:pointer; color:#ef4444;">🗑️</button>
                 </td>
             </tr>
         `).join('');
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
+}
+
+async function cargarTurnosActivos() {
+    const tbody = document.getElementById('tablaTurnosBody');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando turnos...</td></tr>';
+    
+    try {
+        const res = await fetch('/api/recursos.php?action=list_con_turno');
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+
+        if (data.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">No hay recursos con turno activo.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.data.map(r => `
+            <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">
+                    <span style="background:${r.tipo_recurso === 'tecnico' ? '#dbeafe' : '#fce7f3'}; color:${r.tipo_recurso === 'tecnico' ? '#1e40af' : '#9d174d'}; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600;">
+                        ${r.tipo_recurso === 'tecnico' ? '👨‍🔧 Técnico' : '👥 Grupo'}
+                    </span>
+                </td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${r.nombre_display}</td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;"><span class="badge b-blue">${r.turno_nombre}</span></td>
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#64748b;">
+                    ${r.vertical_nombre ? `<div>🏢 ${r.vertical_nombre}</div>` : ''}
+                    ${r.especialidad_nombre ? `<div>🛠️ ${r.especialidad_nombre}</div>` : ''}
+                    ${(!r.vertical_nombre && !r.especialidad_nombre) ? '-' : ''}
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
+    }
+}
+
+// === BUSCADOR INTELIGENTE ===
+function filterResources() {
+    const query = document.getElementById('searchRecursos').value.toLowerCase().trim();
+    const activeTab = document.querySelector('.resource-tab.active').id.replace('tab-', ''); // 'tecnicos', 'grupos', 'turnos'
+    
+    let tbodyId = '';
+    if (activeTab === 'tecnicos') tbodyId = 'tablaTecnicosBody';
+    else if (activeTab === 'grupos') tbodyId = 'tablaGruposBody';
+    else if (activeTab === 'turnos') tbodyId = 'tablaTurnosBody';
+
+    const rows = document.querySelectorAll(`#${tbodyId} tr`);
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(query)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
 }
 
 // === MODALES Y FORMULARIOS ===
@@ -1879,13 +1976,11 @@ async function openModal(type, item = null) {
     document.getElementById('res_id').value = '';
     document.getElementById('res_type').value = type;
     
-    // Mostrar/Ocultar campos según tipo
     document.getElementById('fields-tecnico').style.display = type === 'tecnico' ? 'block' : 'none';
     document.getElementById('fields-grupo').style.display = type === 'grupo' ? 'block' : 'none';
     
     document.getElementById('tituloModalRecursos').textContent = item ? `Editar ${type === 'tecnico' ? 'Técnico' : 'Grupo'}` : `Nuevo ${type === 'tecnico' ? 'Técnico' : 'Grupo'}`;
 
-    // Cargar selects dinámicos
     await loadSelects();
 
     if (item) {
@@ -1893,15 +1988,17 @@ async function openModal(type, item = null) {
             document.getElementById('res_rut').value = item.rut || '';
             document.getElementById('res_nombre').value = item.nombre || '';
             document.getElementById('res_especialidad').value = item.id_especialidad || '';
-            document.getElementById('res_vertical_tecnico').value = item.id_vertical || ''; // Nuevo
+            document.getElementById('res_vertical_tecnico').value = item.id_vertical || '';
             document.getElementById('res_correo').value = item.correo || '';
             document.getElementById('res_telefono').value = item.telefono || '';
-            document.getElementById('res_turno').value = item.id_tipo_turno || '';
+            // FIX: Asegurar que se cargue el ID del turno, no el nombre
+            document.getElementById('res_turno').value = item.id_tipo_turno || ''; 
             document.getElementById('res_id').value = item.id;
         } else {
             document.getElementById('res_nombre_grupo').value = item.nombre_grupo || '';
             document.getElementById('res_vertical_grupo').value = item.id_vertical || '';
             document.getElementById('res_desc').value = item.descripcion || '';
+            // FIX: Asegurar que se cargue el ID del turno
             document.getElementById('res_turno').value = item.id_tipo_turno || '';
             document.getElementById('res_id').value = item.id;
         }
