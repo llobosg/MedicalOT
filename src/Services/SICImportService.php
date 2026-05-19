@@ -63,7 +63,6 @@ class SICImportService
         $stmtEsp  = $this->db->prepare("INSERT IGNORE INTO especialidades (codigo, nombre) VALUES (?, ?)");
         $stmtProt = $this->db->prepare("INSERT IGNORE INTO protocolos (codigo, nombre, familia, periodicidad) VALUES (?, ?, ?, ?)");
         $stmtArea = $this->db->prepare("INSERT IGNORE INTO areas (codigo, nombre) VALUES (?, ?)");
-        $stmtProv = $this->db->prepare("INSERT IGNORE INTO proveedores (rut, razon_social) VALUES (?, ?)");
         $stmtRuta = $this->db->prepare("INSERT IGNORE INTO rutas (codigo, nombre) VALUES (?, ?)");
         $stmtEq   = $this->db->prepare("INSERT IGNORE INTO equipos (codigo, nombre, marca, modelo, serie, umdns, id_area) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmtGetArea = $this->db->prepare("SELECT id FROM areas WHERE codigo = ? LIMIT 1");
@@ -95,37 +94,20 @@ class SICImportService
 
         while (($row = fgetcsv($handle, 0, ',', '"', "\\")) !== false) {
             $rowNum++;
-            $this->stats['total']++; // Total filas leídas
+            $this->stats['total']++;
             $row = array_pad($row, 30, '');
             $ot = trim($row[1] ?? '');
             
             if (empty($ot)) continue;
 
-            // 1. VERIFICAR DUPLICADO ANTES DE NADA
-            $stmtCheckDup->execute([$ot]);
-            if ($stmtCheckDup->fetchColumn()) {
-                $this->stats['skipped']++;
-                $processedCount++;
-                
-                // Actualizar progreso en memoria
-                $_SESSION['sic_progress']['current'] = $this->stats['total'];
-                $_SESSION['sic_progress']['skipped'] = $this->stats['skipped'];
-                $_SESSION['sic_progress']['inserted'] = $this->stats['inserted'];
-                
-                // Liberar bloqueo de sesión cada intervalo para permitir polling
-                if ($processedCount % $updateInterval === 0) {
-                    session_write_close();
-                    usleep(1000); // Pequeña pausa para dejar respirar al servidor
-                    session_start();
-                }
-                continue; // Saltar a la siguiente fila
-            }
-
-            // 2. Sincronizar catálogos (Solo si es nueva)
+            // Sincronizar catálogos
             if (!empty($row[22])) $stmtEsp->execute([trim($row[22]), trim($row[23] ?? '')]);
             if (!empty($row[6]))  $stmtProt->execute([trim($row[6]), trim($row[7] ?? ''), trim($row[8] ?? ''), trim($row[10] ?? '')]);
             if (!empty($row[12])) $stmtArea->execute([trim($row[12]), trim($row[13] ?? '')]);
-            if (!empty($row[24])) $stmtProv->execute([trim($row[24]), trim($row[25] ?? '')]);
+            
+            // ❌ ELIMINADO: Inserción en proveedores
+            // if (!empty($row[24])) $stmtProv->execute([trim($row[24]), trim($row[25] ?? '')]);
+            
             if (!empty($row[27])) $stmtRuta->execute([trim($row[27]), trim($row[28] ?? '')]);
 
             if (!empty($row[14])) {
@@ -137,28 +119,30 @@ class SICImportService
             $fecha = !empty($row[0]) ? date('Y-m-d', strtotime(trim($row[0]))) : null;
             
             try {
+                // Pasamos el rut_proveedor como string vacío o null si la columna existe en BD
+                // Si la columna rut_proveedor fue eliminada de ordenes_trabajo, ajusta la query arriba quitando ese campo
+                $rutProv = trim($row[24] ?? ''); 
+                
                 $otStmt->execute([
                     $ot, $fecha, trim($row[5] ?? 'Mañana'), (int)($row[3] ?? 0), trim($row[4] ?? ''),
-                    trim($row[6] ?? ''), trim($row[14] ?? ''), trim($row[12] ?? ''), trim($row[22] ?? ''), trim($row[24] ?? ''), trim($row[27] ?? ''), $loteId
+                    trim($row[6] ?? ''), trim($row[14] ?? ''), trim($row[12] ?? ''), trim($row[22] ?? ''), 
+                    $rutProv, // Se guarda el RUT en la columna rut_proveedor si existe
+                    trim($row[27] ?? ''), $loteId
                 ]);
                 $this->stats['inserted']++;
             } catch (Exception $e) {
-                // Si falla la inserción por cualquier otra razón, lo contamos como skipped/error
                 $this->stats['errors'][] = "Fila $rowNum (OT: $ot): " . $e->getMessage();
                 $this->stats['skipped']++;
             }
 
             $processedCount++;
 
-            // 3. ACTUALIZAR PROGRESO EN SESIÓN Y LIBERAR BLOQUEO
-            $_SESSION['sic_progress']['current'] = $this->stats['total'];
-            $_SESSION['sic_progress']['inserted'] = $this->stats['inserted'];
-            $_SESSION['sic_progress']['skipped'] = $this->stats['skipped'];
-            
+            // Actualizar progreso...
             if ($processedCount % $updateInterval === 0) {
-                session_write_close();
-                usleep(1000); 
-                session_start();
+                 $_SESSION['sic_progress']['current'] = $this->stats['inserted'] + $this->stats['skipped'];
+                 $_SESSION['sic_progress']['total'] = $this->stats['total'];
+                 session_write_close(); 
+                 session_start(); 
             }
         }
         
