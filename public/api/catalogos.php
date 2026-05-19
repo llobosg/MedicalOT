@@ -6,6 +6,9 @@ while (ob_get_level()) ob_end_clean();
 try {
     // 🔐 Seguridad y Rutas
     if (session_status() === PHP_SESSION_NONE) session_start();
+
+    // 🔐 Configuración de Seguridad y Rutas
+    define('APP_ENTRY_POINT', true);
     
     $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
     $projectRoot = dirname($docRoot);
