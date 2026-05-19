@@ -352,6 +352,25 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             <div class="header-datetime"><div id="clock">--:--</div><div style="font-size:0.7rem;">MedicalOT v1.0</div></div>
             <button class="logout-btn" onclick="logout()" title="Cerrar Sesión"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
             <div class="menu-dots"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg></div>
+            <!-- MENÚ DE CATÁLOGOS (Solo Admin) -->
+            <?php 
+                $isAdminHeader = (isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', 'admin_hospital', 'admin_hosp']));
+            ?>
+            <?php if ($isAdminHeader): ?>
+            <div class="dropdown" style="position:relative;">
+                <button onclick="toggleCatalogMenu()" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:#64748b; padding:0.5rem;" title="Catálogos">
+                    ⚙️
+                </button>
+                <div id="catalogDropdown" style="display:none; position:absolute; right:0; top:100%; background:#fff; border:1px solid #e2e8f0; border-radius:0.5rem; box-shadow:0 4px 6px rgba(0,0,0,0.1); width:200px; z-index:1000; overflow:hidden;">
+                    <button onclick="openCatalogModal('especialidad')" style="width:100%; text-align:left; padding:0.75rem 1rem; border:none; background:none; cursor:pointer; hover:bg-gray-50; display:flex; align-items:center; gap:0.5rem;">
+                        🛠️ Especialidades
+                    </button>
+                    <button onclick="openCatalogModal('turno')" style="width:100%; text-align:left; padding:0.75rem 1rem; border:none; background:none; cursor:pointer; hover:bg-gray-50; display:flex; align-items:center; gap:0.5rem;">
+                        ⏱️ Tipos de Turno
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
             <div class="header-user"><div class="user-avatar"><?php echo strtoupper(substr($user['name'], 0, 2)); ?></div><span><?php echo htmlspecialchars($user['name']); ?></span></div>
         </div>
     </header>
@@ -2188,6 +2207,274 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarTecnicos();
     }
 });
-    </script>
+// === GESTIÓN DE CATÁLOGOS (ESPECIALIDADES Y TURNOS) ===
+
+let catalogData = {
+    especialidad: [],
+    turno: []
+};
+
+// Toggle Menú Dropdown
+function toggleCatalogMenu() {
+    const menu = document.getElementById('catalogDropdown');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+// Cerrar menú al hacer clic fuera
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('catalogDropdown');
+    const button = event.target.closest('.dropdown button[onclick*="toggleCatalogMenu"]');
+    if (dropdown && !dropdown.contains(event.target) && !button) {
+        dropdown.style.display = 'none';
+    }
+});
+
+async function openCatalogModal(type) {
+    document.getElementById('catalogDropdown').style.display = 'none';
+    const modalId = type === 'especialidad' ? 'modalEspecialidades' : 'modalTurnos';
+    document.getElementById(modalId).style.display = 'flex';
+    
+    // Resetear formulario
+    resetForm(type);
+
+    // Cargar datos
+    try {
+        const res = await fetch(`/api/catalogos.php?action=list&type=${type}`);
+        const data = await res.json();
+        if (data.success) {
+            catalogData[type] = data.data;
+            renderCatalogList(type);
+        }
+    } catch (err) {
+        console.error(err);
+        Toast.error('Error al cargar catálogos');
+    }
+}
+
+function closeCatalogModal(type) {
+    const modalId = type === 'especialidad' ? 'modalEspecialidades' : 'modalTurnos';
+    document.getElementById(modalId).style.display = 'none';
+}
+
+function renderCatalogList(type) {
+    const tbodyId = type === 'especialidad' ? 'listaEspecialidadesBody' : 'listaTurnosBody';
+    const tbody = document.getElementById(tbodyId);
+    const items = catalogData[type];
+
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${type === 'especialidad' ? 3 : 4}" style="text-align:center; padding:1rem; color:#94a3b8;">No hay registros.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+        if (type === 'especialidad') {
+            return `
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:0.75rem; font-family:monospace; color:#64748b;">${item.codigo}</td>
+                    <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${item.nombre}</td>
+                    <td style="padding:0.75rem; text-align:center;">
+                        <button onclick="editCatalogItem(${JSON.stringify(item).replace(/"/g, '&quot;')}, 'especialidad')" style="cursor:pointer; margin-right:5px; color:#3b82f6;">✏️</button>
+                        <button onclick="deleteCatalogItem(${item.id}, '${item.nombre}', 'especialidad')" style="cursor:pointer; color:#ef4444;">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        } else {
+            return `
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:0.75rem; font-family:monospace; color:#64748b;">${item.codigo}</td>
+                    <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${item.nombre}</td>
+                    <td style="padding:0.75rem; text-align:center; color:#64748b;">${item.hh_diarias}</td>
+                    <td style="padding:0.75rem; text-align:center;">
+                        <button onclick="editCatalogItem(${JSON.stringify(item).replace(/"/g, '&quot;')}, 'turno')" style="cursor:pointer; margin-right:5px; color:#3b82f6;">✏️</button>
+                        <button onclick="deleteCatalogItem(${item.id}, '${item.nombre}', 'turno')" style="cursor:pointer; color:#ef4444;">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        }
+    }).join('');
+}
+
+function filterCatalog(type) {
+    const query = document.getElementById(type === 'especialidad' ? 'searchEsp' : 'searchTurno').value.toLowerCase();
+    const tbodyId = type === 'especialidad' ? 'listaEspecialidadesBody' : 'listaTurnosBody';
+    const rows = document.querySelectorAll(`#${tbodyId} tr`);
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+
+function editCatalogItem(item, type) {
+    if (type === 'especialidad') {
+        document.getElementById('esp_id').value = item.id;
+        document.getElementById('esp_codigo').value = item.codigo;
+        document.getElementById('esp_nombre').value = item.nombre;
+    } else {
+        document.getElementById('turno_id').value = item.id;
+        document.getElementById('turno_codigo').value = item.codigo;
+        document.getElementById('turno_nombre').value = item.nombre;
+        document.getElementById('turno_hh').value = item.hh_diarias;
+    }
+}
+
+function resetForm(type) {
+    if (type === 'especialidad') {
+        document.getElementById('formEspecialidad').reset();
+        document.getElementById('esp_id').value = '';
+    } else {
+        document.getElementById('formTurno').reset();
+        document.getElementById('turno_id').value = '';
+        document.getElementById('turno_hh').value = '8'; // Default
+    }
+}
+
+async function saveCatalogItem(e, type) {
+    e.preventDefault();
+    const formData = new FormData();
+    const idField = type === 'especialidad' ? 'esp_id' : 'turno_id';
+    const id = document.getElementById(idField).value;
+    
+    formData.append('action', id ? 'update' : 'create');
+    formData.append('type', type);
+    if (id) formData.append('id', id);
+
+    if (type === 'especialidad') {
+        formData.append('codigo', document.getElementById('esp_codigo').value);
+        formData.append('nombre', document.getElementById('esp_nombre').value);
+    } else {
+        formData.append('codigo', document.getElementById('turno_codigo').value);
+        formData.append('nombre', document.getElementById('turno_nombre').value);
+        formData.append('hh_diarias', document.getElementById('turno_hh').value);
+    }
+
+    try {
+        const res = await fetch('/api/catalogos.php', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            Toast.success(data.message);
+            resetForm(type);
+            // Recargar lista
+            const listRes = await fetch(`/api/catalogos.php?action=list&type=${type}`);
+            const listData = await listRes.json();
+            if (listData.success) {
+                catalogData[type] = listData.data;
+                renderCatalogList(type);
+            }
+        } else {
+            Toast.error(data.error);
+        }
+    } catch (err) {
+        Toast.error('Error al guardar');
+    }
+}
+
+async function deleteCatalogItem(id, name, type) {
+    if (!confirm(`¿Eliminar "${name}"?`)) return;
+    
+    try {
+        const res = await fetch(`/api/catalogos.php?action=delete&id=${id}&type=${type}`, { method: 'DELETE' });
+        const data = await res.json();
+        
+        if (data.success) {
+            Toast.success('Eliminado correctamente');
+            const listRes = await fetch(`/api/catalogos.php?action=list&type=${type}`);
+            const listData = await listRes.json();
+            if (listData.success) {
+                catalogData[type] = listData.data;
+                renderCatalogList(type);
+            }
+        } else {
+            Toast.error(data.error);
+        }
+    } catch (err) {
+        Toast.error('Error al eliminar');
+    }
+}
+</script>
+    <!-- MODAL ESPECIALIDADES -->
+    <div id="modalEspecialidades" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
+        <div style="background:#fff; padding:0; border-radius:1rem; width:90%; max-width:600px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow:hidden;">
+            <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:1.1rem; font-weight:600; color:#1e293b;">🛠️ Mantenedor de Especialidades</h3>
+                <button onclick="closeCatalogModal('especialidad')" style="background:none; border:none; font-size:1.5rem; color:#94a3b8; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:1.5rem;">
+                <!-- Buscador -->
+                <input type="text" id="searchEsp" placeholder="🔍 Buscar especialidad..." onkeyup="filterCatalog('esp')" style="width:100%; padding:0.6rem; margin-bottom:1rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                
+                <!-- Lista -->
+                <div style="max-height:300px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:0.5rem;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f1f5f9; position:sticky; top:0;">
+                            <tr>
+                                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código</th>
+                                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Nombre</th>
+                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaEspecialidadesBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Formulario Crear/Editar -->
+                <form id="formEspecialidad" onsubmit="saveCatalogItem(event, 'especialidad')" style="margin-top:1rem; padding-top:1rem; border-top:1px solid #e2e8f0;">
+                    <input type="hidden" id="esp_id">
+                    <div style="display:grid; grid-template-columns:1fr 2fr; gap:1rem; margin-bottom:1rem;">
+                        <input type="text" id="esp_codigo" placeholder="Código (ej: M-CLIMA)" required style="padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        <input type="text" id="esp_nombre" placeholder="Nombre Completo" required style="padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" onclick="resetForm('esp')" style="padding:0.5rem 1rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Cancelar</button>
+                        <button type="submit" style="padding:0.5rem 1rem; border:none; border-radius:0.5rem; background:#3b82f6; color:#fff; cursor:pointer;">💾 Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TURNOS -->
+    <div id="modalTurnos" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
+        <div style="background:#fff; padding:0; border-radius:1rem; width:90%; max-width:600px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow:hidden;">
+            <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:1.1rem; font-weight:600; color:#1e293b;">⏱️ Mantenedor de Turnos</h3>
+                <button onclick="closeCatalogModal('turno')" style="background:none; border:none; font-size:1.5rem; color:#94a3b8; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:1.5rem;">
+                <!-- Buscador -->
+                <input type="text" id="searchTurno" placeholder="🔍 Buscar turno..." onkeyup="filterCatalog('turno')" style="width:100%; padding:0.6rem; margin-bottom:1rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                
+                <!-- Lista -->
+                <div style="max-height:300px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:0.5rem;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f1f5f9; position:sticky; top:0;">
+                            <tr>
+                                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código</th>
+                                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Nombre</th>
+                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH/Día</th>
+                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaTurnosBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Formulario Crear/Editar -->
+                <form id="formTurno" onsubmit="saveCatalogItem(event, 'turno')" style="margin-top:1rem; padding-top:1rem; border-top:1px solid #e2e8f0;">
+                    <input type="hidden" id="turno_id">
+                    <div style="display:grid; grid-template-columns:1fr 2fr 1fr; gap:1rem; margin-bottom:1rem;">
+                        <input type="text" id="turno_codigo" placeholder="Código (ej: 5x2)" required style="padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        <input type="text" id="turno_nombre" placeholder="Nombre (ej: Rotativo 5x2)" required style="padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        <input type="number" step="0.5" id="turno_hh" placeholder="HH" value="8" required style="padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" onclick="resetForm('turno')" style="padding:0.5rem 1rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Cancelar</button>
+                        <button type="submit" style="padding:0.5rem 1rem; border:none; border-radius:0.5rem; background:#3b82f6; color:#fff; cursor:pointer;">💾 Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
