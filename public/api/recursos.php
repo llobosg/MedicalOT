@@ -30,7 +30,7 @@ try {
         if ($action === 'list_tecnicos') {
             // AGREGAR LEFT JOIN con verticales y seleccionar nombre_vertical
             $stmt = $pdo->query("
-                SELECT t.*, e.nombre as especialidad_nombre, tt.nombre as turno_actual, v.nombre_vertical
+                SELECT t.*, e.nombre as especialidad_nombre, tt.nombre as turno_actual, at.id_tipo_turno, v.nombre_vertical
                 FROM tecnicos t
                 LEFT JOIN especialidades e ON t.id_especialidad = e.id
                 LEFT JOIN asignacion_turnos at ON t.id = at.id_tecnico AND at.fecha_hasta IS NULL
@@ -43,7 +43,7 @@ try {
         // --- LISTAR GRUPOS ---
         } elseif ($action === 'list_grupos') {
             $stmt = $pdo->query("
-                SELECT g.*, v.nombre_vertical, tt.nombre as turno_actual
+                SELECT g.*, v.nombre_vertical, tt.nombre as turno_actual, at.id_tipo_turno
                 FROM grupos g
                 LEFT JOIN verticales v ON g.id_vertical = v.id_vertical
                 LEFT JOIN asignacion_turnos at ON g.id = at.id_grupo AND at.fecha_hasta IS NULL

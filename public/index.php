@@ -323,6 +323,15 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         #modalRecursos select option[value=""] {
             color: #64748b !important;
         }
+        select, option {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        }
+
+        select:focus {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+        }
     </style>
 </head>
 <body>
@@ -1867,7 +1876,7 @@ async function cargarTecnicos() {
                     ${(!t.correo && !t.telefono) ? '-' : ''}
                 </td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
-                    <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
+                    <button onclick="editResource('tecnico', ${JSON.stringify(t)})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
                     <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" title="Eliminar" style="cursor:pointer; color:#ef4444;">🗑️</button>
                 </td>
             </tr>
@@ -1875,6 +1884,7 @@ async function cargarTecnicos() {
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
+    document.getElementById('searchRecursos').dispatchEvent(new Event('keyup'));
 }
 
 async function cargarGrupos() {
@@ -1906,6 +1916,7 @@ async function cargarGrupos() {
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
+    document.getElementById('searchRecursos').dispatchEvent(new Event('keyup'));
 }
 
 async function cargarTurnosActivos() {
@@ -1941,6 +1952,7 @@ async function cargarTurnosActivos() {
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
+    document.getElementById('searchRecursos').dispatchEvent(new Event('keyup'));
 }
 
 // === BUSCADOR INTELIGENTE ===
@@ -2016,6 +2028,8 @@ async function loadSelects() {
             if (res.ok) {
                 const data = await res.json();
                 if (data.success) espData = data.data || [];
+                if (!Array.isArray(espData)) espData = [];
+                console.log("Especialidades cargadas:", espData);
             }
         } catch (e) { console.warn("Error especialidades", e); }
 
