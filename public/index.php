@@ -2259,9 +2259,11 @@ function closeCatalogModal(type) {
 function renderCatalogList(type) {
     const tbodyId = type === 'especialidad' ? 'listaEspecialidadesBody' : 'listaTurnosBody';
     const tbody = document.getElementById(tbodyId);
+    
+    // Usar el array específico del tipo
     const items = catalogData[type];
 
-    if (items.length === 0) {
+    if (!items || items.length === 0) {
         tbody.innerHTML = `<tr><td colspan="${type === 'especialidad' ? 3 : 4}" style="text-align:center; padding:1rem; color:#94a3b8;">No hay registros.</td></tr>`;
         return;
     }
@@ -2331,12 +2333,30 @@ function resetForm(type) {
 
 async function saveCatalogItem(e, type) {
     e.preventDefault();
+    
+    // Validar campos básicos antes de enviar
+    if (type === 'especialidad') {
+        const codigo = document.getElementById('esp_codigo').value.trim();
+        const nombre = document.getElementById('esp_nombre').value.trim();
+        if (!codigo || !nombre) {
+            Toast.error('Código y Nombre son obligatorios');
+            return;
+        }
+    } else {
+        const codigo = document.getElementById('turno_codigo').value.trim();
+        const nombre = document.getElementById('turno_nombre').value.trim();
+        if (!codigo || !nombre) {
+            Toast.error('Código y Nombre son obligatorios');
+            return;
+        }
+    }
+
     const formData = new FormData();
     const idField = type === 'especialidad' ? 'esp_id' : 'turno_id';
     const id = document.getElementById(idField).value;
     
     formData.append('action', id ? 'update' : 'create');
-    formData.append('type', type);
+    formData.append('type', type); // CRÍTICO: Enviar el tipo correcto al backend
     if (id) formData.append('id', id);
 
     if (type === 'especialidad') {
@@ -2349,24 +2369,40 @@ async function saveCatalogItem(e, type) {
     }
 
     try {
+        console.log(`📡 Enviando acción ${id ? 'update' : 'create'} para tipo: ${type}`);
+        
         const res = await fetch('/api/catalogos.php', { method: 'POST', body: formData });
         const data = await res.json();
         
         if (data.success) {
             Toast.success(data.message);
+            
+            // Resetear formulario
             resetForm(type);
-            // Recargar lista
+            
+            // RECARGAR LA LISTA CORRECTA SEGÚN EL TIPO
+            console.log(`🔄 Recargando lista para tipo: ${type}`);
+            
+            // Hacemos fetch específico para ese tipo para evitar mezclar datos
             const listRes = await fetch(`/api/catalogos.php?action=list&type=${type}`);
             const listData = await listRes.json();
+            
             if (listData.success) {
+                // Actualizar solo el array correspondiente en memoria
                 catalogData[type] = listData.data;
+                
+                // Renderizar la lista específica
                 renderCatalogList(type);
+            } else {
+                console.error("Error al recargar lista:", listData.error);
+                Toast.error('Error al refrescar la lista');
             }
         } else {
-            Toast.error(data.error);
+            Toast.error(data.error || 'Error desconocido');
         }
     } catch (err) {
-        Toast.error('Error al guardar');
+        console.error(err);
+        Toast.error('Error de conexión al guardar');
     }
 }
 
