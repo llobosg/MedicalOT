@@ -1455,16 +1455,29 @@ async function loadIncidences(otCode) {
             if(inc.tipo === 'material') icon = '📦';
             if(inc.tipo === 'seguridad') icon = '⚠️';
 
-            // Link a evidencia si existe
+                        // Link a evidencia si existe
             let evidenceHtml = '';
             if (inc.evidencia_path) {
-                // Asumiendo que los archivos están accesibles vía web en /uploads/...
-                const url = `/${inc.evidencia_path}`;
-                const isPdf = inc.evidencia_path.endsWith('.pdf');
+                // Limpiar la ruta por si tiene barras duplicadas o espacios
+                let cleanPath = inc.evidencia_path.trim();
+                
+                // Asegurar que la ruta empiece con / pero no tenga doble //
+                if (!cleanPath.startsWith('/')) {
+                    cleanPath = '/' + cleanPath;
+                }
+                
+                // Construir URL absoluta segura
+                const url = `${window.location.origin}${cleanPath}`;
+                
+                console.log("📎 Intentando cargar evidencia:", url); // Log para debuggear en F12
+                
+                const isPdf = cleanPath.toLowerCase().endsWith('.pdf');
                 
                 if (isPdf) {
+                    // Para PDFs, abrir en nueva pestaña
                     evidenceHtml = `<a href="${url}" target="_blank" class="inc-evidence">📄 Ver PDF</a>`;
                 } else {
+                    // Para imágenes, abrir en nueva pestaña
                     evidenceHtml = `<a href="${url}" target="_blank" class="inc-evidence">🖼️ Ver Foto</a>`;
                 }
             }
