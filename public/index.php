@@ -1870,7 +1870,12 @@ async function cargarTecnicos() {
             <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-family:monospace; color:#64748b;">${t.rut || '-'}</td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${t.nombre}</td>
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;"><span class="badge b-pen">${t.especialidad_nombre || '-'}</span></td>
+                
+                <!-- AMPLIAR COLUMNA ESPECIALIDAD -->
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; min-width:180px;">
+                    ${t.especialidad_nombre ? `<span class="badge b-pen">${t.especialidad_nombre}</span>` : '<span style="color:#cbd5e1;">-</span>'}
+                </td>
+                
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#475569;">${t.nombre_vertical || '-'}</td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">${t.turno_actual || '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}</td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-size:0.9rem; color:#64748b;">
@@ -1942,7 +1947,12 @@ async function cargarTurnosActivos() {
                     </span>
                 </td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${r.nombre_display}</td>
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;"><span class="badge b-blue">${r.turno_nombre}</span></td>
+                
+                <!-- CORREGIR MOSTRAJE DE TURNO -->
+                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">
+                    ${r.turno_nombre ? `<span class="badge b-blue">${r.turno_nombre}</span>` : '<span style="color:#cbd5e1;">-</span>'}
+                </td>
+                
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#64748b;">
                     ${r.vertical_nombre ? `<div>🏢 ${r.vertical_nombre}</div>` : ''}
                     ${r.especialidad_nombre ? `<div>🛠️ ${r.especialidad_nombre}</div>` : ''}

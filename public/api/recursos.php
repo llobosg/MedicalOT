@@ -179,13 +179,20 @@ try {
             $stmt->execute([$id]);
             echo json_encode(['success' => true, 'message' => 'Grupo eliminado']);
 
-        // --- LISTAR RECURSOS CON TURNO ASIGNADO (TÉCNICOS Y GRUPOS) ---
+                // --- LISTAR RECURSOS CON TURNO ASIGNADO (TÉCNICOS Y GRUPOS) ---
         } elseif ($action === 'list_con_turno') {
-            // Unir técnicos y grupos en una sola lista usando UNION ALL
+            // Usamos UNION ALL para combinar Técnicos y Grupos
+            // Aseguramos que todos los campos tengan el mismo nombre de columna
+            
             $sql = "
-                SELECT 'tecnico' as tipo_recurso, t.id as id_recurso, t.nombre as nombre_display, 
-                       tt.nombre as turno_nombre, tt.codigo as turno_codigo,
-                       v.nombre_vertical as vertical_nombre, e.nombre as especialidad_nombre
+                SELECT 
+                    'tecnico' as tipo_recurso, 
+                    t.id as id_recurso, 
+                    t.nombre as nombre_display, 
+                    tt.nombre as turno_nombre, 
+                    tt.codigo as turno_codigo,
+                    v.nombre_vertical as vertical_nombre, 
+                    e.nombre as especialidad_nombre
                 FROM tecnicos t
                 INNER JOIN asignacion_turnos at ON t.id = at.id_tecnico AND at.fecha_hasta IS NULL
                 INNER JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
@@ -194,9 +201,14 @@ try {
                 
                 UNION ALL
                 
-                SELECT 'grupo' as tipo_recurso, g.id as id_recurso, g.nombre_grupo as nombre_display,
-                       tt.nombre as turno_nombre, tt.codigo as turno_codigo,
-                       v.nombre_vertical as vertical_nombre, NULL as especialidad_nombre
+                SELECT 
+                    'grupo' as tipo_recurso, 
+                    g.id as id_recurso, 
+                    g.nombre_grupo as nombre_display,
+                    tt.nombre as turno_nombre, 
+                    tt.codigo as turno_codigo,
+                    v.nombre_vertical as vertical_nombre, 
+                    NULL as especialidad_nombre
                 FROM grupos g
                 INNER JOIN asignacion_turnos at ON g.id = at.id_grupo AND at.fecha_hasta IS NULL
                 INNER JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
