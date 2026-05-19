@@ -1830,6 +1830,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // === GESTIÓN DE RECURSOS (TÉCNICOS Y GRUPOS) ===
+// === GESTIÓN DE RECURSOS (TÉCNICOS Y GRUPOS) ===
+
 let currentResourceType = 'tecnico'; 
 
 function showResourceTab(tab) {
@@ -1842,7 +1844,8 @@ function showResourceTab(tab) {
     document.getElementById('tab-turnos').classList.toggle('active', tab === 'turnos');
 
     // Limpiar buscador al cambiar de pestaña
-    document.getElementById('searchRecursos').value = '';
+    const searchInput = document.getElementById('searchRecursos');
+    if(searchInput) searchInput.value = '';
 
     if (tab === 'tecnicos') cargarTecnicos();
     if (tab === 'grupos') cargarGrupos();
@@ -1876,7 +1879,7 @@ async function cargarTecnicos() {
                     ${(!t.correo && !t.telefono) ? '-' : ''}
                 </td>
                 <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
-                    <button onclick="editResource('tecnico', ${JSON.stringify(t)})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
+                    <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
                     <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" title="Eliminar" style="cursor:pointer; color:#ef4444;">🗑️</button>
                 </td>
             </tr>
@@ -1884,7 +1887,6 @@ async function cargarTecnicos() {
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
-    document.getElementById('searchRecursos').dispatchEvent(new Event('keyup'));
 }
 
 async function cargarGrupos() {
@@ -1916,7 +1918,6 @@ async function cargarGrupos() {
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
-    document.getElementById('searchRecursos').dispatchEvent(new Event('keyup'));
 }
 
 async function cargarTurnosActivos() {
@@ -1952,18 +1953,19 @@ async function cargarTurnosActivos() {
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
     }
-    document.getElementById('searchRecursos').dispatchEvent(new Event('keyup'));
 }
 
-// === BUSCADOR INTELIGENTE ===
+// === BUSCADOR INTELIGENTE CORREGIDO ===
 function filterResources() {
     const query = document.getElementById('searchRecursos').value.toLowerCase().trim();
-    const activeTab = document.querySelector('.resource-tab.active').id.replace('tab-', ''); // 'tecnicos', 'grupos', 'turnos'
     
+    // Determinar qué tbody está visible actualmente
     let tbodyId = '';
-    if (activeTab === 'tecnicos') tbodyId = 'tablaTecnicosBody';
-    else if (activeTab === 'grupos') tbodyId = 'tablaGruposBody';
-    else if (activeTab === 'turnos') tbodyId = 'tablaTurnosBody';
+    if (document.getElementById('view-tecnicos').style.display !== 'none') tbodyId = 'tablaTecnicosBody';
+    else if (document.getElementById('view-grupos').style.display !== 'none') tbodyId = 'tablaGruposBody';
+    else if (document.getElementById('view-turnos').style.display !== 'none') tbodyId = 'tablaTurnosBody';
+    
+    if (!tbodyId) return; // Si ninguna vista está activa, salir
 
     const rows = document.querySelectorAll(`#${tbodyId} tr`);
     
@@ -1993,25 +1995,30 @@ async function openModal(type, item = null) {
     
     document.getElementById('tituloModalRecursos').textContent = item ? `Editar ${type === 'tecnico' ? 'Técnico' : 'Grupo'}` : `Nuevo ${type === 'tecnico' ? 'Técnico' : 'Grupo'}`;
 
+    // 1. Primero cargamos los selects (esto limpia las opciones anteriores)
     await loadSelects();
 
+    // 2. Luego prellenamos los datos SI hay un item (edición)
     if (item) {
         if (type === 'tecnico') {
             document.getElementById('res_rut').value = item.rut || '';
             document.getElementById('res_nombre').value = item.nombre || '';
-            document.getElementById('res_especialidad').value = item.id_especialidad || '';
-            document.getElementById('res_vertical_tecnico').value = item.id_vertical || '';
+            
+            // Asignar IDs numéricos explícitamente
+            if (item.id_especialidad) document.getElementById('res_especialidad').value = item.id_especialidad;
+            if (item.id_vertical) document.getElementById('res_vertical_tecnico').value = item.id_vertical;
+            if (item.id_tipo_turno) document.getElementById('res_turno').value = item.id_tipo_turno;
+            
             document.getElementById('res_correo').value = item.correo || '';
             document.getElementById('res_telefono').value = item.telefono || '';
-            // FIX: Asegurar que se cargue el ID del turno, no el nombre
-            document.getElementById('res_turno').value = item.id_tipo_turno || ''; 
             document.getElementById('res_id').value = item.id;
         } else {
             document.getElementById('res_nombre_grupo').value = item.nombre_grupo || '';
-            document.getElementById('res_vertical_grupo').value = item.id_vertical || '';
+            
+            if (item.id_vertical) document.getElementById('res_vertical_grupo').value = item.id_vertical;
+            if (item.id_tipo_turno) document.getElementById('res_turno').value = item.id_tipo_turno;
+            
             document.getElementById('res_desc').value = item.descripcion || '';
-            // FIX: Asegurar que se cargue el ID del turno
-            document.getElementById('res_turno').value = item.id_tipo_turno || '';
             document.getElementById('res_id').value = item.id;
         }
     }
@@ -2028,16 +2035,14 @@ async function loadSelects() {
             if (res.ok) {
                 const data = await res.json();
                 if (data.success) espData = data.data || [];
-                if (!Array.isArray(espData)) espData = [];
-                console.log("Especialidades cargadas:", espData);
             }
         } catch (e) { console.warn("Error especialidades", e); }
 
         const espSelect = document.getElementById('res_especialidad');
         if (espSelect) {
-            // Forzamos estilo inline en cada option para evitar conflictos CSS globales
-            espSelect.innerHTML = '<option value="" style="background: #fff; color: #000;">Seleccionar...</option>' + 
-                espData.map(e => `<option value="${e.id}" style="background: #ffffff; color: #000000; padding:8px;">${e.nombre}</option>`).join('');
+            // Inyectar estilo inline en cada option para forzar visibilidad
+            espSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Seleccionar...</option>' + 
+                espData.map(e => `<option value="${e.id}" style="background:#ffffff; color:#000000; padding:8px;">${e.nombre}</option>`).join('');
         }
 
         // 2. Cargar Verticales
@@ -2050,14 +2055,12 @@ async function loadSelects() {
             }
         } catch (e) { console.warn("Error verticales", e); }
 
-        // Llenar select de Vertical para Técnico
         const vertTecSelect = document.getElementById('res_vertical_tecnico');
         if (vertTecSelect) {
-            vertTecSelect.innerHTML = '<option value="" style="background: #fff; color: #000;">Seleccionar Vertical...</option>' + 
-                vertData.map(v => `<option value="${v.id_vertical}" style="background: #ffffff; color: #000000; padding:8px;">${v.nombre_vertical}</option>`).join('');
+            vertTecSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Seleccionar Vertical...</option>' + 
+                vertData.map(v => `<option value="${v.id_vertical}" style="background:#ffffff; color:#000000; padding:8px;">${v.nombre_vertical}</option>`).join('');
         }
 
-        // Llenar select de Vertical para Grupo
         const vertGrpSelect = document.getElementById('res_vertical_grupo');
         if (vertGrpSelect) {
             vertGrpSelect.innerHTML = '<option value="" style="background:#fff; color:#000;">Ninguna</option>' + 
@@ -2091,7 +2094,7 @@ async function saveResource(e) {
     const type = document.getElementById('res_type').value;
     const id = document.getElementById('res_id').value;
     
-    // Validación Manual (ya que quitamos required)
+    // Validación Manual
     if (type === 'tecnico') {
         const rut = document.getElementById('res_rut').value.trim();
         const nombre = document.getElementById('res_nombre').value.trim();
@@ -2117,7 +2120,7 @@ async function saveResource(e) {
         formData.append('correo', document.getElementById('res_correo').value);
         formData.append('telefono', document.getElementById('res_telefono').value);
         formData.append('id_especialidad', document.getElementById('res_especialidad').value);
-        formData.append('id_vertical', document.getElementById('res_vertical_tecnico').value); // Nuevo
+        formData.append('id_vertical', document.getElementById('res_vertical_tecnico').value);
     } else {
         formData.append('nombre_grupo', document.getElementById('res_nombre_grupo').value);
         formData.append('id_vertical', document.getElementById('res_vertical_grupo').value);
@@ -2144,10 +2147,6 @@ async function saveResource(e) {
     }
 }
 
-function closeModal() {
-    document.getElementById('modalRecursos').style.display = 'none';
-}
-
 function editResource(type, item) {
     openModal(type, item);
 }
@@ -2170,7 +2169,10 @@ async function deleteResource(type, id, name) {
     }
 }
 
-// Inicializar si estamos en la pestaña recursos
+function closeModal() {
+    document.getElementById('modalRecursos').style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('recursos').classList.contains('active')) {
         cargarTecnicos();
