@@ -335,7 +335,16 @@ try {
             $planifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Obtener técnicos disponibles para la sidebar
-            $techStmt = $pdo->query("SELECT id, nombre, especialidades.nombre as esp FROM tecnicos LEFT JOIN especialidades ON tecnicos.id_especialidad = especialidades.id ORDER BY nombre");
+            $techStmt = $pdo->query("
+                SELECT 
+                    tecnicos.id AS id,
+                    tecnicos.nombre,
+                    especialidades.nombre AS esp 
+                FROM tecnicos 
+                LEFT JOIN especialidades 
+                    ON tecnicos.id_especialidad = especialidades.id 
+                ORDER BY tecnicos.nombre
+            ");
             $technicians = $techStmt->fetchAll(PDO::FETCH_ASSOC);
 
             echo json_encode([
