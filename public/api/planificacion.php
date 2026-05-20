@@ -291,14 +291,16 @@ try {
             $sundayEnd = (new DateTime($mondayStart))->modify('+6 days')->format('Y-m-d');
 
             // Obtener todas las planificaciones de la semana
+            // CORRECCIÓN: JOIN con equipos para obtener el nombre del equipo correctamente
             $stmt = $pdo->prepare("
                 SELECT p.*, 
-                       ot.nombre_equipo, 
+                       eq.nombre as nombre_equipo, 
                        e.nombre as especialidad_nombre,
                        GROUP_CONCAT(DISTINCT CONCAT(t.nombre, '(', arp.hh_asignadas, 'h)')) as tecnicos_asignados_str,
                        COUNT(arp.id) as num_asignaciones
                 FROM planificaciones p
                 LEFT JOIN ordenes_trabajo ot ON p.codigo_ot = ot.codigo_ot
+                LEFT JOIN equipos eq ON ot.id_equipo = eq.id -- <--- NUEVO JOIN CON EQUIPOS
                 LEFT JOIN especialidades e ON ot.id_especialidad = e.id
                 LEFT JOIN asignacion_recursos_planificacion arp ON p.id = arp.id_planificacion
                 LEFT JOIN tecnicos t ON arp.id_tecnico = t.id AND arp.tipo_recurso = 'tecnico'
