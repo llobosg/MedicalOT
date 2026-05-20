@@ -284,6 +284,114 @@ try {
                 throw $e;
             }
         }
+                // ------------------------------------------------------------------
+        // ACCIÓN: OBTENER SEMANA PARA CALENDARIO (GET)
+        // ------------------------------------------------------------------
+        elseif ($method === 'GET' && $action === 'get_week') {
+            $startDate = $_GET['start_date'] ?? date('Y-m-d'); // Primer día de la semana
+            
+            // Ajustar al lunes de esa semana si no es lunes
+            $dateObj = new DateTime($startDate);
+            $dayOfWeek = (int)$dateObj->format('N'); 
+            $diffDays = $dayOfWeek - 1;
+            $dateObj->modify("-$diffDays days");
+            $mondayStart = $dateObj->format('Y-m-d');
+            
+            $sundayEnd = (new DateTime($mondayStart))->modify('+6 days')->format('Y-m-d');
+
+            // Obtener todas las planificaciones de la semana
+            $stmt = $pdo->prepare("
+                SELECT p.*, 
+                       ot.nombre_equipo, 
+                       e.nombre as especialidad_nombre,
+                       GROUP_CONCAT(DISTINCT CONCAT(t.nombre, '(', arp.hh_asignadas, 'h)')) as tecnicos_asignados_str,
+                       COUNT(arp.id) as num_asignaciones
+                FROM planificaciones p
+                LEFT JOIN ordenes_trabajo ot ON p.codigo_ot = ot.codigo_ot
+                LEFT JOIN especialidades e ON ot.id_especialidad = e.id
+                LEFT JOIN asignacion_recursos_planificacion arp ON p.id = arp.id_planificacion
+                LEFT JOIN tecnicos t ON arp.id_tecnico = t.id AND arp.tipo_recurso = 'tecnico'
+                WHERE p.fecha_programada BETWEEN ? AND ?
+                GROUP BY p.id
+                ORDER BY p.fecha_programada ASC, p.id ASC
+            ");
+            $stmt->execute([$mondayStart, $sundayEnd]);
+            $planifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Obtener técnicos disponibles para la sidebar
+            $techStmt = $pdo->query("SELECT id, nombre, especialidades.nombre as esp FROM tecnicos LEFT JOIN especialidades ON tecnicos.id_especialidad = especialidades.id ORDER BY nombre");
+            $technicians = $techStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            echo json_encode([
+                'success' => true,
+                'week_start' => $mondayStart,
+                'week_end' => $sundayEnd,
+                'data' => $planifications,
+                'resources' => $technicians
+            ]);
+
+        // ------------------------------------------------------------------
+        // ACCIÓN: CAMBIAR FECHA DE PLANIFICACIÓN (POST)
+        // ------------------------------------------------------------------
+        elseif ($method === 'POST' && $action === 'change_date') {
+            $idPlan = $input['id_planificacion'] ?? null;
+            $newDate = $input['new_date'] ?? null;
+            
+            if (!$idPlan || !$newDate) throw new Exception("Datos incompletos.");
+
+            // Validar que la nueva fecha esté dentro de la misma semana (Regla de negocio rápida)
+            // O permitir cualquier fecha si viene del modal avanzado
+            
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("UPDATE planificaciones SET fecha_programada = ?, estado = 'reprogramada' WHERE id = ?");
+                $stmt->execute([$newDate, $idPlan]);
+                
+                // Si se reprograma, marcar asignaciones previas como completadas o mantenerlas? 
+                // Por simplicidad, mantenemos las asignaciones vinculadas a la planificación ID.
+                
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => 'Fecha actualizada correctamente.']);
+            } catch (\Exception $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // ACCIÓN: REASIGNAR RECURSO (POST)
+        // ------------------------------------------------------------------
+        elseif ($method === 'POST' && $action === 'reassign_resource') {
+            $idAsignacion = $input['id_asignacion'] ?? null;
+            $nuevoIdRecurso = $input['nuevo_id_recurso'] ?? null;
+            $tipoRecurso = $input['tipo_recurso'] ?? null; // tecnico o grupo
+
+            if (!$idAsignacion || !$nuevoIdRecurso) throw new Exception("Datos incompletos.");
+
+            $pdo->beginTransaction();
+            try {
+                // Actualizar la asignación existente
+                $stmt = $pdo->prepare("
+                    UPDATE asignacion_recursos_planificacion 
+                    SET id_tecnico = CASE WHEN ? = 'tecnico' THEN ? ELSE NULL END,
+                        id_grupo = CASE WHEN ? = 'grupo' THEN ? ELSE NULL END,
+                        tipo_recurso = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([
+                    $tipoRecurso, $nuevoIdRecurso,
+                    $tipoRecurso, $nuevoIdRecurso,
+                    $tipoRecurso,
+                    $idAsignacion
+                ]);
+
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => 'Recurso reasignado correctamente.']);
+            } catch (\Exception $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+        }
 
         else {
             throw new Exception("Acción no válida");

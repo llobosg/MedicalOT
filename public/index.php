@@ -863,57 +863,106 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             </div>
         </div>
 
-        <!-- MÓDULO 2: PLANIFICACIÓN (Calendario Hotelero) -->
+        <!-- MÓDULO 9: PLANIFICACIÓN INTELIGENTE -->
         <section id="planificacion" class="module-section">
             <div style="height:100%; display:flex; flex-direction:column;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <h3 style="margin:0;">Planificación Semanal (Semana 19)</h3>
-                    <div style="display:flex; gap:0.5rem;">
-                        <button onclick="changeWeek(-1)" style="padding:0.4rem 0.8rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">◀ Anterior</button>
-                        <button onclick="changeWeek(1)" style="padding:0.4rem 0.8rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Siguiente ▶</button>
+                
+                <!-- Header de Control -->
+                <div style="padding:1rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h3 style="margin:0; color:#1e293b;">📅 Planificación Semanal</h3>
+                        <p style="font-size:0.85rem; color:#64748b; margin-top:0.25rem;">Arrastra técnicos a las tareas o usa el modal para detalles.</p>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button onclick="changeWeek(-1)" class="btn-secondary">⬅️ Anterior</button>
+                        <span id="currentWeekLabel" style="font-weight:600; min-width:150px; text-align:center;">Cargando...</span>
+                        <button onclick="changeWeek(1)" class="btn-secondary">Siguiente ➡️</button>
+                        <button onclick="goToToday()" class="btn-primary" style="padding:0.4rem 0.8rem; font-size:0.8rem;">Hoy</button>
                     </div>
                 </div>
-                
-                <!-- Contenedor del Calendario Scrollable -->
-                <div style="flex:1; overflow:auto; background:#fff; border:1px solid #e2e8f0; border-radius:0.75rem; position:relative;">
-                    <div id="calendarGrid" style="display:grid; grid-template-columns: 150px repeat(7, 1fr); min-height:100%;">
-                        <!-- Header Días -->
-                        <div style="position:sticky; top:0; left:0; z-index:10; background:#f1f5f9; padding:0.75rem; font-weight:600; border-bottom:2px solid #e2e8f0; border-right:2px solid #e2e8f0;">Recurso</div>
-                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Lunes</div>
-                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Martes</div>
-                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Miércoles</div>
-                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Jueves</div>
-                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Viernes</div>
-                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Sábado</div>
-                        <div style="position:sticky; top:0; z-index:9; background:#f1f5f9; padding:0.75rem; font-weight:600; text-align:center; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0;">Domingo</div>
 
-                        <!-- Fila Grupo 1 -->
-                        <div style="position:sticky; left:0; z-index:5; background:#fff; padding:0.75rem; border-bottom:1px solid #e2e8f0; border-right:2px solid #e2e8f0; font-weight:600;">Pool ClimA</div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Lunes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Martes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell has-event" onclick="showEventDetails()" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px; background:#dbeafe;">
-                            <div style="padding:0.5rem; font-size:0.75rem; color:#1e40af; background:#bfdbfe; border-radius:4px; margin:0.25rem;">OT-2026-001<br>08:00 - 16:00</div>
+                <!-- Contenedor Principal: Sidebar + Calendario -->
+                <div style="flex:1; display:flex; overflow:hidden;">
+                    
+                    <!-- Sidebar de Recursos (Técnicos Disponibles) -->
+                    <div id="sidebarRecursos" style="width:250px; background:#fff; border-right:1px solid #e2e8f0; padding:1rem; overflow-y:auto;">
+                        <h4 style="font-size:0.9rem; color:#64748b; margin-bottom:1rem;">👷 Técnicos Disponibles</h4>
+                        <div id="listaTecnicosDraggable" style="display:flex; flex-direction:column; gap:0.5rem;">
+                            <!-- Se llena dinámicamente -->
                         </div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Jueves')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Viernes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Sábado')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ClimA', 'Domingo')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+                    </div>
 
-                        <!-- Fila Grupo 2 -->
-                        <div style="position:sticky; left:0; z-index:5; background:#fff; padding:0.75rem; border-bottom:1px solid #e2e8f0; border-right:2px solid #e2e8f0; font-weight:600;">Pool ElecB</div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Lunes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Martes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Miércoles')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell has-event" onclick="showEventDetails()" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px; background:#dcfce7;">
-                            <div style="padding:0.5rem; font-size:0.75rem; color:#166534; background:#bbf7d0; border-radius:4px; margin:0.25rem;">OT-2026-002<br>09:00 - 17:00</div>
+                    <!-- Calendario Semanal Grid -->
+                    <div style="flex:1; display:flex; flex-direction:column; background:#f1f5f9;">
+                        <!-- Cabecera de Días -->
+                        <div id="calendarHeader" style="display:grid; grid-template-columns:repeat(7, 1fr); background:#fff; border-bottom:2px solid #cbd5e1;">
+                            <!-- Se llena dinámicamente -->
                         </div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Viernes')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Sábado')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
-                        <div class="cal-cell" onclick="openPlanningModal('Pool ElecB', 'Domingo')" style="border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; min-height:100px;"></div>
+
+                        <!-- Cuerpo del Calendario -->
+                        <div id="calendarBody" style="flex:1; overflow-y:auto; position:relative;">
+                            <div id="calendarGrid" style="display:grid; grid-template-columns:repeat(7, 1fr); height:100%; min-height:500px;">
+                                <!-- Celdas de días generadas por JS -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
+
+        <!-- MODAL DETALLE PLANIFICACIÓN -->
+        <div id="modalPlanificacion" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:0; border-radius:1rem; width:90%; max-width:600px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow:hidden;">
+                <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; font-size:1.1rem; font-weight:600; color:#1e293b;">📋 Detalle de Planificación</h3>
+                    <button onclick="closeModalPlanificacion()" style="background:none; border:none; font-size:1.5rem; color:#94a3b8; cursor:pointer;">&times;</button>
+                </div>
+                <div style="padding:1.5rem;">
+                    <form id="formPlanificacion" onsubmit="savePlanificacionDetails(event)">
+                        <input type="hidden" id="pf_id">
+                        
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">OT / Equipo</label>
+                            <input type="text" id="pf_ot" disabled style="width:100%; padding:0.6rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#f8fafc; color:#64748b;">
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                            <div>
+                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Fecha Programada</label>
+                                <input type="date" id="pf_fecha" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">HH Requeridas</label>
+                                <input type="number" step="0.5" id="pf_hh" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Estado</label>
+                            <select id="pf_estado" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                                <option value="pendiente_asignacion">Pendiente Asignación</option>
+                                <option value="asignada">Asignada</option>
+                                <option value="en_ejecucion">En Ejecución</option>
+                                <option value="completada">Completada</option>
+                                <option value="reprogramada">Reprogramada</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.25rem;">Asignaciones Actuales</label>
+                            <div id="pf_asignaciones_list" style="max-height:100px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.5rem; font-size:0.9rem;">
+                                <!-- Lista dinámica -->
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                            <button type="button" onclick="closeModalPlanificacion()" style="padding:0.5rem 1rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Cancelar</button>
+                            <button type="submit" style="padding:0.5rem 1rem; border:none; border-radius:0.5rem; background:#3b82f6; color:#fff; cursor:pointer;">💾 Guardar Cambios</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
         <!-- MÓDULO 3: PRESENTACIÓN (Dashboard Minimalista) -->
         <section id="presentacion" class="module-section">
@@ -2428,6 +2477,311 @@ async function deleteCatalogItem(id, name, type) {
         Toast.error('Error al eliminar');
     }
 }
+// === MÓDULO 9: PLANIFICACIÓN ===
+
+let currentWeekStart = new Date();
+let calendarData = [];
+let resourcesList = [];
+
+function initPlanificacion() {
+    // Ajustar al lunes actual
+    const day = currentWeekStart.getDay(); 
+    const diff = currentWeekStart.getDate() - day + (day == 0 ? -6 : 1); 
+    currentWeekStart.setDate(diff);
+    
+    loadWeekData();
+}
+
+async function loadWeekData() {
+    const startDate = currentWeekStart.toISOString().split('T')[0];
+    
+    try {
+        const res = await fetch(`/api/planificacion.php?action=get_week&start_date=${startDate}`);
+        const data = await res.json();
+        
+        if (!data.success) throw new Error(data.error);
+
+        calendarData = data.data;
+        resourcesList = data.resources;
+        
+        renderCalendarHeader(data.week_start, data.week_end);
+        renderCalendarGrid();
+        renderSidebarResources();
+        
+    } catch (err) {
+        console.error(err);
+        Toast.error('Error al cargar planificación');
+    }
+}
+
+function renderCalendarHeader(startStr, endStr) {
+    const header = document.getElementById('calendarHeader');
+    const label = document.getElementById('currentWeekLabel');
+    
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    
+    label.textContent = `${start.toLocaleDateString('es-CL', {day:'numeric'})} - ${end.toLocaleDateString('es-CL', {month:'long', year:'numeric'})}`;
+    
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        const isToday = d.toDateString() === new Date().toDateString();
+        const bg = isToday ? '#eff6ff' : '#fff';
+        const color = isToday ? '#2563eb' : '#64748b';
+        
+        html += `
+            <div style="padding:0.75rem; text-align:center; background:${bg}; border-right:1px solid #e2e8f0;">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:${color};">${d.toLocaleDateString('es-CL', {weekday:'short'})}</div>
+                <div style="font-size:1.2rem; font-weight:700; color:${color};">${d.getDate()}</div>
+            </div>
+        `;
+    }
+    header.innerHTML = html;
+}
+
+function renderCalendarGrid() {
+    const grid = document.getElementById('calendarGrid');
+    grid.innerHTML = '';
+    
+    const start = new Date(currentWeekStart);
+    
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        
+        // Filtrar items de este día
+        const dayItems = calendarData.filter(item => item.fecha_programada === dateStr);
+        
+        const cell = document.createElement('div');
+        cell.style.cssText = `
+            border-right:1px solid #e2e8f0; 
+            border-bottom:1px solid #e2e8f0; 
+            padding:0.5rem; 
+            min-height:150px; 
+            background:#fff;
+            transition:background 0.2s;
+        `;
+        cell.dataset.date = dateStr;
+        
+        // Zona de Drop
+        cell.addEventListener('dragover', handleDragOver);
+        cell.addEventListener('drop', handleDropOnDay);
+
+        // Renderizar Items
+        let itemsHtml = '';
+        dayItems.forEach(item => {
+            const statusColor = getStatusColor(item.estado);
+            const techs = item.tecnicos_asignados_str ? item.tecnicos_asignados_str.split(',').map(t => `<span class="badge b-blue" style="font-size:0.7rem; margin-right:2px;">${t}</span>`).join('') : '<span style="color:#94a3b8; font-style:italic;">Sin asignar</span>';
+            
+            itemsHtml += `
+                <div draggable="true" 
+                     ondragstart="handleDragStart(event, '${item.id}')"
+                     onclick="openPlanificacionModal(${JSON.stringify(item).replace(/"/g, '&quot;')})"
+                     style="background:${statusColor}; color:#fff; padding:0.5rem; border-radius:0.375rem; margin-bottom:0.5rem; cursor:move; font-size:0.85rem; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+                    <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.codigo_ot}</div>
+                    <div style="font-size:0.75rem; opacity:0.9;">${item.nombre_equipo || ''}</div>
+                    <div style="margin-top:0.25rem; display:flex; flex-wrap:wrap;">${techs}</div>
+                </div>
+            `;
+        });
+        
+        cell.innerHTML = itemsHtml || '<div style="text-align:center; color:#cbd5e1; font-size:0.8rem; margin-top:2rem;">Vacío</div>';
+        grid.appendChild(cell);
+    }
+}
+
+function renderSidebarResources() {
+    const list = document.getElementById('listaTecnicosDraggable');
+    list.innerHTML = resourcesList.map(r => `
+        <div draggable="true" 
+             ondragstart="handleResourceDragStart(event, '${r.id}', '${r.nombre}')"
+             style="background:#f8fafc; border:1px solid #e2e8f0; padding:0.5rem; border-radius:0.5rem; cursor:grab; display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:1.2rem;">👨‍🔧</span>
+            <div>
+                <div style="font-weight:600; font-size:0.85rem; color:#1e293b;">${r.nombre}</div>
+                <div style="font-size:0.75rem; color:#64748b;">${r.esp || 'General'}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// === DRAG & DROP LOGIC ===
+
+let draggedItemId = null;
+let draggedResourceId = null;
+let draggedResourceName = null;
+
+function handleDragStart(e, itemId) {
+    draggedItemId = itemId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.style.opacity = '0.5';
+}
+
+function handleResourceDragStart(e, resourceId, resourceName) {
+    draggedResourceId = resourceId;
+    draggedResourceName = resourceName;
+    e.dataTransfer.effectAllowed = 'copy';
+}
+
+function handleDragOver(e) {
+    e.preventDefault(); // Necesario para permitir drop
+    e.currentTarget.style.background = '#eff6ff';
+}
+
+function handleDropOnDay(e) {
+    e.preventDefault();
+    const targetCell = e.currentTarget;
+    targetCell.style.background = '#fff';
+    const newDate = targetCell.dataset.date;
+
+    if (draggedItemId) {
+        // Replanificar: Mover OT a otro día
+        changePlanificacionDate(draggedItemId, newDate);
+        draggedItemId = null;
+    } else if (draggedResourceId) {
+        // Asignar: Aquí necesitamos saber a qué OT se soltó.
+        // En este diseño simple, asumimos que se suelta sobre una OT existente para reasignar,
+        // o podríamos crear una lógica más compleja de "Crear Nueva Asignación".
+        // Para simplificar: Si se suelta sobre una celda vacía, no pasa nada.
+        // Si se suelta sobre una OT, abrimos el modal de esa OT pre-seleccionando el técnico.
+        
+        // Detectar si cayó sobre una OT
+        const targetOtElement = e.target.closest('[draggable="true"]');
+        if (targetOtElement) {
+            // Extraer ID del elemento DOM (hack rápido)
+            const onClickAttr = targetOtElement.getAttribute('onclick');
+            const match = onClickAttr.match(/(\d+)/);
+            if (match) {
+                const otId = match[1];
+                openPlanificacionModalWithPreselectedTech(otId, draggedResourceId);
+            }
+        }
+        draggedResourceId = null;
+    }
+}
+
+// Restaurar opacidad al terminar drag
+document.addEventListener('dragend', (e) => {
+    if (e.target.style.opacity) e.target.style.opacity = '1';
+});
+
+async function changePlanificacionDate(id, newDate) {
+    try {
+        const res = await fetch('/api/planificacion.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'change_date', id_planificacion: id, new_date: newDate })
+        });
+        const data = await res.json();
+        if (data.success) {
+            Toast.success('Fecha actualizada');
+            loadWeekData(); // Recargar vista
+        } else {
+            Toast.error(data.error);
+        }
+    } catch (err) {
+        Toast.error('Error al actualizar fecha');
+    }
+}
+
+// === MODAL LOGIC ===
+
+function openPlanificacionModal(item) {
+    document.getElementById('pf_id').value = item.id;
+    document.getElementById('pf_ot').value = `${item.codigo_ot} - ${item.nombre_equipo || ''}`;
+    document.getElementById('pf_fecha').value = item.fecha_programada;
+    document.getElementById('pf_hh').value = item.hh_requeridas;
+    document.getElementById('pf_estado').value = item.estado;
+    
+    // Mostrar asignaciones
+    const listDiv = document.getElementById('pf_asignaciones_list');
+    if (item.tecnicos_asignados_str) {
+        listDiv.innerHTML = item.tecnicos_asignados_str.split(',').map(t => `<div style="padding:0.25rem 0;">✅ ${t}</div>`).join('');
+    } else {
+        listDiv.innerHTML = '<div style="color:#94a3b8;">Sin recursos asignados</div>';
+    }
+
+    document.getElementById('modalPlanificacion').style.display = 'flex';
+}
+
+function openPlanificacionModalWithPreselectedTech(otId, techId) {
+    // Buscar el item en calendarData
+    const item = calendarData.find(i => i.id == otId);
+    if (item) {
+        openPlanificacionModal(item);
+        // Aquí podrías abrir un sub-modal o select para confirmar la asignación
+        // Por ahora, mostramos un toast indicando que puede editar manualmente
+        Toast.info(`Abriendo detalle de ${item.codigo_ot}. Puedes reasignar recursos aquí.`);
+    }
+}
+
+function closeModalPlanificacion() {
+    document.getElementById('modalPlanificacion').style.display = 'none';
+}
+
+async function savePlanificacionDetails(e) {
+    e.preventDefault();
+    const id = document.getElementById('pf_id').value;
+    const fecha = document.getElementById('pf_fecha').value;
+    const hh = document.getElementById('pf_hh').value;
+    const estado = document.getElementById('pf_estado').value;
+
+    try {
+        // Actualizar básica
+        const res = await fetch('/api/planificacion.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                action: 'update_basic', // Necesitarás agregar esta acción en PHP similar a change_date
+                id_planificacion: id, 
+                new_date: fecha,
+                hh: hh,
+                estado: estado
+            })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            Toast.success('Guardado correctamente');
+            closeModalPlanificacion();
+            loadWeekData();
+        } else {
+            Toast.error(data.error);
+        }
+    } catch (err) {
+        Toast.error('Error al guardar');
+    }
+}
+
+// Helpers
+function getStatusColor(status) {
+    switch(status) {
+        case 'completada': return '#10b981'; // Green
+        case 'en_ejecucion': return '#3b82f6'; // Blue
+        case 'reprogramada': return '#f59e0b'; // Orange
+        default: return '#94a3b8'; // Gray
+    }
+}
+
+function changeWeek(offset) {
+    currentWeekStart.setDate(currentWeekStart.getDate() + (offset * 7));
+    loadWeekData();
+}
+
+function goToToday() {
+    currentWeekStart = new Date();
+    loadWeekData();
+}
+
+// Inicializar si estamos en la pestaña
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('planificacion').classList.contains('active')) {
+        initPlanificacion();
+    }
+});
 </script>
     <!-- MODAL ESPECIALIDADES -->
     <div id="modalEspecialidades" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
