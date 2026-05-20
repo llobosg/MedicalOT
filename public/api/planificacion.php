@@ -211,7 +211,6 @@ try {
 
             $pdo->beginTransaction();
             try {
-                // Eliminar asignación
                 $stmtDel = $pdo->prepare("DELETE FROM asignacion_recursos_planificacion WHERE id = ?");
                 $stmtDel->execute([$idAsignacion]);
                 
@@ -221,10 +220,9 @@ try {
                 $pdo->rollBack();
                 throw $e;
             }
-        }
 
         // ------------------------------------------------------------------
-        // ACCIÓN: REGISTRAR ASISTENCIA (POST) - CONTROL DE OFERTA
+        // ACCIÓN: REGISTRAR ASISTENCIA (POST)
         // ------------------------------------------------------------------
         } elseif ($method === 'POST' && $action === 'registrar_asistencia') {
             $idTecnico = $input['id_tecnico'] ?? null;
@@ -276,7 +274,6 @@ try {
                 $pdo->rollBack();
                 throw $e;
             }
-        }
 
         // ------------------------------------------------------------------
         // ACCIÓN: OBTENER SEMANA PARA CALENDARIO (GET)
@@ -344,7 +341,6 @@ try {
                 $pdo->rollBack();
                 throw $e;
             }
-        }
 
         // ------------------------------------------------------------------
         // ACCIÓN: REASIGNAR RECURSO (POST)
@@ -378,9 +374,8 @@ try {
                 $pdo->rollBack();
                 throw $e;
             }
-        }
 
-        else {
+        } else {
             throw new Exception("Acción no válida");
         }
 
