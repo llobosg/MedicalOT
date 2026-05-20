@@ -4,9 +4,24 @@
   --user=root \
   --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
   --database=railway \
-  -e "ALTER TABLE tecnicos 
-ADD COLUMN id_vertical INT DEFAULT NULL,
-ADD CONSTRAINT fk_tecnico_vertical FOREIGN KEY (id_vertical) REFERENCES verticales(id_vertical) ON DELETE SET NULL;"
+  -e "CREATE TABLE IF NOT EXISTS planificaciones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo_ot VARCHAR(50) NOT NULL,
+    id_protocolo INT DEFAULT NULL,
+    nombre_equipo VARCHAR(100) DEFAULT NULL,
+    fecha_programada DATE NOT NULL,
+    turno_id INT DEFAULT NULL,
+    hh_requeridas DECIMAL(5,2) NOT NULL,
+    estado ENUM('programada', 'en_ejecucion', 'completada', 'reprogramada', 'cancelada') DEFAULT 'programada',
+    observaciones TEXT,
+    creado_por INT DEFAULT NULL,
+    
+    FOREIGN KEY (turno_id) REFERENCES tipos_turno(id) ON DELETE SET NULL,
+    FOREIGN KEY (creado_por) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_fecha (fecha_programada),
+    INDEX idx_ot (codigo_ot),
+    INDEX idx_estado (estado)
+);"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
@@ -15,5 +30,11 @@ mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railw
 
   # Commit y push
 git add .
-git commit -m "fix: corregir validación formularios, agregar vertical a técnicos y mejorar UI selects"
+git commit -m "fix: separar lógica de renderizado y carga de turnos vs especialidades"
 git push origin main
+
+
+base de datos AWS RDS
+medicalot-db
+admin
+Villaseca75.
