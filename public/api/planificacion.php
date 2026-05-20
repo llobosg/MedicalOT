@@ -200,7 +200,7 @@ try {
             } catch (\Exception $e) {
                 $pdo->rollBack();
                 throw $e;
-            } // <--- AQUÍ FALTABA CERRAR ESTE TRY-CATCH INTERNO
+            }
 
         // ------------------------------------------------------------------
         // ACCIÓN: DESASIGNAR RECURSO (DELETE)
