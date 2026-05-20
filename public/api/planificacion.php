@@ -275,7 +275,7 @@ try {
                 throw $e;
             }
 
-        // ------------------------------------------------------------------
+                // ------------------------------------------------------------------
         // ACCIÓN: OBTENER SEMANA PARA CALENDARIO (GET)
         // ------------------------------------------------------------------
         } elseif ($method === 'GET' && $action === 'get_week') {
@@ -290,24 +290,47 @@ try {
             
             $sundayEnd = (new DateTime($mondayStart))->modify('+6 days')->format('Y-m-d');
 
-            // Obtener todas las planificaciones de la semana
-            // CORRECCIÓN: JOIN con equipos para obtener el nombre del equipo correctamente
-            $stmt = $pdo->prepare("
-                SELECT p.*, 
-                       eq.nombre as nombre_equipo, 
-                       e.nombre as especialidad_nombre,
-                       GROUP_CONCAT(DISTINCT CONCAT(t.nombre, '(', arp.hh_asignadas, 'h)')) as tecnicos_asignados_str,
-                       COUNT(arp.id) as num_asignaciones
+            // Estrategia: Usar una subconsulta para evitar ambigüedad de IDs en GROUP BY
+            // Primero obtenemos las planificaciones básicas
+            // Luego hacemos JOINs simples sin GROUP BY complejo en la capa superior
+            
+            $sql = "
+                SELECT 
+                    p.id, 
+                    p.codigo_ot, 
+                    p.id_protocolo,
+                    p.nombre_equipo as nombre_equipo_plan,
+                    p.fecha_programada, 
+                    p.turno_id,
+                    p.hh_requeridas, 
+                    p.estado,
+                    p.observaciones,
+                    eq.nombre as nombre_equipo, 
+                    e.nombre as especialidad_nombre,
+                    -- Usamos una subconsulta correlacionada o LEFT JOIN con agregación previa si fuera necesario,
+                    -- pero para simplificar y evitar errores de ambigüedad, haremos dos queries o usaremos JSON_ARRAYAGG si MySQL 5.7+ lo soporta bien.
+                    -- Para máxima compatibilidad, haremos un JOIN directo y agruparemos SOLO por p.id
+                    
+                    (SELECT GROUP_CONCAT(DISTINCT CONCAT(t2.nombre, '(', arp2.hh_asignadas, 'h)')) 
+                     FROM asignacion_recursos_planificacion arp2
+                     JOIN tecnicos t2 ON arp2.id_tecnico = t2.id AND arp2.tipo_recurso = 'tecnico'
+                     WHERE arp2.id_planificacion = p.id
+                    ) as tecnicos_asignados_str,
+                    
+                    (SELECT COUNT(*) 
+                     FROM asignacion_recursos_planificacion arp3
+                     WHERE arp3.id_planificacion = p.id
+                    ) as num_asignaciones
+
                 FROM planificaciones p
                 LEFT JOIN ordenes_trabajo ot ON p.codigo_ot = ot.codigo_ot
-                LEFT JOIN equipos eq ON ot.id_equipo = eq.id -- <--- NUEVO JOIN CON EQUIPOS
+                LEFT JOIN equipos eq ON ot.id_equipo = eq.id
                 LEFT JOIN especialidades e ON ot.id_especialidad = e.id
-                LEFT JOIN asignacion_recursos_planificacion arp ON p.id = arp.id_planificacion
-                LEFT JOIN tecnicos t ON arp.id_tecnico = t.id AND arp.tipo_recurso = 'tecnico'
                 WHERE p.fecha_programada BETWEEN ? AND ?
-                GROUP BY p.id
                 ORDER BY p.fecha_programada ASC, p.id ASC
-            ");
+            ";
+            
+            $stmt = $pdo->prepare($sql);
             $stmt->execute([$mondayStart, $sundayEnd]);
             $planifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
