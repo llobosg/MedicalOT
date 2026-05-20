@@ -4,7 +4,7 @@
   --user=root \
   --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
   --database=railway \
-  -e "describe planificaciones;"
+  -e "CREATE INDEX idx_ot_prevision ON ordenes_trabajo(id_prevision_sic);"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
@@ -12,15 +12,11 @@ mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railw
 
 
   # Commit y push
-git add public/api/planificacion.php
-git commit -m "fix: refactorizar query get_week para eliminar ambigüedad de ID usando subconsultas"
+git add .
+git commit -m "feat: extraer id_prevision_sic de columna C durante carga SIC,2"
 git push origin main
 
 base de datos AWS RDS
 medicalot-db
 admin
 Villaseca75.
-
-OpenAI
-nombre api key: medicalot api_key
-api key: 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
