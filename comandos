@@ -13,7 +13,7 @@ mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railw
 
   # Commit y push
 git add .
-git commit -m "feat: extraer id_prevision_sic de columna C durante carga SIC,2"
+git commit -m "feat: extraer id_prevision_sic de columna C durante carga SIC,3"
 git push origin main
 
 base de datos AWS RDS
