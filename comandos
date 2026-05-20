@@ -1,0 +1,22 @@
+/Applications/XAMPP/xamppfiles/bin/mysql \
+  --host=trolley.proxy.rlwy.net \
+  --port=28420 \
+  --user=root \
+  --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
+  --database=railway \
+  -e "CREATE INDEX idx_ot_prevision ON ordenes_trabajo(id_prevision_sic);"
+
+
+mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
+
+
+
+  # Commit y push
+git add .
+git commit -m "feat: extraer id_prevision_sic de columna C durante carga SIC,2"
+git push origin main
+
+base de datos AWS RDS
+medicalot-db
+admin
+Villaseca75.
