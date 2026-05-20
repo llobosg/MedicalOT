@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedicalOT - Planificación Inteligente (Demo)</title>
+    <title>MedicalOT - Planificación Inteligente (Demo Real)</title>
     <style>
         :root {
             --primary: #3b82f6;
@@ -212,19 +212,12 @@
         
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* Drag Placeholder */
-        .drag-placeholder {
-            border: 2px dashed var(--primary); background: #eff6ff;
-            border-radius: 0.5rem; margin-bottom: 0.75rem; height: 60px;
-            display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 0.8rem;
-        }
-
     </style>
 </head>
 <body>
 
 <header>
-    <h1>📅 MedicalOT Planner <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal; margin-left:10px;">(Demo Interactiva)</span></h1>
+    <h1>📅 MedicalOT Planner <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal; margin-left:10px;">(Demo con Datos Reales SIC)</span></h1>
     <div class="controls">
         <button class="nav-btn" onclick="changeWeek(-1)">⬅️ Anterior</button>
         <span id="weekLabel" style="font-weight:600; min-width:200px; text-align:center;">Cargando...</span>
@@ -305,7 +298,9 @@
 <div id="toast-container"></div>
 
 <script>
-    // === DATOS DE PRUEBA (SIMULANDO BD) ===
+    // === DATOS DE PRUEBA BASADOS EN EL EXCEL REAL ===
+    
+    // Técnicos simulados
     const technicians = [
         { id: 1, name: 'Juan Pérez', role: 'Técnico Elec.', status: 'presente' },
         { id: 2, name: 'Maria González', role: 'Téc. Climatiz.', status: 'presente' },
@@ -313,16 +308,51 @@
         { id: 4, name: 'Grupo A Clim.', role: 'Grupo', status: 'presente' }
     ];
 
+    // Función auxiliar para obtener fechas específicas de ESTA semana
+    function getMondayOfThisWeek() {
+        const d = new Date();
+        const day = d.getDay(); 
+        const diff = d.getDate() - day + (day == 0 ? -6 : 1); 
+        return new Date(d.setDate(diff));
+    }
+
+    function getDateOfWeek(monday, daysOffset) {
+        const d = new Date(monday);
+        d.setDate(d.getDate() + daysOffset);
+        return d.toISOString().split('T')[0];
+    }
+
+    // Calcular fechas fijas para esta semana
+    const mondayThisWeek = getMondayOfThisWeek();
+    const dateMonday = getDateOfWeek(mondayThisWeek, 0);
+    const dateTuesday = getDateOfWeek(mondayThisWeek, 1);
+    const dateWednesday = getDateOfWeek(mondayThisWeek, 2);
+    const dateThursday = getDateOfWeek(mondayThisWeek, 3);
+    const dateFriday = getDateOfWeek(mondayThisWeek, 4);
+
+    // OTs Simuladas basadas en el Excel (Terminaciones, Tableros, etc.)
+    // AHORA USAMOS FECHAS ABSOLUTAS DE ESTA SEMANA PARA GARANTIZAR VISIBILIDAD
     let otData = [
-        { id: 101, code: 'OT-2026-001', equip: 'Aire Acondicionado Sala 1', date: getRelativeDate(0), techId: null, status: 'pendiente_asignacion', obs: '' },
-        { id: 102, code: 'OT-2026-002', equip: 'Panel Eléctrico PISO 2', date: getRelativeDate(0), techId: 1, status: 'asignada', obs: 'Revisión mensual' },
-        { id: 103, code: 'OT-2026-003', equip: 'Ventilador Extractor', date: getRelativeDate(1), techId: 2, status: 'asignada', obs: '' },
-        { id: 104, code: 'OT-2026-004', equip: 'Iluminación Emergencia', date: getRelativeDate(2), techId: 3, status: 'asignada', obs: 'Técnico con licencia!' },
-        { id: 105, code: 'OT-2026-005', equip: 'Mantenimiento Conductivo', date: getRelativeDate(-1), techId: null, status: 'pendiente_asignacion', obs: '' },
-        { id: 106, code: 'OT-2026-006', equip: 'Bomba Agua Fría', date: getRelativeDate(3), techId: 4, status: 'asignada', obs: 'Trabajo grupal' }
+        // Lunes (HOY o próximo lunes de esta semana) -> TARJETA AMARILLA (Pendiente)
+        { id: 101, code: 'OT-402584', equip: 'Terminaciones (Quinquenal)', date: dateMonday, techId: null, status: 'pendiente_asignacion', obs: 'Prevención SIC: I106' },
+        
+        // Lunes -> TARJETA AZUL (Asignada a Juan)
+        { id: 102, code: 'OT-438000', equip: 'Tableros Eléctricos Principales', date: dateMonday, techId: 1, status: 'asignada', obs: 'Revisión mensual' },
+        
+        // Martes -> TARJETA AZUL (Asignada a Maria)
+        { id: 103, code: 'OT-402585', equip: 'Terminaciones (Quinquenal)', date: dateTuesday, techId: 2, status: 'asignada', obs: '' },
+        
+        // Miércoles -> TARJETA ROJA/AMARILLA (Conflicto: Carlos Ruiz está de licencia)
+        { id: 104, code: 'OT-438001', equip: 'Tableros Eléctricos Secundarios', date: dateWednesday, techId: 3, status: 'asignada', obs: '⚠️ Técnico con Licencia Médica!' },
+        
+        // Jueves -> TARJETA AMARILLA (Pendiente)
+        { id: 105, code: 'OT-401952', equip: 'Exteriores (Semestral)', date: dateThursday, techId: null, status: 'pendiente_asignacion', obs: 'Alta complejidad' },
+        
+        // Viernes -> TARJETA AZUL (Asignada a Grupo)
+        { id: 106, code: 'OT-402586', equip: 'Terminaciones (Quinquenal)', date: dateFriday, techId: 4, status: 'asignada', obs: 'Trabajo grupal' }
     ];
 
-    let currentWeekStart = new Date();
+    let currentWeekStart = new Date(mondayThisWeek);
     let draggedTechId = null;
     let draggedTechType = null; // 'technician' or 'group'
     let currentEditingOtId = null;
@@ -331,15 +361,6 @@
     function init() {
         renderSidebar();
         goToToday();
-    }
-
-    function getRelativeDate(daysOffset) {
-        const d = new Date();
-        // Ajustar al lunes actual para consistencia
-        const day = d.getDay(); 
-        const diff = d.getDate() - day + (day == 0 ? -6 : 1); 
-        d.setDate(d.getDate() - diff + daysOffset);
-        return d.toISOString().split('T')[0];
     }
 
     // === RENDERIZADO ===
@@ -373,11 +394,8 @@
     }
 
     function goToToday() {
-        const today = new Date();
-        const day = today.getDay(); 
-        const diff = today.getDate() - day + (day == 0 ? -6 : 1); 
-        currentWeekStart = new Date(today);
-        currentWeekStart.setDate(diff);
+        // Resetear a la semana actual para asegurar que se vean las OTs de prueba
+        currentWeekStart = new Date(mondayThisWeek);
         renderCalendar();
     }
 
@@ -469,20 +487,16 @@
         const newDate = targetCol.dataset.date;
 
         if (draggedTechId) {
-            // Lógica: Crear nueva OT temporal o asignar a una existente si se suelta sobre ella
-            // Para simplificar la demo: Si se suelta en espacio vacío, creamos una OT rápida.
-            // Si se suelta sobre una OT, reasignamos.
+            // Lógica: Crear nueva OT temporal si se suelta en espacio vacío
+            // Si se suelta sobre una OT existente, podríamos reasignar (simplificado aquí)
             
             const targetOtElement = e.target.closest('.ot-card');
             
-            if (targetOtElement) {
-                // Reasignar a OT existente (hack para obtener ID del DOM en demo)
-                // En prod usaríamos data-id en el elemento
-                showToast('Reasignación detectada. Abriendo detalle...', 'info');
-                // Aquí abriríamos el modal de esa OT pre-seleccionando el técnico
-            } else {
+            if (!targetOtElement) {
                 // Crear nueva OT rápida
                 createQuickOt(newDate, draggedTechId);
+            } else {
+                showToast('Arrastra a espacio vacío para crear nueva tarea', 'warning');
             }
             
             draggedTechId = null;
@@ -552,16 +566,6 @@
         ot.status = document.getElementById('modalStatus').value;
         ot.techId = newTechId ? parseInt(newTechId) : null;
         ot.obs = document.getElementById('modalObs').value;
-
-        // Simular cambio de fecha fuera de semana (Alerta)
-        const weekStart = new Date(currentWeekStart);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        const selectedDate = new Date(ot.date);
-        
-        if (selectedDate < weekStart || selectedDate > weekEnd) {
-            showToast('⚠️ Fecha movida fuera de la vista semanal actual', 'warning');
-        }
 
         renderCalendar();
         closeModal();

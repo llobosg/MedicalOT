@@ -41,6 +41,21 @@ class SICImportService
         }
     }
 
+     /**
+     * Extrae el ID numérico de la cadena HTML <div id="cambios_XXXXX"...>
+     */
+    private function extractPrevisionId(string $htmlString): ?int
+    {
+        if (empty($htmlString)) return null;
+        
+        // Busca el patrón cambios_NUMERO usando Regex
+        // Ejemplo: <div id="cambios_358121" ...> -> retorna 358121
+        if (preg_match('/cambios_(\d+)/', $htmlString, $matches)) {
+            return (int)$matches[1];
+        }
+        return null;
+    }
+
     private function processStreaming(string $filePath, int $loteId): void
     {
         // Inicializar estado en sesión
@@ -75,7 +90,7 @@ class SICImportService
             INSERT INTO ordenes_trabajo (
                 codigo_ot, fecha_programada, turno, semana_num, dia_semana,
                 id_protocolo, id_equipo, id_area, id_especialidad, rut_proveedor, id_ruta,
-                hh_programadas, estado, id_lote
+                hh_programadas, estado, id_lote, id_prevision_sic
             ) VALUES (
                 ?, ?, ?, ?, ?,
                 (SELECT id FROM protocolos WHERE codigo=?),
@@ -84,7 +99,7 @@ class SICImportService
                 (SELECT id FROM especialidades WHERE codigo=?),
                 ?,
                 (SELECT id FROM rutas WHERE codigo=?),
-                0, 'pendiente', ?
+                0, 'pendiente', ?, ?
             )
         ");
 
@@ -117,17 +132,22 @@ class SICImportService
             }
 
             $fecha = !empty($row[0]) ? date('Y-m-d', strtotime(trim($row[0]))) : null;
+            // NUEVO: Extraer ID Previsión de la Columna C (índice 2 usualmente, verificar tu CSV)
+            // Asumiendo que la columna C es el índice 2 en el array $row
+            $rawColumnC = trim($row[2] ?? ''); 
+            $previsionId = $this->extractPrevisionId($rawColumnC);
             
             try {
                 // Pasamos el rut_proveedor como string vacío o null si la columna existe en BD
                 // Si la columna rut_proveedor fue eliminada de ordenes_trabajo, ajusta la query arriba quitando ese campo
-                $rutProv = trim($row[24] ?? ''); 
+                 $rutProv = trim($row[24] ?? ''); 
                 
+                // AGREGAR $previsionId AL FINAL DEL ARRAY
                 $otStmt->execute([
                     $ot, $fecha, trim($row[5] ?? 'Mañana'), (int)($row[3] ?? 0), trim($row[4] ?? ''),
                     trim($row[6] ?? ''), trim($row[14] ?? ''), trim($row[12] ?? ''), trim($row[22] ?? ''), 
-                    $rutProv, // Se guarda el RUT en la columna rut_proveedor si existe
-                    trim($row[27] ?? ''), $loteId
+                    $rutProv, 
+                    trim($row[27] ?? ''), $loteId, $previsionId // <-- NUEVO PARÁMETRO
                 ]);
                 $this->stats['inserted']++;
             } catch (Exception $e) {
