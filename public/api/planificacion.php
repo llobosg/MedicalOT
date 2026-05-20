@@ -93,7 +93,7 @@ try {
         // ------------------------------------------------------------------
         // ACCIÓN: OBTENER DETALLE DE UNA PLANIFICACIÓN (GET)
         // ------------------------------------------------------------------
-        elseif ($method === 'GET' && $action === 'detail') {
+        } elseif ($method === 'GET' && $action === 'detail') {
             $id = $_GET['id'] ?? null;
             if (!$id) throw new Exception("ID requerido");
 
@@ -118,7 +118,7 @@ try {
         // ------------------------------------------------------------------
         // ACCIÓN: ASIGNAR RECURSO (POST) - EL CORAZÓN DEL SISTEMA
         // ------------------------------------------------------------------
-        elseif ($method === 'POST' && $action === 'asignar') {
+        } elseif ($method === 'POST' && $action === 'asignar') {
             $idPlanificacion = $input['id_planificacion'] ?? null;
             $tipoRecurso     = $input['tipo_recurso'] ?? null; // 'tecnico' o 'grupo'
             $idRecurso       = $input['id_recurso'] ?? null;   // ID tecnico o grupo
@@ -158,7 +158,6 @@ try {
                     }
 
                     // B. Verificar Conflicto de Horario (¿Ya tiene otra tarea ese día?)
-                    // Calculamos HH totales ya asignadas a este técnico en esa fecha
                     $checkConflict = $pdo->prepare("
                         SELECT SUM(arp2.hh_asignadas) as hh_usadas
                         FROM asignacion_recursos_planificacion arp2
@@ -170,7 +169,7 @@ try {
                     $checkConflict->execute([$idRecurso, $fechaStr, $idPlanificacion]);
                     $hhUsadas = $checkConflict->fetchColumn() ?: 0;
                     
-                    // Asumimos 8 horas máximas por día para un técnico (ajustable según turno)
+                    // Asumimos 8 horas máximas por día para un técnico
                     $maxHH = 8.0; 
                     if (($hhUsadas + $hhAsignadas) > $maxHH) {
                         throw new Exception("Conflicto de horario: El técnico ya tiene {$hhUsadas}h asignadas. Solo quedan ".($maxHH - $hhUsadas)."h disponibles.");
@@ -201,12 +200,12 @@ try {
             } catch (\Exception $e) {
                 $pdo->rollBack();
                 throw $e;
-            }
+            } // <--- AQUÍ FALTABA CERRAR ESTE TRY-CATCH INTERNO
 
         // ------------------------------------------------------------------
         // ACCIÓN: DESASIGNAR RECURSO (DELETE)
         // ------------------------------------------------------------------
-        elseif ($method === 'DELETE' || ($method === 'POST' && $action === 'desasignar')) {
+        } elseif ($method === 'DELETE' || ($method === 'POST' && $action === 'desasignar')) {
             $idAsignacion = $_GET['id'] ?? $input['id_asignacion'] ?? null;
             if (!$idAsignacion) throw new Exception("ID de asignación requerido.");
 
@@ -215,10 +214,6 @@ try {
                 // Eliminar asignación
                 $stmtDel = $pdo->prepare("DELETE FROM asignacion_recursos_planificacion WHERE id = ?");
                 $stmtDel->execute([$idAsignacion]);
-                
-                // Si ya no hay asignaciones, volver a pendiente
-                $checkEmpty = $pdo->prepare("SELECT COUNT(*) FROM asignacion_recursos_planificacion WHERE id_planificacion = (SELECT id_planificacion FROM asignacion_recursos_planificacion WHERE id = ? LIMIT 1)");
-                // Nota: Lógica simplificada. En producción, verificaríamos cuántas quedan.
                 
                 $pdo->commit();
                 echo json_encode(['success' => true, 'message' => 'Recurso desasignado.']);
@@ -231,10 +226,10 @@ try {
         // ------------------------------------------------------------------
         // ACCIÓN: REGISTRAR ASISTENCIA (POST) - CONTROL DE OFERTA
         // ------------------------------------------------------------------
-        elseif ($method === 'POST' && $action === 'registrar_asistencia') {
+        } elseif ($method === 'POST' && $action === 'registrar_asistencia') {
             $idTecnico = $input['id_tecnico'] ?? null;
             $fecha     = $input['fecha'] ?? null;
-            $estado    = $input['estado'] ?? 'presente'; // presente, ausente, licencia_medica, etc.
+            $estado    = $input['estado'] ?? 'presente';
             $motivo    = $input['motivo'] ?? null;
 
             if (!$idTecnico || !$fecha) throw new Exception("Técnico y Fecha requeridos.");
@@ -265,8 +260,6 @@ try {
                     $checkOts->execute([$idTecnico, $fecha]);
                     $otsAfectadas = $checkOts->fetchAll(PDO::FETCH_COLUMN);
                     
-                    // Aquí podrías enviar un email o notificación push en el futuro
-                    // Por ahora, lo devolvemos en el JSON para que el frontend avise
                     $alerta = !empty($otsAfectadas) ? "Atención: Hay " . count($otsAfectadas) . " OT(s) programadas para hoy que requieren este técnico." : "";
                 } else {
                     $alerta = "";
@@ -284,13 +277,14 @@ try {
                 throw $e;
             }
         }
-                // ------------------------------------------------------------------
+
+        // ------------------------------------------------------------------
         // ACCIÓN: OBTENER SEMANA PARA CALENDARIO (GET)
         // ------------------------------------------------------------------
-        elseif ($method === 'GET' && $action === 'get_week') {
-            $startDate = $_GET['start_date'] ?? date('Y-m-d'); // Primer día de la semana
+        } elseif ($method === 'GET' && $action === 'get_week') {
+            $startDate = $_GET['start_date'] ?? date('Y-m-d'); 
             
-            // Ajustar al lunes de esa semana si no es lunes
+            // Ajustar al lunes de esa semana
             $dateObj = new DateTime($startDate);
             $dayOfWeek = (int)$dateObj->format('N'); 
             $diffDays = $dayOfWeek - 1;
@@ -333,22 +327,16 @@ try {
         // ------------------------------------------------------------------
         // ACCIÓN: CAMBIAR FECHA DE PLANIFICACIÓN (POST)
         // ------------------------------------------------------------------
-        elseif ($method === 'POST' && $action === 'change_date') {
+        } elseif ($method === 'POST' && $action === 'change_date') {
             $idPlan = $input['id_planificacion'] ?? null;
             $newDate = $input['new_date'] ?? null;
             
             if (!$idPlan || !$newDate) throw new Exception("Datos incompletos.");
 
-            // Validar que la nueva fecha esté dentro de la misma semana (Regla de negocio rápida)
-            // O permitir cualquier fecha si viene del modal avanzado
-            
             $pdo->beginTransaction();
             try {
                 $stmt = $pdo->prepare("UPDATE planificaciones SET fecha_programada = ?, estado = 'reprogramada' WHERE id = ?");
                 $stmt->execute([$newDate, $idPlan]);
-                
-                // Si se reprograma, marcar asignaciones previas como completadas o mantenerlas? 
-                // Por simplicidad, mantenemos las asignaciones vinculadas a la planificación ID.
                 
                 $pdo->commit();
                 echo json_encode(['success' => true, 'message' => 'Fecha actualizada correctamente.']);
@@ -361,16 +349,15 @@ try {
         // ------------------------------------------------------------------
         // ACCIÓN: REASIGNAR RECURSO (POST)
         // ------------------------------------------------------------------
-        elseif ($method === 'POST' && $action === 'reassign_resource') {
+        } elseif ($method === 'POST' && $action === 'reassign_resource') {
             $idAsignacion = $input['id_asignacion'] ?? null;
             $nuevoIdRecurso = $input['nuevo_id_recurso'] ?? null;
-            $tipoRecurso = $input['tipo_recurso'] ?? null; // tecnico o grupo
+            $tipoRecurso = $input['tipo_recurso'] ?? null;
 
             if (!$idAsignacion || !$nuevoIdRecurso) throw new Exception("Datos incompletos.");
 
             $pdo->beginTransaction();
             try {
-                // Actualizar la asignación existente
                 $stmt = $pdo->prepare("
                     UPDATE asignacion_recursos_planificacion 
                     SET id_tecnico = CASE WHEN ? = 'tecnico' THEN ? ELSE NULL END,
