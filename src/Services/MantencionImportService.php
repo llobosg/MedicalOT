@@ -81,7 +81,7 @@ class MantencionImportService
                 id_especialidad, 
                 nombre_equipo, 
                 tipo_mantenimiento
-            ) VALUES (?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, 0, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 total_hh_planificadas = VALUES(total_hh_planificadas),
                 ultima_fecha_programada = VALUES(ultima_fecha_programada),
@@ -183,17 +183,17 @@ class MantencionImportService
                 // Total Placeholders: 15
                 
                 $resumenStmt->execute([
-                    $codigoOt,                  // 1. codigo_ot
-                    $idPrevisionSic,            // 2. id_prevision_sic
-                    $fechaProgramada,           // 3. primera_fecha_programada
-                    $fechaProgramada,           // 4. ultima_fecha_programada
-                    $estadoNormalizado,         // 5. ultimo_estado
-                    $hhPlanificadas,            // 6. total_hh_planificadas
-                    $diasRetraso,               // 7. dias_retraso
-                    null,                       // 8. id_vertical
-                    null,                       // 9. id_especialidad
-                    $nombreEquipo,              // 10. nombre_equipo
-                    $tipo                       // 11. tipo_mantenimiento
+                    $codigoOt,
+                    $idPrevisionSic,
+                    $fechaProgramada,
+                    $fechaProgramada,
+                    $estadoNormalizado,
+                    $hhPlanificadas,
+                    $diasRetraso,
+                    null,
+                    null,
+                    $nombreEquipo,
+                    $tipo
                 ]);
 
                 $this->stats['updated']++;
