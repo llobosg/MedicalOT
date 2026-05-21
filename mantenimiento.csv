@@ -1,0 +1,10 @@
+﻿ID PREVISION SIC;CODIGO PROTOCOLO;NOMBRE;PROGRAMACION;PERIODICIDAD;FECHA;MES;N SEMANA;CODIGO ESPECIALIDAD;ESPECIALIDAD;HORAS;TIPO;ESTADO
+358121;I000;Mantenimiento Conductivo;INSPECCIÓN CONDUCTIVO DIARIO;"Lun(M); Mar(M); Mié(M); Jue(M); Vie(M); Sáb(M); Dom(M)";01-01-26;enero;52;50;M-CLIMATIZACION FRIGORISTA;0;INTERNA;
+395125;IB14;Estanque Agua PCI;MANTENIMIENTO ANUAL;"Anual Periódica; Cada 1Año(s) .: Comienza el año 2026; El mes de mayo; Semana del mes 5: Lun(M)";5/25/2026;mayo;21;52;M-GASFITERIA;0.8333333333;INTERNA;
+395126;IB14;Estanque Agua PCI;MANTENIMIENTO ANUAL;"Anual Periódica; Cada 1Año(s) .: Comienza el año 2026; El mes de mayo; Semana del mes 5: Lun(M)";5/25/2026;mayo;21;52;M-GASFITERIA;0.8333333333;INTERNA;
+395127;IB15;Sistema Extinción Automática FM200 CPD;MANTENIMIENTO ANUAL;"Anual Periódica; Cada 1Año(s) .: Comienza el año 2026; El mes de diciembre; Semana del mes 3: Lun(M)";12/14/2026;diciembre;50;57;M-POLIVALENTE;0.5;INTERNA;
+395128;IB15;Sistema Extinción Automática FM200 CPD;MANTENIMIENTO ANUAL;"Anual Periódica; Cada 1Año(s) .: Comienza el año 2026; El mes de diciembre; Semana del mes 3: Lun(M)";12/14/2026;diciembre;50;57;M-POLIVALENTE;0.5;INTERNA;
+396517;IA04;PC de Control Correo Neumático;MANTENIMIENTO SEMESTRAL;"Mensual ; Cada 6mes(es); Comienza el año 2026; A partir de mayo; Cada semana 3: Lun(M)";05-11-26;mayo;19;57;M-POLIVALENTE;2.583.333.333;EXTERNA;
+396518;IA04;PC de Control Correo Neumático;MANTENIMIENTO SEMESTRAL;"Mensual ; Cada 6mes(es); Comienza el año 2026; A partir de mayo; Cada semana 3: Lun(M)";11-09-26;noviembre;45;57;M-POLIVALENTE;2.583.333.333;EXTERNA;
+396519;IA08;Turbinas de Correo Neumático;MANTENIMIENTO SEMESTRAL;"Mensual ; Cada 6mes(es); Comienza el año 2026; A partir de mayo; Cada semana 3: Lun(M)";05-11-26;mayo;19;57;M-POLIVALENTE;2;EXTERNA;
+396520;IA08;Turbinas de Correo Neumático;MANTENIMIENTO SEMESTRAL;"Mensual ; Cada 6mes(es); Comienza el año 2026; A partir de mayo; Cada semana 3: Lun(M)";11-09-26;noviembre;45;57;M-POLIVALENTE;2;EXTERNA;
