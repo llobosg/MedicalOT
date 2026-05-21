@@ -3193,5 +3193,42 @@ async function handleMantencionUpload(file) {
             </div>
         </div>
     </div>
+    <!-- HTML: Colócalo antes de cerrar </body> -->
+    <div id="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Procesando archivo... Por favor, espere.</p>
+    </div>
+
+    <style>
+    #loading-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(4px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 1.1rem;
+        color: #1e293b;
+        text-align: center;
+    }
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #e2e8f0;
+        border-top: 5px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 16px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    </style>
 </body>
 </html>
