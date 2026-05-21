@@ -1567,37 +1567,37 @@ function changeWeek(delta) {
 }
 
 // AGREGAR NUEVAS FICHAS AL HOME (Dinámico)
-document.addEventListener('DOMContentLoaded', () => {
-    const homeGrid = document.querySelector('.home-grid');
-    if(homeGrid) {
-        // Insertar después de la primera tarjeta
-        const newCards = `
-            <div class="home-card" onclick="showModule('planificacion')">
-                <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
-                    <img src="/img/icons/planificacion.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-                </div>
-                <div class="home-card-title">Planificación</div>
-                <div class="home-card-desc">Calendario y asignación HH</div>
-            </div>
-            <div class="home-card" onclick="showModule('verticales')">
-                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
-                        <img src="/img/icons/verticales.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-                    </div>
-                    <div class="home-card-title">Verticales</div>
-                    <div class="home-card-desc">Mantenedor de Verticales</div>
-            </div>
-            <div class="home-card" onclick="showModule('recursos')">
-                <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
-                    <img src="/img/icons/recursos.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-                </div>
-                <div class="home-card-title">Recursos</div>
-                <div class="home-card-desc">Técnicos, Grupos y Turnos</div>
-            </div>
-        `;
-        // Insertar al final de la grilla
-        homeGrid.insertAdjacentHTML('beforeend', newCards);
-    }
-});
+//document.addEventListener('DOMContentLoaded', () => {
+//    const homeGrid = document.querySelector('.home-grid');
+//    if(homeGrid) {
+//        // Insertar después de la primera tarjeta
+//        const newCards = `
+//            <div class="home-card" onclick="showModule('planificacion')">
+//                <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+//                    <img src="/img/icons/planificacion.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+//                </div>
+//                <div class="home-card-title">Planificación</div>
+//                <div class="home-card-desc">Calendario y asignación HH</div>
+//            </div>
+//            <div class="home-card" onclick="showModule('verticales')">
+//                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+//                        <img src="/img/icons/verticales.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+//                    </div>
+//                    <div class="home-card-title">Verticales</div>
+//                    <div class="home-card-desc">Mantenedor de Verticales</div>
+//            </div>
+//            <div class="home-card" onclick="showModule('recursos')">
+//                <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+//                    <img src="/img/icons/recursos.png" alt="Carga SIC" style="width:50px; height:50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+//                </div>
+//                <div class="home-card-title">Recursos</div>
+//                <div class="home-card-desc">Técnicos, Grupos y Turnos</div>
+//            </div>
+//      `;
+//        // Insertar al final de la grilla
+//        homeGrid.insertAdjacentHTML('beforeend', newCards);
+//    }
+//});
 // === ESTADO GLOBAL TRACKING ===
 let currentTrackingOT = null;
 
