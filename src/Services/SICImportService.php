@@ -106,6 +106,9 @@ class SICImportService
         $rowNum = 1;
         $processedCount = 0;
         $updateInterval = 50; // Actualizar sesión cada 50 filas
+        // Obtener el ID Previsión de la Columna C (índice 2)
+        $rawColumnC = trim($row[2] ?? ''); 
+        $previsionId = $this->extractPrevisionId($rawColumnC);
 
         while (($row = fgetcsv($handle, 0, ',', '"', "\\")) !== false) {
             $rowNum++;
@@ -143,11 +146,20 @@ class SICImportService
                  $rutProv = trim($row[24] ?? ''); 
                 
                 // AGREGAR $previsionId AL FINAL DEL ARRAY
-                $otStmt->execute([
-                    $ot, $fecha, trim($row[5] ?? 'Mañana'), (int)($row[3] ?? 0), trim($row[4] ?? ''),
-                    trim($row[6] ?? ''), trim($row[14] ?? ''), trim($row[12] ?? ''), trim($row[22] ?? ''), 
-                    $rutProv, 
-                    trim($row[27] ?? ''), $loteId, $previsionId // <-- NUEVO PARÁMETRO
+                 $otStmt->execute([
+                    $ot,           // codigo_ot
+                    $fecha,       // fecha_programada
+                    trim($row[5] ?? 'Mañana'), // turno
+                    (int)($row[3] ?? 0),      // semana_num
+                    trim($row[4] ?? ''),      // dia_semana
+                    trim($row[6] ?? ''),      // id_protocolo (codigo)
+                    trim($row[14] ?? ''),     // id_equipo (codigo)
+                    trim($row[12] ?? ''),     // id_area (codigo)
+                    trim($row[22] ?? ''),     // id_especialidad (codigo)
+                    $rutProv,       // rut_proveedor
+                    trim($row[27] ?? ''),     // id_ruta (codigo)
+                    $loteId,        // id_lote
+                    $previsionId    // <-- AGREGAR ESTE PARÁMETRO AL FINAL
                 ]);
                 $this->stats['inserted']++;
             } catch (Exception $e) {
