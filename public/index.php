@@ -567,7 +567,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         </section>
 
         <!-- MÓDULO 4: DASHBOARD KPIs (EMILY VERSION) -->
-        <section id="kpis" class="module-section active">
+        <section id="kpis" class="module-section">
             <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
                 
                 <!-- Header -->
