@@ -30,18 +30,36 @@ class MantencionImportService
             throw new Exception("El archivo no existe: $filePath");
         }
 
+        // Leer todo el contenido para detectar separador si es necesario
+        $content = file_get_contents($filePath);
+        
+        // Detectar separador: Comúnmente ; en Excel Latam, , en US/UK
+        // Contamos ocurrencias en la primera línea (encabezados)
+        $firstLine = explode("\n", $content)[0];
+        $countComma = substr_count($firstLine, ',');
+        $countSemicolon = substr_count($firstLine, ';');
+        $countTab = substr_count($firstLine, "\t");
+
+        $delimiter = ',';
+        if ($countSemicolon > $countComma && $countSemicolon > $countTab) {
+            $delimiter = ';';
+        } elseif ($countTab > $countComma && $countTab > $countSemicolon) {
+            $delimiter = "\t";
+        }
+
+        $this->stats['logs'][] = "Separador detectado: " . ($delimiter === ';' ? ';' : ($delimiter === "\t" ? 'TAB' : ','));
+
         $handle = fopen($filePath, 'r');
         if (!$handle) {
             throw new Exception("No se pudo abrir el archivo.");
         }
 
         // Saltar encabezados
-        fgetcsv($handle); 
+        fgetcsv($handle, 1000, $delimiter); 
 
         // Preparar statements
         
         // TABLA: ot_historico
-        // Columnas a insertar (14): codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada, estado, hh_planificadas, hh_reales, observaciones, id_vertical, id_especialidad, id_equipo, nombre_equipo, nombre_protocolo
         $historicoStmt = $this->db->prepare("
             INSERT INTO ot_historico (
                 codigo_ot, 
@@ -58,12 +76,10 @@ class MantencionImportService
                 id_equipo, 
                 nombre_equipo, 
                 nombre_protocolo
-            ) VALUES (?, ?, NOW(), 'MANTENCION', ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, NOW(), 'MANTENCION', ?, ?, ?, 0, '', ?, ?, ?, ?, ?)
         ");
 
         // TABLA: ot_resumen_actual
-        // Columnas a insertar (16): codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga, ultima_fecha_programada, ultimo_estado, ultima_carga, total_hh_planificadas, total_hh_reales_acumuladas, veces_reprogramadas, dias_retraso, id_vertical, id_especialidad, nombre_equipo, tipo_mantenimiento
-        // Nota: updated_at es auto-generado por MySQL, no lo incluimos en el INSERT.
         $resumenStmt = $this->db->prepare("
             INSERT INTO ot_resumen_actual (
                 codigo_ot, 
@@ -81,7 +97,7 @@ class MantencionImportService
                 id_especialidad, 
                 nombre_equipo, 
                 tipo_mantenimiento
-            ) VALUES (?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, 0, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 total_hh_planificadas = VALUES(total_hh_planificadas),
                 ultima_fecha_programada = VALUES(ultima_fecha_programada),
@@ -92,15 +108,29 @@ class MantencionImportService
         ");
 
         $rowNum = 1;
+        $validRows = 0;
         
-        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+        while (($data = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
             $rowNum++;
             
+            // Verificar que tenemos suficientes columnas (mínimo 13 según el Excel)
+            if (count($data) < 13) {
+                continue;
+            }
+
             try {
-                // Limpieza básica según hoja "NEW BD"
                 // Col 0: ID PREVISION SIC
-                $idPrevisionSic = trim($data[0] ?? '');
-                if (empty($idPrevisionSic) || !is_numeric($idPrevisionSic)) continue;
+                $rawId = trim($data[0] ?? '');
+                
+                // Limpiar cualquier carácter no numérico excepto signos negativos (por si acaso)
+                $cleanId = preg_replace('/[^0-9]/', '', $rawId);
+                
+                if (empty($cleanId) || !is_numeric($cleanId)) {
+                    // Si no hay ID válido, saltamos pero no contamos como error grave, solo skip
+                    continue;
+                }
+
+                $idPrevisionSic = (int)$cleanId;
 
                 // Col 1: CODIGO PROTOCOLO
                 $codigoProtocolo = trim($data[1] ?? '');
@@ -108,11 +138,14 @@ class MantencionImportService
                 // Col 2: NOMBRE (Equipo/Tarea)
                 $nombreEquipo = trim($data[2] ?? '');
                 
-                // Col 5: FECHA (Formato MM/DD/YY)
+                // Col 5: FECHA (Formato MM/DD/YY o DD/MM/YY? En el ejemplo parece MM/DD/YY: 6/6/26)
+                // El Excel muestra: 6/6/26 -> Junio 6, 2026. Formato US.
                 $fechaRaw = trim($data[5] ?? '');
                 
                 // Col 10: HORAS
-                $hhPlanificadas = floatval(str_replace(',', '.', $data[10] ?? '0'));
+                $hhRaw = trim($data[10] ?? '0');
+                // Reemplazar coma por punto si viene formato europeo
+                $hhPlanificadas = floatval(str_replace(',', '.', $hhRaw));
                 
                 // Col 11: TIPO (INTERNA/EXTERNA)
                 $tipoRaw = strtoupper(trim($data[11] ?? 'INTERNA'));
@@ -127,9 +160,10 @@ class MantencionImportService
                 if (!empty($fechaRaw)) {
                     $parts = explode('/', $fechaRaw);
                     if (count($parts) === 3) {
-                        $year = strlen($parts[2]) == 2 ? '20' . $parts[2] : $parts[2];
+                        // Asumimos formato MM/DD/YY basado en ejemplos: 6/6/26
                         $month = str_pad($parts[0], 2, '0', STR_PAD_LEFT);
                         $day = str_pad($parts[1], 2, '0', STR_PAD_LEFT);
+                        $year = strlen($parts[2]) == 2 ? '20' . $parts[2] : $parts[2];
                         $fechaProgramada = sprintf("%s-%s-%s", $year, $month, $day);
                     }
                 }
@@ -140,31 +174,29 @@ class MantencionImportService
                 $otData = $otCheck->fetch(PDO::FETCH_ASSOC);
 
                 if (!$otData) {
-                    // Si no encuentra la OT en SIC, saltamos pero registramos log si quieres
+                    // Si no encuentra la OT en SIC, registramos log pero continuamos
                     // $this->stats['logs'][] = "Fila $rowNum: No se encontró OT para ID Previsión $idPrevisionSic";
                     continue;
                 }
 
                 $codigoOt = $otData['codigo_ot'];
+                $validRows++;
 
-                // 1. Insertar en Histórico (Snapshot de la planificación)
-                // Valores: 14
+                // 1. Insertar en Histórico
                 $historicoStmt->execute([
                     $codigoOt,                  // 1. codigo_ot
                     $idPrevisionSic,            // 2. id_prevision_sic
                     $fechaProgramada,           // 3. fecha_programada
                     $estadoNormalizado,         // 4. estado
                     $hhPlanificadas,            // 5. hh_planificadas
-                    '',                         // 6. observaciones
-                    null,                       // 7. id_vertical
-                    null,                       // 8. id_especialidad
-                    null,                       // 9. id_equipo
-                    $nombreEquipo,              // 10. nombre_equipo
-                    $codigoProtocolo            // 11. nombre_protocolo
+                    null,                       // 6. id_vertical
+                    null,                       // 7. id_especialidad
+                    null,                       // 8. id_equipo
+                    $nombreEquipo,              // 9. nombre_equipo
+                    $codigoProtocolo            // 10. nombre_protocolo
                 ]);
 
                 // 2. Actualizar Resumen Actual
-                // Calculamos días de retraso si ya pasó la fecha y sigue pendiente
                 $diasRetraso = 0;
                 if ($fechaProgramada && $estadoNormalizado === 'pendiente') {
                     try {
@@ -178,22 +210,18 @@ class MantencionImportService
                     }
                 }
 
-                // Valores: 15 (Nota: el SQL tiene 15 placeholders, verificamos abajo)
-                // SQL Placeholders: ?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, 0, ?, ?, ?, ?, ?
-                // Total Placeholders: 15
-                
                 $resumenStmt->execute([
-                    $codigoOt,
-                    $idPrevisionSic,
-                    $fechaProgramada,
-                    $fechaProgramada,
-                    $estadoNormalizado,
-                    $hhPlanificadas,
-                    $diasRetraso,
-                    null,
-                    null,
-                    $nombreEquipo,
-                    $tipo
+                    $codigoOt,                  // 1. codigo_ot
+                    $idPrevisionSic,            // 2. id_prevision_sic
+                    $fechaProgramada,           // 3. primera_fecha_programada
+                    $fechaProgramada,           // 4. ultima_fecha_programada
+                    $estadoNormalizado,         // 5. ultimo_estado
+                    $hhPlanificadas,            // 6. total_hh_planificadas
+                    $diasRetraso,               // 7. dias_retraso
+                    null,                       // 8. id_vertical
+                    null,                       // 9. id_especialidad
+                    $nombreEquipo,              // 10. nombre_equipo
+                    $tipo                       // 11. tipo_mantenimiento
                 ]);
 
                 $this->stats['updated']++;
@@ -207,6 +235,8 @@ class MantencionImportService
         }
 
         fclose($handle);
+        
+        $this->stats['logs'][] = "Filas válidas encontradas con ID: $validRows";
     }
 
     private function normalizeEstado(string $raw): string
