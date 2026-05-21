@@ -582,7 +582,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 </div>
 
                 <!-- Fichas Superiores (KPIs Globales) -->
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1.5rem; margin-bottom:2rem; overflow-x:auto;">
                     
                     <!-- Ficha 1: SLA Cumplido -->
                     <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #10b981;">
@@ -2968,18 +2968,35 @@ function renderCharts(data) {
 
 function renderRecentTable(data) {
     const tbody = document.getElementById('tablaOtsRecentes');
-    tbody.innerHTML = data.map(item => `
-        <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:0.75rem; font-weight:600; color:#1e293b;">${item.label}</td>
-            <td style="padding:0.75rem; color:#64748b;">Varios Equipos</td>
-            <td style="padding:0.75rem; text-align:center;">
-                <span style="background:#dbeafe; color:#1e40af; padding:0.25rem 0.5rem; border-radius:99px; font-size:0.75rem;">Mixto</span>
-            </td>
-            <td style="padding:0.75rem; text-align:center; color:#64748b;">${parseFloat(item.hh_plan).toFixed(1)}</td>
-            <td style="padding:0.75rem; text-align:center; color:#64748b;">${parseFloat(item.hh_real).toFixed(1)}</td>
-            <td style="padding:0.75rem; text-align:center; color:#ef4444;">--</td>
-        </tr>
-    `).join('');
+    
+    // Si no hay datos, mostrar mensaje
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1rem; color:#94a3b8;">No hay datos recientes</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.map(item => {
+        // Conversión segura a número, si falla usa 0
+        const hhPlan = parseFloat(item.hh_plan) || 0;
+        const hhReal = parseFloat(item.hh_real) || 0;
+        
+        // Formatear a 1 decimal
+        const hhPlanFormatted = hhPlan.toFixed(1);
+        const hhRealFormatted = hhReal.toFixed(1);
+
+        return `
+            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                <td style="padding:0.75rem; font-weight:600; color:#1e293b;">${item.label || 'N/A'}</td>
+                <td style="padding:0.75rem; color:#64748b;">Varios Equipos</td>
+                <td style="padding:0.75rem; text-align:center;">
+                    <span style="background:#dbeafe; color:#1e40af; padding:0.25rem 0.5rem; border-radius:99px; font-size:0.75rem;">Mixto</span>
+                </td>
+                <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">${hhPlanFormatted}</td>
+                <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">${hhRealFormatted}</td>
+                <td style="padding:0.75rem; text-align:center; color:#ef4444;">--</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // Cargar al inicio
