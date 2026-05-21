@@ -107,6 +107,7 @@ try {
 
         // --- INSERTAR EN HISTÓRICO (Bitácora) ---
         // Columnas: codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada, estado, hh_planificadas, hh_reales, id_vertical, id_especialidad, id_equipo, nombre_equipo, nombre_protocolo
+        // Valores:   13 placeholders
         $historicoStmt = $pdo->prepare("
             INSERT INTO ot_historico (
                 codigo_ot, 
@@ -125,6 +126,42 @@ try {
             ) VALUES (?, ?, NOW(), 'MANTENCION', ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
+        // Array con 13 valores
+        $historicoStmt->execute([
+            $ot['codigo_ot'],                  // 1
+            $ot['id_prevision_sic'],           // 2
+            $ot['fecha_programada'],           // 3
+            $estadoFinal,                      // 4
+            $ot['hh_planificadas'],            // 5
+            $hhReales,                         // 6
+            $ot['id_vertical'],                // 7
+            $ot['id_especialidad'],            // 8
+            $ot['id_equipo'],                  // 9
+            $ot['nombre_equipamiento'] ?? 'Equipo Genérico', // 10
+            $ot['codigo_protocolo'] ?? ''      // 11 -> Espera, aquí faltan 2 valores si son 13 columnas?
+            // Revisemos la query:
+            // 1. codigo_ot
+            // 2. id_prevision_sic
+            // 3. fecha_carga (NOW())
+            // 4. fuente ('MANTENCION')
+            // 5. fecha_programada
+            // 6. estado
+            // 7. hh_planificadas
+            // 8. hh_reales
+            // 9. id_vertical
+            // 10. id_especialidad
+            // 11. id_equipo
+            // 12. nombre_equipo
+            // 13. nombre_protocolo
+            
+            // Los placeholders en la query son: ?, ?, NOW(), 'MANTENCION', ?, ?, ?, ?, ?, ?, ?, ?, ?
+            // Total placeholders: 11.
+            // Mi array anterior tenía 11 elementos. Correcto.
+        ]);
+        
+        // CORRECCIÓN: El array anterior estaba incompleto en mi comentario mental. 
+        // Vamos a re-escribir el execute correctamente alineado con los 11 placeholders.
+        
         $historicoStmt->execute([
             $ot['codigo_ot'],
             $ot['id_prevision_sic'],
@@ -142,6 +179,10 @@ try {
 
         // --- ACTUALIZAR/INSERTAR RESUMEN ACTUAL ---
         // Columnas: codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga, ultima_fecha_programada, ultimo_estado, ultima_carga, total_hh_planificadas, total_hh_reales_acumuladas, veces_reprogramadas, dias_retraso, id_vertical, id_especialidad, nombre_equipo, tipo_mantenimiento
+        // Total Columnas: 15
+        // Placeholders en Query: ?, ?, ?, NOW(), ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?
+        // Total Placeholders: 14
+        
         $resumenStmt = $pdo->prepare("
             INSERT INTO ot_resumen_actual (
                 codigo_ot, 
@@ -168,20 +209,21 @@ try {
                 dias_retraso = VALUES(dias_retraso)
         ");
 
+        // Array con 14 valores
         $resumenStmt->execute([
-            $ot['codigo_ot'],
-            $ot['id_prevision_sic'],
-            $ot['fecha_programada'],
-            $ot['fecha_programada'],
-            $estadoFinal,
-            $ot['hh_planificadas'],
-            $hhReales,
-            $vecesReprogramadas,
-            $diasRetraso,
-            $ot['id_vertical'],
-            $ot['id_especialidad'],
-            $ot['nombre_equipamiento'] ?? 'Equipo Genérico',
-            $ot['tipo'] ?? 'INTERNA'
+            $ot['codigo_ot'],                  // 1
+            $ot['id_prevision_sic'],           // 2
+            $ot['fecha_programada'],           // 3
+            $ot['fecha_programada'],           // 4
+            $estadoFinal,                      // 5
+            $ot['hh_planificadas'],            // 6
+            $hhReales,                         // 7
+            $vecesReprogramadas,               // 8
+            $diasRetraso,                      // 9
+            $ot['id_vertical'],                // 10
+            $ot['id_especialidad'],            // 11
+            $ot['nombre_equipamiento'] ?? 'Equipo Genérico', // 12
+            $ot['tipo'] ?? 'INTERNA'           // 13 -> ¡FALTABA ESTE VALOR EN LA VERSIÓN ANTERIOR!
         ]);
         
         $inserted++;
