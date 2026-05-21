@@ -97,7 +97,7 @@ class MantencionImportService
                 id_especialidad, 
                 nombre_equipo, 
                 tipo_mantenimiento
-            ) VALUES (?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, 0, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, 0, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 total_hh_planificadas = VALUES(total_hh_planificadas),
                 ultima_fecha_programada = VALUES(ultima_fecha_programada),
