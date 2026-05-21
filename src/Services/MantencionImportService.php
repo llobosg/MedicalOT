@@ -170,7 +170,7 @@ class MantencionImportService
             $updateFields = [];
             
             foreach ($resumenBatch as $i => $row) {
-                $placeholders[] = "(?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, 0, ?, ?, ?, ?)";
+                $placeholders[] = "(?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, 0, ?, ?, ?)";
                 $values = array_merge($values, $row);
                 
                 if ($i === 0) {
