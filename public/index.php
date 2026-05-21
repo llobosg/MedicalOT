@@ -449,6 +449,29 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <div class="upload-zone" id="dropZone"><input type="file" id="sicFile" accept=".csv" style="display:none"><p style="font-weight:600;">Arrastra tu archivo SIC o haz clic aquí</p><p style="font-size:0.8rem; color:var(--gray-600);">Solo archivos .csv | Máx 50MB</p></div>
                 <div id="sicSummary" class="summary-box"><h4>📋 Resumen de Validación</h4><div id="sicLog" style="font-size:0.9rem; margin:0.5rem 0;"></div><button class="btn-volver" style="background:var(--primary); margin-top:0.5rem;" onclick="confirmLoad()">✅ Confirmar Carga</button></div>
                 <table style="width:100%; margin-top:1.5rem; border-collapse:collapse; background:#fff; border-radius:0.75rem; overflow:hidden;"><thead><tr style="background:#f1f5f9;"><th style="padding:0.75rem; text-align:center;">Fecha</th><th style="text-align:center;">Hora</th><th style="text-align:center;">Nuevas</th><th style="text-align:center;">Omitidas</th></tr></thead><tbody id="loadHistory"></tbody></table>
+                <!-- ZONA DE CARGA PLANILLA MANTENCIÓN -->
+                <div style="margin-top:3rem; padding-top:2rem; border-top:2px solid #e2e8f0;">
+                    <h3 style="margin-bottom:0.5rem; color:#1e293b;">📥 Cargar Planilla de Mantención (NEW BD)</h3>
+                    <p style="font-size:0.9rem; color:#64748b; margin-bottom:1rem;">
+                        Sube el archivo CSV exportado de la hoja "NEW BD". Este paso actualiza las HHs planificadas, especialidades y estados técnicos de las OTs ya cargadas desde el SIC.
+                    </p>
+                    
+                    <div class="upload-zone" id="dropZoneMantencion" onclick="document.getElementById('mantencionFile').click()" style="border:2px dashed #cbd5e1; background:#fff; cursor:pointer; transition:all 0.2s;">
+                        <input type="file" id="mantencionFile" accept=".csv" style="display:none">
+                        <div style="text-align:center; padding:2rem;">
+                            <div style="font-size:2rem; margin-bottom:0.5rem;">📄</div>
+                            <p style="font-weight:600; color:#334155; margin:0;">Arrastra tu archivo CSV aquí o haz clic para seleccionar</p>
+                            <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.5rem;">Solo archivos .csv | Hoja "NEW BD"</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Resumen de Carga -->
+                    <div id="mantencionSummary" class="summary-box" style="display:none; margin-top:1rem; background:#f8fafc; padding:1rem; border-radius:0.5rem; border:1px solid #e2e8f0;">
+                        <h4 style="margin-top:0; font-size:1rem; color:#1e293b;">📋 Resultado de Procesamiento</h4>
+                        <div id="mantencionLog" style="font-size:0.9rem; margin:0.5rem 0; white-space:pre-wrap;"></div>
+                        <button onclick="location.reload()" class="btn-primary" style="margin-top:1rem; width:100%;">🔄 Ver Dashboard Actualizado</button>
+                    </div>
+                </div>
                 <button class="btn-volver" onclick="showModule('home')">🏠 Volver a Home</button>
             </div>
         </section>
@@ -3003,6 +3026,89 @@ function renderRecentTable(data) {
 document.addEventListener('DOMContentLoaded', () => {
     loadKpis();
 });
+// === LÓGICA DE CARGA DE MANTENCIÓN ===
+
+const dropZoneMantencion = document.getElementById('dropZoneMantencion');
+const mantencionInput = document.getElementById('mantencionFile');
+const mantencionSummary = document.getElementById('mantencionSummary');
+const mantencionLog = document.getElementById('mantencionLog');
+
+if (dropZoneMantencion && mantencionInput) {
+    // Efectos visuales Drag & Drop
+    dropZoneMantencion.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZoneMantencion.style.borderColor = '#3b82f6';
+        dropZoneMantencion.style.background = '#eff6ff';
+    });
+
+    dropZoneMantencion.addEventListener('dragleave', () => {
+        dropZoneMantencion.style.borderColor = '#cbd5e1';
+        dropZoneMantencion.style.background = '#fff';
+    });
+
+    dropZoneMantencion.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZoneMantencion.style.borderColor = '#cbd5e1';
+        dropZoneMantencion.style.background = '#fff';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleMantencionUpload(files[0]);
+        }
+    });
+
+    mantencionInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleMantencionUpload(e.target.files[0]);
+        }
+    });
+}
+
+async function handleMantencionUpload(file) {
+    // Validación básica
+    if (!file.name.endsWith('.csv')) {
+        alert('Por favor selecciona un archivo CSV válido.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('mantencion_file', file);
+
+    try {
+        // Mostrar estado de carga
+        mantencionSummary.style.display = 'block';
+        mantencionLog.innerHTML = '<span style="color:#3b82f6; font-weight:600;">⏳ Procesando archivo... Esto puede tomar unos segundos.</span>';
+        mantencionLog.style.color = '#3b82f6';
+
+        const res = await fetch('/api/carga_mantencion.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            mantencionLog.innerHTML = `
+                <div style="color:#10b981; font-weight:bold; margin-bottom:0.5rem;">✅ Carga Exitosa</div>
+                <ul style="list-style:none; padding:0; margin:0; font-size:0.9rem; color:#475569;">
+                    <li>📊 Filas procesadas: <strong>${data.stats.processed}</strong></li>
+                    <li>✅ Registros actualizados: <strong>${data.stats.updated}</strong></li>
+                    <li>❌ Errores: <strong>${data.stats.errors}</strong></li>
+                </ul>
+                ${data.stats.logs.length > 0 ? '<details style="margin-top:0.5rem;"><summary style="cursor:pointer; color:#64748b; font-size:0.8rem;">Ver logs detallados</summary><pre style="font-size:0.75rem; background:#fff; padding:0.5rem; border-radius:0.25rem; max-height:100px; overflow-y:auto; margin-top:0.5rem;">' + data.stats.logs.join('\n') + '</pre></details>' : ''}
+            `;
+            mantencionLog.style.color = '#10b981';
+        } else {
+            mantencionLog.innerHTML = `<div style="color:#ef4444; font-weight:bold;">❌ Error: ${data.error}</div>`;
+            mantencionLog.style.color = '#ef4444';
+        }
+
+    } catch (err) {
+        console.error(err);
+        mantencionLog.innerHTML = '<div style="color:#ef4444; font-weight:bold;">❌ Error de conexión con el servidor.</div>';
+        mantencionLog.style.color = '#ef4444';
+    }
+}
 </script>
     <!-- MODAL ESPECIALIDADES -->
     <div id="modalEspecialidades" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
