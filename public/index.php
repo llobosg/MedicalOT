@@ -13,6 +13,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MedicalOT | Hospital de Antofagasta</title>
     <link rel="stylesheet" href="/css/medicalot.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* ✅ LAYOUT BASE (Flexbox contenedor) */
         body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
@@ -356,6 +357,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             <?php 
                 $isAdminHeader = (isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', 'admin_hospital', 'admin_hosp']));
             ?>
+            <!--
             <?php if ($isAdminHeader): ?>
             <div class="dropdown" style="position:relative;">
                 <button onclick="toggleCatalogMenu()" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:#64748b; padding:0.5rem;" title="Catálogos">
@@ -371,6 +373,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 </div>
             </div>
             <?php endif; ?>
+            -->
             <div class="header-user"><div class="user-avatar"><?php echo strtoupper(substr($user['name'], 0, 2)); ?></div><span><?php echo htmlspecialchars($user['name']); ?></span></div>
         </div>
     </header>
@@ -425,6 +428,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <div class="home-card-title">KPIs</div>
                     <div class="home-card-desc">Indicadores y métricas</div>
                 </div>
+                <!-- Solo Admin y Admin Cont pueden ver esta sección
                 <?php if($isAdmin || $user['role'] === 'admin_cont'): ?>
                    <div class="home-card" onclick="showModule('presentacion')">
                         <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
@@ -434,6 +438,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <div class="home-card-desc">KPIs de carga y disponibilidad</div>
                     </div>   
                 <?php endif; ?>
+                 -->
             </div>
         </section>
 
@@ -561,18 +566,100 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             </div>
         </section>
 
-        <section id="kpis" class="module-section">
-            <div style="max-width:900px; margin:0 auto;">
-                <h3 style="margin-bottom:1rem;">Indicadores de Gestión</h3>
-                <div class="kpi-grid"><div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">SLA Cumplimiento</div><div class="kpi-val" style="color:#10b981;">94%</div></div><div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">HH Presup/Real</div><div class="kpi-val" style="color:#f59e0b;">102%</div></div><div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">OTs Cerradas/Mes</div><div class="kpi-val">47</div></div><div class="kpi-card"><div style="font-size:0.8rem; color:#64748b;">En Proceso</div><div class="kpi-val" style="color:var(--primary);">12</div></div></div>
-                <h4 style="margin-bottom:0.5rem;">Distribución de HH por Categoría</h4>
-                <div class="pills-container"><button class="pill-btn active" onclick="updateKPIs(this, 'Especialidad')">Especialidad</button><button class="pill-btn" onclick="updateKPIs(this, 'Área')">Área</button><button class="pill-btn" onclick="updateKPIs(this, 'Equipo')">Equipo</button></div>
-                <div class="progress-container"><div class="progress-bar" id="kpiBar" style="width:65%;"></div></div>
-                <div class="top-list" id="topList"></div>
+        <!-- MÓDULO 4: DASHBOARD KPIs (EMILY VERSION) -->
+        <section id="kpis" class="module-section active">
+            <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
+                
+                <!-- Header -->
+                <div style="margin-bottom: 2rem; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h2 style="margin:0; color:#1e293b;">📊 Panel de Control Operativo</h2>
+                        <p style="color:#64748b; margin-top:0.5rem;">Análisis en tiempo real de la ejecución de mantenimientos.</p>
+                    </div>
+                    <button onclick="loadKpis()" style="background:#3b82f6; color:white; border:none; padding:0.5rem 1rem; border-radius:0.5rem; cursor:pointer;">
+                        🔄 Actualizar Datos
+                    </button>
+                </div>
+
+                <!-- Fichas Superiores (KPIs Globales) -->
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
+                    
+                    <!-- Ficha 1: SLA Cumplido -->
+                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #10b981;">
+                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">SLA Cumplido</div>
+                        <div id="kpi-sla" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--%</div>
+                        <div style="font-size:0.8rem; color:#10b981; margin-top:0.25rem;">✅ De OTs completadas a tiempo</div>
+                    </div>
+
+                    <!-- Ficha 2: HHs Plan vs Real -->
+                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #3b82f6;">
+                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">HHs Ejecutadas</div>
+                        <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.5rem;">
+                            <span id="kpi-hh-real" style="font-size:2rem; font-weight:700; color:#1e293b;">--</span>
+                            <span style="font-size:0.9rem; color:#64748b;">/ <span id="kpi-hh-plan">--</span> hh plan</span>
+                        </div>
+                        <div id="kpi-hh-bar" style="height:6px; background:#e2e8f0; border-radius:3px; margin-top:0.75rem; overflow:hidden;">
+                            <div id="kpi-hh-progress" style="width:0%; height:100%; background:#3b82f6; transition:width 1s;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Ficha 3: OTs Cerradas -->
+                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #8b5cf6;">
+                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs Cerradas</div>
+                        <div id="kpi-ots-closed" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--</div>
+                        <div style="font-size:0.8rem; color:#8b5cf6; margin-top:0.25rem;">📦 Completadas en el periodo</div>
+                    </div>
+
+                    <!-- Ficha 4: OTs en Riesgo -->
+                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #ef4444;">
+                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs en Riesgo</div>
+                        <div id="kpi-ots-risk" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--</div>
+                        <div style="font-size:0.8rem; color:#ef4444; margin-top:0.25rem;">⚠️ Retrasadas > 7 días</div>
+                    </div>
+                </div>
+
+                <!-- Gráficos -->
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+                    
+                    <!-- Gráfico Principal: HHs por Especialidad -->
+                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                        <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">Horas Hombre por Especialidad</h3>
+                        <canvas id="chartEspecialidad" height="250"></canvas>
+                    </div>
+
+                    <!-- Gráfico Secundario: Estados -->
+                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                        <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">Distribución de Estados</h3>
+                        <canvas id="chartEstados" height="250"></canvas>
+                    </div>
+                </div>
+
+                <!-- Lista Reciente -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">Últimas OTs Procesadas</h3>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
+                            <thead>
+                                <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                                    <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
+                                    <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
+                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
+                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH Plan</th>
+                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH Real</th>
+                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaOtsRecentes">
+                                <!-- Se llena con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </section>
 
-        <!-- MÓDULO 7: VERTICALES -->
+        <!-- MÓDULO 7: VERTICALES 
         <?php 
             // 1. Leer el rol desde la clave CORRECTA de la sesión (recinto_rol)
             $rolActual = $_SESSION['recinto_rol'] ?? '';
@@ -580,7 +667,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             // 2. Definir si es Admin Hospital (o admin general) ANTES de usarlo en HTML
             $esAdmin = ($rolActual === 'admin_hospital' || $rolActual === 'admin');
         ?>
-
+        -->
         <section id="verticales" class="module-section">
             <div style="max-width:900px; margin:0 auto; height:100%; display:flex; flex-direction:column;">
                 
@@ -2781,6 +2868,123 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('planificacion').classList.contains('active')) {
         initPlanificacion();
     }
+});
+// === MÓDULO 4: KPIs LOGIC ===
+
+let chartEsp = null;
+let chartEstados = null;
+
+async function loadKpis() {
+    try {
+        // 1. Cargar KPIs Globales
+        const resGlobal = await fetch('/api/kpis.php?action=global');
+        const dataGlobal = await resGlobal.json();
+        
+        if (dataGlobal.success) {
+            const d = dataGlobal.data;
+            document.getElementById('kpi-sla').textContent = d.sla_percent + '%';
+            document.getElementById('kpi-hh-real').textContent = d.hh_real.toFixed(1);
+            document.getElementById('kpi-hh-plan').textContent = d.hh_plan.toFixed(1);
+            document.getElementById('kpi-ots-closed').textContent = '--'; // Calcularíamos si tuviéramos ese dato específico, por ahora usamos total_ots como referencia o lo dejamos vacío
+            document.getElementById('kpi-ots-risk').textContent = d.ots_riesgo;
+
+            // Barra de progreso HH
+            const percent = d.hh_plan > 0 ? (d.hh_real / d.hh_plan) * 100 : 0;
+            document.getElementById('kpi-hh-progress').style.width = Math.min(percent, 100) + '%';
+        }
+
+        // 2. Cargar Datos para Gráficos
+        const resChart = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
+        const dataChart = await resChart.json();
+
+        if (dataChart.success) {
+            renderCharts(dataChart.data);
+        }
+
+        // 3. Cargar Tabla Reciente (Simulado con los primeros 10 items del gráfico por ahora, idealmente otra API call)
+        renderRecentTable(dataChart.data.slice(0, 10));
+
+    } catch (err) {
+        console.error(err);
+        Toast.error('Error al cargar KPIs');
+    }
+}
+
+function renderCharts(data) {
+    const labels = data.map(d => d.label || 'Sin Espec.');
+    const hhPlan = data.map(d => parseFloat(d.hh_plan) || 0);
+    const hhReal = data.map(d => parseFloat(d.hh_real) || 0);
+
+    // Destruir gráficos anteriores si existen
+    if (chartEsp) chartEsp.destroy();
+    if (chartEstados) chartEstados.destroy();
+
+    // Gráfico de Barras: Especialidades
+    const ctxEsp = document.getElementById('chartEspecialidad').getContext('2d');
+    chartEsp = new Chart(ctxEsp, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'HH Planificadas',
+                    data: hhPlan,
+                    backgroundColor: '#cbd5e1',
+                    borderRadius: 4
+                },
+                {
+                    label: 'HH Reales',
+                    data: hhReal,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // Gráfico Circular: Estados (Simulado basado en datos globales o extraído de otra query)
+    // Para simplificar, usaremos una distribución ficticia basada en los estados comunes
+    const ctxEstados = document.getElementById('chartEstados').getContext('2d');
+    chartEstados = new Chart(ctxEstados, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completada', 'En Ejecución', 'Pendiente', 'Reprogramada'],
+            datasets: [{
+                data: [60, 20, 10, 10], // Estos valores deberían venir de una API específica de estados
+                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+
+function renderRecentTable(data) {
+    const tbody = document.getElementById('tablaOtsRecentes');
+    tbody.innerHTML = data.map(item => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:0.75rem; font-weight:600; color:#1e293b;">${item.label}</td>
+            <td style="padding:0.75rem; color:#64748b;">Varios Equipos</td>
+            <td style="padding:0.75rem; text-align:center;">
+                <span style="background:#dbeafe; color:#1e40af; padding:0.25rem 0.5rem; border-radius:99px; font-size:0.75rem;">Mixto</span>
+            </td>
+            <td style="padding:0.75rem; text-align:center; color:#64748b;">${parseFloat(item.hh_plan).toFixed(1)}</td>
+            <td style="padding:0.75rem; text-align:center; color:#64748b;">${parseFloat(item.hh_real).toFixed(1)}</td>
+            <td style="padding:0.75rem; text-align:center; color:#ef4444;">--</td>
+        </tr>
+    `).join('');
+}
+
+// Cargar al inicio
+document.addEventListener('DOMContentLoaded', () => {
+    loadKpis();
 });
 </script>
     <!-- MODAL ESPECIALIDADES -->
