@@ -573,7 +573,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <!-- Header -->
                 <div style="margin-bottom: 2rem; display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <h2 style="margin:0; color:#1e293b;">📊 Panel de Control Operativo</h2>
+                        <h2 style="margin:0; color:#1e293b;">Panel de Control Operativo</h2>
                         <p style="color:#64748b; margin-top:0.5rem;">Análisis en tiempo real de la ejecución de mantenimientos.</p>
                     </div>
                     <button onclick="loadKpis()" style="background:#3b82f6; color:white; border:none; padding:0.5rem 1rem; border-radius:0.5rem; cursor:pointer;">
@@ -608,6 +608,9 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs Cerradas</div>
                         <div id="kpi-ots-closed" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--</div>
                         <div style="font-size:0.8rem; color:#8b5cf6; margin-top:0.25rem;">📦 Completadas en el periodo</div>
+                    </div>
+                    <div style="background: ${data.ots_riesgo > 0 ? '#fee2e2' : '#f0fdf4'}; ...">
+                        <span style="color: ${data.ots_riesgo > 0 ? '#ef4444' : '#10b981'};">${data.ots_riesgo}</span>
                     </div>
 
                     <!-- Ficha 4: OTs en Riesgo -->
