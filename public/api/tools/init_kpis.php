@@ -1,5 +1,5 @@
 <?php
-// public/tools/init_kpis.php
+// public/api/tools/init_kpis.php
 // HERRAMIENTA DE INICIALIZACIÓN PARA DEMO EMILY
 // EJECUTAR UNA SOLA VEZ Y LUEGO BORRAR ESTE ARCHIVO
 
@@ -20,14 +20,17 @@ try {
     // 1. Verificar si ya hay datos para no duplicar en pruebas
     $count = $pdo->query("SELECT COUNT(*) FROM ot_resumen_actual")->fetchColumn();
     if ($count > 0) {
-        echo "<p style='color:orange;'>⚠️ Ya existen {$count} registros en ot_resumen_actual. Limpieza previa recomendada si quieres reiniciar.</p>";
-        // Opcional: Borrar todo para empezar limpio
+        echo "<p style='color:orange;'>⚠️ Ya existen {$count} registros en ot_resumen_actual. Si quieres reiniciar, borra los datos manualmente en la BD.</p>";
+        // Descomenta las siguientes líneas si quieres limpiar todo antes de iniciar
         // $pdo->exec("TRUNCATE TABLE ot_resumen_actual");
         // $pdo->exec("TRUNCATE TABLE ot_historico");
+        // echo "<p>Tablas limpiadas.</p>";
     }
 
     // 2. Obtener todas las OTs de ordenes_trabajo que tengan id_prevision_sic
     echo "<p>Buscando OTs en ordenes_trabajo...</p>";
+    
+    // Aseguramos que tomemos solo aquellas que tienen ID de previsión válido
     $stmt = $pdo->query("
         SELECT 
             ot.codigo_ot, 
@@ -39,7 +42,8 @@ try {
             cm.nombre_equipamiento,
             cm.horas_estimadas as hh_planificadas,
             cm.cod_especialidad,
-            cm.tipo
+            cm.tipo,
+            cm.codigo_protocolo
         FROM ordenes_trabajo ot
         LEFT JOIN cat_mantenimientos_master cm ON ot.id_prevision_sic = cm.id_prevision_sic
         WHERE ot.id_prevision_sic IS NOT NULL
@@ -49,6 +53,11 @@ try {
     $ots = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo "<p>Encontradas <strong>" . count($ots) . "</strong> OTs para procesar.</p>";
 
+    if (count($ots) == 0) {
+        echo "<p style='color:red;'>No se encontraron OTs con id_prevision_sic. Asegúrate de haber ejecutado el UPDATE en ordenes_trabajo.</p>";
+        exit;
+    }
+
     $inserted = 0;
     $historicoCount = 0;
 
@@ -56,8 +65,6 @@ try {
 
     foreach ($ots as $ot) {
         // --- SIMULACIÓN DE HISTORIAL ---
-        // Creamos un historial ficticio basado en la fecha programada
-        
         $fechaProgramada = new DateTime($ot['fecha_programada']);
         
         // Determinar estado simulado basado en probabilidad
@@ -70,19 +77,18 @@ try {
         if ($rand <= 60) {
             // 60% Completadas
             $estadoFinal = 'completada';
-            $hhReales = $ot['hh_planificadas'] * (0.9 + (rand(0, 20) / 100)); // Entre 90% y 110% de las horas plan
+            $hhReales = $ot['hh_planificadas'] * (0.9 + (rand(0, 20) / 100)); 
             
-            // Simular retraso leve o puntual
             if (rand(1, 10) > 7) {
-                $diasRetraso = rand(1, 5); // Retrasada 1-5 días
+                $diasRetraso = rand(1, 5); 
             } else {
-                $diasRetraso = 0; // A tiempo
+                $diasRetraso = 0; 
             }
 
         } elseif ($rand <= 80) {
             // 20% En Ejecución
             $estadoFinal = 'en_ejecucion';
-            $hhReales = $ot['hh_planificadas'] * 0.5; // Mitad hecha
+            $hhReales = $ot['hh_planificadas'] * 0.5; 
             $diasRetraso = 0;
 
         } elseif ($rand <= 90) {
@@ -100,12 +106,22 @@ try {
         }
 
         // --- INSERTAR EN HISTÓRICO (Bitácora) ---
-        // Insertamos al menos un registro histórico que represente el "último reporte"
+        // Columnas: codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada, estado, hh_planificadas, hh_reales, id_vertical, id_especialidad, id_equipo, nombre_equipo, nombre_protocolo
         $historicoStmt = $pdo->prepare("
             INSERT INTO ot_historico (
-                codigo_ot, id_prevision_sic, fecha_carga, fuente, 
-                fecha_programada, estado, hh_planificadas, hh_reales, 
-                id_vertical, id_especialidad, id_equipo, nombre_equipo, nombre_protocolo
+                codigo_ot, 
+                id_prevision_sic, 
+                fecha_carga, 
+                fuente, 
+                fecha_programada, 
+                estado, 
+                hh_planificadas, 
+                hh_reales, 
+                id_vertical, 
+                id_especialidad, 
+                id_equipo, 
+                nombre_equipo, 
+                nombre_protocolo
             ) VALUES (?, ?, NOW(), 'MANTENCION', ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
@@ -120,19 +136,29 @@ try {
             $ot['id_especialidad'],
             $ot['id_equipo'],
             $ot['nombre_equipamiento'] ?? 'Equipo Genérico',
-            $ot['cod_especialidad'] ?? '' // Usamos el código como placeholder de protocolo si no tenemos nombre
+            $ot['codigo_protocolo'] ?? '' 
         ]);
         $historicoCount++;
 
         // --- ACTUALIZAR/INSERTAR RESUMEN ACTUAL ---
+        // Columnas: codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga, ultima_fecha_programada, ultimo_estado, ultima_carga, total_hh_planificadas, total_hh_reales_acumuladas, veces_reprogramadas, dias_retraso, id_vertical, id_especialidad, nombre_equipo, tipo_mantenimiento
         $resumenStmt = $pdo->prepare("
             INSERT INTO ot_resumen_actual (
-                codigo_ot, id_prevision_sic, 
-                primera_fecha_programada, primera_carga,
-                ultima_fecha_programada, ultimo_estado, ultima_carga,
-                total_hh_planificadas, total_hh_reales_acumuladas,
-                veces_reprogramadas, dias_retraso,
-                id_vertical, id_especialidad, nombre_equipo, tipo_mantenimiento
+                codigo_ot, 
+                id_prevision_sic, 
+                primera_fecha_programada, 
+                primera_carga,
+                ultima_fecha_programada, 
+                ultimo_estado, 
+                ultima_carga,
+                total_hh_planificadas, 
+                total_hh_reales_acumuladas,
+                veces_reprogramadas, 
+                dias_retraso,
+                id_vertical, 
+                id_especialidad, 
+                nombre_equipo, 
+                tipo_mantenimiento
             ) VALUES (?, ?, ?, NOW(), ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 ultima_fecha_programada = VALUES(ultima_fecha_programada),
@@ -166,7 +192,7 @@ try {
     echo "<hr>";
     echo "<h2>✅ Proceso Finalizado</h2>";
     echo "<ul>";
-    echo "<li>Registros insertados en <code>ot_resumen_actual</code>: <strong>{$inserted}</strong></li>";
+    echo "<li>Registros insertados/actualizados en <code>ot_resumen_actual</code>: <strong>{$inserted}</strong></li>";
     echo "<li>Entradas creadas en <code>ot_historico</code>: <strong>{$historicoCount}</strong></li>";
     echo "</ul>";
     echo "<p><strong>Próximo paso:</strong> Ve al Módulo 4 (KPIs) en la app web. Deberías ver datos en las fichas superiores.</p>";
