@@ -89,14 +89,35 @@ class MantencionImportService
                     $diasRetraso = $this->calcularDiasRetraso($fechaProgramada, $estadoNormalizado, $today);
 
                     $historicoBatch[] = [
-                        $codigoOt, $idPrevisionSic, $fechaProgramada, $estadoNormalizado,
-                        $hhPlanificadas, null, null, null, $nombreEquipo, $codigoProtocolo
+                        $codigoOt,              // 1. codigo_ot
+                        $idPrevisionSic,        // 2. id_prevision_sic
+                        $fechaProgramada,       // 3. fecha_programada
+                        $estadoNormalizado,     // 4. estado
+                        $hhPlanificadas,        // 5. hh_planificadas
+                        null,                   // 6. id_vertical
+                        null,                   // 7. id_especialidad ← AGREGADO
+                        null,                   // 8. id_equipo
+                        $nombreEquipo,          // 9. nombre_equipo
+                        $codigoProtocolo        // 10. nombre_protocolo
                     ];
 
+                    // En processFile(), al construir $resumenBatch:
                     $resumenBatch[] = [
-                        $codigoOt, $idPrevisionSic, $fechaProgramada, $fechaProgramada,
-                        $estadoNormalizado, $hhPlanificadas, $diasRetraso,
-                        null, null, $nombreEquipo, $tipo
+                        $codigoOt,              // 1. codigo_ot
+                        $idPrevisionSic,        // 2. id_prevision_sic
+                        $fechaProgramada,       // 3. primera_fecha_programada
+                        // 4. primera_carga → NOW() en SQL (no va en array)
+                        $fechaProgramada,       // 5. ultima_fecha_programada
+                        $estadoNormalizado,     // 6. ultimo_estado
+                        // 7. ultima_carga → NOW() en SQL (no va en array)
+                        $hhPlanificadas,        // 8. total_hh_planificadas
+                        // 9. total_hh_reales_acumuladas → 0 en SQL
+                        // 10. veces_reprogramadas → 0 en SQL
+                        $diasRetraso,           // 11. dias_retraso ← CAMBIAR de 0 a variable
+                        null,                   // 12. id_vertical
+                        null,                   // 13. id_especialidad
+                        $nombreEquipo,          // 14. nombre_equipo
+                        $tipo                   // 15. tipo_mantenimiento
                     ];
 
                     if (count($historicoBatch) >= $batchSize) {
@@ -143,13 +164,15 @@ class MantencionImportService
      */
     private function flushBatch(array $historicoBatch, array $resumenBatch): void
     {
-        if (empty($historicoBatch)) return;
+        if (empty($historicoBatch) && empty($resumenBatch)) return;
 
+        // === ot_historico ===
         if (!empty($historicoBatch)) {
             $placeholders = [];
             $values = [];
             
             foreach ($historicoBatch as $row) {
+                // 10 placeholders para 10 valores
                 $placeholders[] = "(?, ?, NOW(), 'MANTENCION', ?, ?, ?, 0, '', ?, ?, ?, ?, ?)";
                 $values = array_merge($values, $row);
             }
@@ -161,16 +184,24 @@ class MantencionImportService
             ) VALUES " . implode(', ', $placeholders);
             
             $stmt = $this->db->prepare($sql);
+            // Dentro del foreach de flushBatch, antes de execute():
+            error_log("Placeholders: " . substr_count($placeholders[0], '?'));
+            error_log("Valores por row: " . count($row));
+            if (substr_count($placeholders[0], '?') !== count($row)) {
+                throw new Exception("MISMATCH: " . substr_count($placeholders[0], '?') . " placeholders vs " . count($row) . " values");
+            }
             $stmt->execute($values);
         }
 
+        // === ot_resumen_actual ===
         if (!empty($resumenBatch)) {
             $placeholders = [];
             $values = [];
             $updateFields = [];
             
             foreach ($resumenBatch as $i => $row) {
-                $placeholders[] = "(?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, 0, ?, ?, ?)";
+                // 11 placeholders: dias_retraso como ? en posición 11
+                $placeholders[] = "(?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, ?, ?, ?, ?, ?)";
                 $values = array_merge($values, $row);
                 
                 if ($i === 0) {
