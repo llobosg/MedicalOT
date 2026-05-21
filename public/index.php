@@ -609,9 +609,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <div id="kpi-ots-closed" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--</div>
                         <div style="font-size:0.8rem; color:#8b5cf6; margin-top:0.25rem;">📦 Completadas en el periodo</div>
                     </div>
-                    <div style="background: ${data.ots_riesgo > 0 ? '#fee2e2' : '#f0fdf4'}; ...">
-                        <span style="color: ${data.ots_riesgo > 0 ? '#ef4444' : '#10b981'};">${data.ots_riesgo}</span>
-                    </div>
 
                     <!-- Ficha 4: OTs en Riesgo -->
                     <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #ef4444;">
