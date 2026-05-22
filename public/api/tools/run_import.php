@@ -1,6 +1,7 @@
 <?php
 
-define('INTERNAL_PROCESS', true);
+define('APP_ENTRY_POINT', true);
+
 require_once __DIR__ . '/../../../config.php';
 require_once __DIR__ . '/../../../vendor/autoload.php';
 
@@ -13,5 +14,7 @@ $file = __DIR__ . '/../../../storage/mantenimiento.csv';
 $service->processFile($file);
 
 echo "<pre>";
-print_r($service->stats);
+echo "📊 Procesadas: " . $service->stats['processed'] . "\n";
+echo "✅ Insertadas: " . ($service->stats['updated'] ?? 0) . "\n";
+echo "❌ Errores: " . $service->stats['errors'] . "\n";
 echo "</pre>";
