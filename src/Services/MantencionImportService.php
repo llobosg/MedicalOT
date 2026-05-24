@@ -151,7 +151,15 @@ class MantencionImportService
         // 1. UPSERT en ot_resumen_actual (tabla que alimenta KPIs)
         $colsResumen = "codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga, ultima_fecha_programada, ultimo_estado, ultima_carga, total_hh_planificadas, total_hh_reales_acumuladas, veces_reprogramadas, dias_retraso, id_vertical, id_especialidad, nombre_equipo, tipo_mantenimiento";
         $valsResumen = implode(', ', array_fill(0, 15, '?'));
-        $updateFields = "ultima_fecha_programada=VALUES(ultima_fecha_programada), ultimo_estado=VALUES(ultimo_estado), ultima_carga=VALUES(ultima_carga), total_hh_planificadas=VALUES(total_hh_planificadas), total_hh_reales_acumuladas=VALUES(total_hh_reales_acumuladas), dias_retraso=VALUES(dias_retraso), nombre_equipo=VALUES(nombre_equipo), tipo_mantenimiento=VALUES(tipo_mantenimiento)";
+        $updateFields = "ultima_fecha_programada=VALUES(ultima_fecha_programada), 
+                 ultimo_estado=VALUES(ultimo_estado), 
+                 ultima_carga=VALUES(ultima_carga), 
+                 total_hh_planificadas=VALUES(total_hh_planificadas), 
+                 total_hh_reales_acumuladas=VALUES(total_hh_reales_acumuladas), 
+                 dias_retraso=VALUES(dias_retraso), 
+                 nombre_equipo=VALUES(nombre_equipo), 
+                 tipo_mantenimiento=VALUES(tipo_mantenimiento),
+                 veces_reprogramadas = IF(VALUES(ultima_fecha_programada) != ultima_fecha_programada, veces_reprogramadas + 1, veces_reprogramadas)";
 
         $sqlResumen = "INSERT INTO ot_resumen_actual ($colsResumen) VALUES ($valsResumen) ON DUPLICATE KEY UPDATE $updateFields";
         $stmtResumen = $this->db->prepare($sqlResumen);

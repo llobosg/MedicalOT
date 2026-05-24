@@ -661,20 +661,20 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
                 <!-- Lista Reciente -->
                 <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
-                    <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">Últimas OTs Procesadas</h3>
+                    <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">🔄 OTs Reprogramadas (Mayor Impacto)</h3>
                     <div style="overflow-x:auto;">
                         <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
                             <thead>
                                 <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
                                     <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
                                     <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
-                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
-                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH Plan</th>
-                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH Real</th>
+                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado Actual</th>
+                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Veces Reprog.</th>
+                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Fecha Programada</th>
                                     <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso</th>
                                 </tr>
                             </thead>
-                            <tbody id="tablaOtsRecentes">
+                            <tbody id="tablaReprogramadas">
                                 <!-- Se llena con JS -->
                             </tbody>
                         </table>
@@ -2899,77 +2899,61 @@ let chartEsp = null;
 let chartEstados = null;
 
 async function loadKpis() {
-    const btn = event?.target;
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '⏳ Cargando...';
-    }
-    
     try {
-        // 1. KPIs Globales
         const resGlobal = await fetch('/api/kpis.php?action=global');
-        const dataGlobal = await resGlobal.json();
+        const d = (await resGlobal.json()).data;
+        document.getElementById('kpi-sla').textContent = d.sla_percent + '%';
+        document.getElementById('kpi-hh-real').textContent = d.hh_real.toFixed(1);
+        document.getElementById('kpi-hh-plan').textContent = d.hh_plan.toFixed(1);
+        document.getElementById('kpi-ots-risk').textContent = d.ots_riesgo;
+        document.getElementById('kpi-hh-progress').style.width = Math.min((d.hh_plan>0 ? (d.hh_real/d.hh_plan)*100 : 0), 100) + '%';
+
+        // Gráficos
+        const resBar = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
+        if (resBar.ok) renderBarChart((await resBar.json()).data);
         
-        if (dataGlobal.success) {
-            const d = dataGlobal.data;
-            
-            // Animación segura de números (evita NaN)
-            animateValue('kpi-sla', isFinite(d.sla_percent) ? d.sla_percent : 0, '%', 1000);
-            
-            const hhReal = isFinite(d.hh_real) ? d.hh_real : 0;
-            const hhPlan = isFinite(d.hh_plan) ? d.hh_plan : 0;
-            
-            animateValue('kpi-hh-real', hhReal, '', 1000);
-            document.getElementById('kpi-hh-plan').textContent = hhPlan.toFixed(1);
-            
-            // OTs Cerradas: validar null/NaN
-            const closed = isFinite(d.ots_closed) ? d.ots_closed : 0;
-            animateValue('kpi-ots-closed', closed, '', 1000);
-            
-            animateValue('kpi-ots-risk', isFinite(d.ots_riesgo) ? d.ots_riesgo : 0, '', 1000);
-            
-            // Barra de progreso HH
-            const percent = hhPlan > 0 ? Math.min((hhReal / hhPlan) * 100, 100) : 0;
-            const progressEl = document.getElementById('kpi-hh-progress');
-            progressEl.style.width = percent + '%';
-            
-            // Tooltip informativo si HH Reales = 0
-            if (hhReal === 0 && hhPlan > 0) {
-                progressEl.title = dataGlobal.data.note_hh || 'HH Reales pendientes de reporte en terreno';
-            }
-        }
-        
-        // 2. Gráfico Simplificado (Top 10)
-        const resChart = await fetch('/api/kpis.php?action=chart_data');
-        const dataChart = await resChart.json();
-        
-        if (dataChart.success && dataChart.data?.length > 0) {
-            renderSimpleChart(dataChart.data);
-        } else {
-            document.getElementById('chartEspecialidad').parentNode.innerHTML = 
-                '<p style="text-align:center; color:#64748b; padding:2rem;">📊 Datos insuficientes para gráfico</p>';
-        }
-        
-        // 3. Tabla Reciente (con límite seguro)
-        const resRecent = await fetch('/api/kpis.php?action=recent_ots&limit=10');
-        const dataRecent = await resRecent.json();
-        
-        if (dataRecent.success) {
-            renderRecentTable(dataRecent.data);
-        }
-        
-        Toast.success('📊 Datos actualizados', 'KPIs');
-        
-    } catch (err) {
-        console.error('Error KPIs:', err);
-        Toast.error('Error al cargar indicadores', 'Atención');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '🔄 Actualizar Datos';
-        }
-    }
+        const resPie = await fetch('/api/kpis.php?action=chart_data&group_by=estado');
+        if (resPie.ok) renderPieChart((await resPie.json()).data);
+
+        // Tabla Reprogramadas
+        const resRep = await fetch('/api/kpis.php?action=reprogramadas&limit=10');
+        if (resRep.ok) renderReproTable((await resRep.json()).data);
+    } catch(e) { console.error(e); Toast.error('Error cargando KPIs'); }
 }
+
+let chartBar=null, chartPie=null;
+function renderBarChart(data) {
+    if(chartBar) chartBar.destroy();
+    chartBar = new Chart(document.getElementById('chartEspecialidad').getContext('2d'), {
+        type:'bar', data:{labels:data.map(d=>d.label), datasets:[{label:'HH Plan', data:data.map(d=>d.value), backgroundColor:'#3b82f6', borderRadius:4}]},
+        options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+    });
+}
+
+function renderPieChart(data) {
+    if(chartPie) chartPie.destroy();
+    const colors = {'completada':'#10b981','en_ejecucion':'#3b82f6','pendiente':'#f59e0b','reprogramada':'#8b5cf6','no_realizada':'#ef4444'};
+    chartPie = new Chart(document.getElementById('chartEstados').getContext('2d'), {
+        type:'doughnut', data:{labels:data.map(d=>d.label.charAt(0).toUpperCase()+d.label.slice(1)), datasets:[{data:data.map(d=>d.value), backgroundColor:data.map(d=>colors[d.label]||'#cbd5e1')}]},
+        options:{responsive:true, plugins:{legend:{position:'bottom'}}}
+    });
+}
+
+function renderReproTable(data) {
+    const tb = document.getElementById('tablaReprogramadas');
+    if(!data.length) { tb.innerHTML='<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#94a3b8;">No hay OTs reprogramadas en el periodo</td></tr>'; return; }
+    tb.innerHTML = data.map(o => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:0.75rem;font-weight:600;">${o.codigo_ot}</td>
+            <td style="padding:0.75rem;color:#64748b;">${o.nombre_equipo||'-'}</td>
+            <td style="padding:0.75rem;text-align:center;"><span class="badge" style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:0.75rem;">${o.ultimo_estado}</span></td>
+            <td style="padding:0.75rem;text-align:center;font-weight:bold;color:#ef4444;">${o.veces_reprogramadas}</td>
+            <td style="padding:0.75rem;text-align:center;">${o.ultima_fecha_programada ? new Date(o.ultima_fecha_programada).toLocaleDateString('es-CL') : '-'}</td>
+            <td style="padding:0.75rem;text-align:center;color:${o.dias_retraso>7?'#ef4444':'#64748b'}">${o.dias_retraso>0 ? o.dias_retraso+'d' : '0d'}</td>
+        </tr>
+    `).join('');
+}
+document.addEventListener('DOMContentLoaded', loadKpis);
 
 // === GRÁFICO SIMPLIFICADO (evita colapsos con muchos datos) ===
 function renderSimpleChart(data) {
