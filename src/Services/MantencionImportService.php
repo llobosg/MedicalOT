@@ -5,7 +5,7 @@ namespace App\Services;
 use PDO;
 use Exception;
 use DateTime;
-use PhpOffice\PhpSpreadsheet\IOFactory; // Composer: phpoffice/phpspreadsheet
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class MantencionImportService
 {
@@ -42,8 +42,7 @@ class MantencionImportService
             $batchSize = 500;
 
             foreach ($rows as $idx => $row) {
-  
-                $this->processRow($row, $today, $historicoBatch, $resumenBatch, $idx + 2);
+                $this->processRow($row, $today, &$historicoBatch, &$resumenBatch, $idx + 2);
                 $this->stats['processed']++;
 
                 if (count($resumenBatch) >= $batchSize) {
@@ -66,47 +65,38 @@ class MantencionImportService
         }
     }
 
-    // =========================================================
-    // LECTURA DE ARCHIVO (XLSX o CSV)
-    // =========================================================
     private function readFile(string $path): array
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         
         if ($ext === 'xlsx') {
-            // Requiere: composer require phpoffice/phpspreadsheet
             if (!class_exists(IOFactory::class)) {
-                throw new Exception('La librería PhpSpreadsheet no está instalada. Ejecuta: composer require phpoffice/phpspreadsheet');
+                throw new Exception('PhpSpreadsheet no instalada. Ejecuta: composer require phpoffice/phpspreadsheet');
             }
             $spreadsheet = IOFactory::load($path);
             $sheet = $spreadsheet->getSheetByName('NEW BD');
-            if (!$sheet) throw new Exception('Hoja "NEW BD" no encontrada en el Excel.');
+            if (!$sheet) throw new Exception('Hoja "NEW BD" no encontrada.');
             
             $data = $sheet->toArray(null, false, false);
-            array_shift($data); // Saltar encabezados
+            array_shift($data);
             return $data;
         }
 
         // Fallback CSV
         $handle = fopen($path, 'r');
         if (!$handle) throw new Exception('No se pudo abrir el archivo');
-        fgetcsv($handle, 0, ','); // Saltar encabezados CSV
-        
+        fgetcsv($handle, 0, ';'); // Saltar encabezados
         $rows = [];
-        while (($row = fgetcsv($handle, 0, ',')) !== false) $rows[] = $row;
+        while (($row = fgetcsv($handle, 0, ';')) !== false) $rows[] = $row;
         fclose($handle);
         return $rows;
     }
 
-    // =========================================================
-    // PROCESAMIENTO DE FILA
-    // =========================================================
     private function processRow(array $row, DateTime $today, array &$historicoBatch, array &$resumenBatch, int $lineNum): void
     {
         try {
             if (count($row) < 12) return;
 
-            // 1. Parsear Columnas (0-based según Excel NEW BD)
             $idPrevRaw   = trim($row[0] ?? '');
             $codigoProt  = trim($row[1] ?? '');
             $nombre      = trim($row[2] ?? '');
@@ -123,35 +113,28 @@ class MantencionImportService
             $estado  = $this->normalizeEstado($estadoRaw);
             $fecha   = $this->parseDate($fechaRaw);
 
-            // 2. Verificar si existe en ots_current
-            $stmt = $this->db->prepare("SELECT id_prevision_sic, hh_programadas, hh_reales, estado FROM ots_current WHERE id_prevision_sic = ?");
+            // Verificar existencia en ot_resumen_actual
+            $stmt = $this->db->prepare("SELECT codigo_ot, total_hh_planificadas, total_hh_reales_acumuladas, ultimo_estado FROM ot_resumen_actual WHERE id_prevision_sic = ?");
             $stmt->execute([$idPrev]);
             $current = $stmt->fetch(PDO::FETCH_ASSOC);
 
             $isInsert = !$current;
-            $hhChanged = $current && abs($current['hh_programadas'] - $hhPlan) > 0.001;
-            $stateChanged = $current && $current['estado'] !== $estado;
-
             if ($isInsert) $this->stats['inserted']++;
             else $this->stats['updated']++;
 
-            // 3. Calcular retraso
             $diasRetraso = 0;
             if ($fecha && in_array($estado, ['pendiente', 'asignada', 'en_proceso'])) {
                 $dateObj = new DateTime($fecha);
                 if ($dateObj < $today) $diasRetraso = $today->diff($dateObj)->days;
             }
 
-            // 4. Armar batches
+            // Armar batches (estructura fija de 10 elementos)
             $historicoBatch[] = [$idPrev, $codigoProt, $nombre, $fecha, $estado, $hhPlan, 0.0, $tipo, $tipoRaw, $lineNum];
             
             $resumenBatch[] = [
                 $idPrev, $codigoProt, $nombre, $fecha, $estado, 
-                $hhPlan, 0.0, $diasRetraso, $tipo, $isInsert ? 'NUEVO_SIC' : 'ACTUALIZACION'
+                $hhPlan, 0.0, $diasRetraso, $tipo, $isInsert ? 'NUEVO' : 'ACTUALIZACION'
             ];
-
-            // Log condicional para errores/ausentes
-            if (!$current && !$isInsert) $this->stats['not_found']++;
 
         } catch (Exception $e) {
             $this->stats['errors']++;
@@ -161,37 +144,55 @@ class MantencionImportService
         }
     }
 
-    // =========================================================
-    // EJECUCIÓN MASIVA (BATCH)
-    // =========================================================
     private function flushBatch(array $historico, array $resumen): void
     {
-        if (empty($historico)) return;
+        if (empty($resumen)) return;
 
-        // UPSERT ots_current
-        $colsResumen = implode(', ', [
-            'id_prevision_sic', 'codigo_ot', 'nombre_equipo', 'fecha_programada', 'estado',
-            'hh_programadas', 'hh_reales', 'dias_retraso', 'tipo_mantenimiento', 'archivo_origen'
-        ]);
-        $valsResumen = implode(', ', array_fill(0, count($resumen[0]), '?'));
-        $updateFields = "estado=VALUES(estado), hh_programadas=VALUES(hh_programadas), fecha_programada=VALUES(fecha_programada), 
-                         dias_retraso=VALUES(dias_retraso), tipo_mantenimiento=VALUES(tipo_mantenimiento), archivo_origen=VALUES(archivo_origen)";
+        // 1. UPSERT en ot_resumen_actual (tabla que alimenta KPIs)
+        $colsResumen = "codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga, ultima_fecha_programada, ultimo_estado, ultima_carga, total_hh_planificadas, total_hh_reales_acumuladas, veces_reprogramadas, dias_retraso, id_vertical, id_especialidad, nombre_equipo, tipo_mantenimiento";
+        $valsResumen = implode(', ', array_fill(0, 15, '?'));
+        $updateFields = "ultima_fecha_programada=VALUES(ultima_fecha_programada), ultimo_estado=VALUES(ultimo_estado), ultima_carga=VALUES(ultima_carga), total_hh_planificadas=VALUES(total_hh_planificadas), total_hh_reales_acumuladas=VALUES(total_hh_reales_acumuladas), dias_retraso=VALUES(dias_retraso), nombre_equipo=VALUES(nombre_equipo), tipo_mantenimiento=VALUES(tipo_mantenimiento)";
 
-        $sqlResumen = "INSERT INTO ots_current ($colsResumen) VALUES ($valsResumen) ON DUPLICATE KEY UPDATE $updateFields";
+        $sqlResumen = "INSERT INTO ot_resumen_actual ($colsResumen) VALUES ($valsResumen) ON DUPLICATE KEY UPDATE $updateFields";
         $stmtResumen = $this->db->prepare($sqlResumen);
-        foreach ($resumen as $row) $stmtResumen->execute($row);
 
-        // INSERT ot_historico
-        $colsHist = "id_prevision_sic, codigo_ot, nombre_equipo, fecha_programada, estado, hh_planificadas, hh_reales, tipo_mantenimiento, archivo_origen";
-        $valsHist = implode(', ', array_fill(0, count($historico[0]), '?'));
-        $sqlHist = "INSERT INTO ot_historico ($colsHist) VALUES ($valsHist)";
-        $stmtHist = $this->db->prepare($sqlHist);
-        foreach ($historico as $row) $stmtHist->execute($row);
+        foreach ($resumen as $row) {
+            // $row = [id_prev, codigo_prot, nombre, fecha, estado, hhPlan, hhReal, diasRetraso, tipo, origen]
+            $stmtResumen->execute([
+                $row[1],                 // codigo_ot
+                $row[0],                 // id_prevision_sic
+                $row[3],                 // primera_fecha_programada
+                date('Y-m-d H:i:s'),     // primera_carga
+                $row[3],                 // ultima_fecha_programada
+                $row[4],                 // ultimo_estado
+                date('Y-m-d H:i:s'),     // ultima_carga
+                $row[5],                 // total_hh_planificadas
+                $row[6],                 // total_hh_reales_acumuladas
+                0,                       // veces_reprogramadas
+                $row[7],                 // dias_retraso
+                null,                    // id_vertical
+                null,                    // id_especialidad
+                $row[2],                 // nombre_equipo
+                $row[8]                  // tipo_mantenimiento
+            ]);
+        }
+
+        // 2. INSERT en ot_historico (bitácora de cargas)
+        if (!empty($historico)) {
+            $colsHist = "codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada, estado, hh_planificadas, hh_reales, observaciones, id_vertical, id_especialidad, id_equipo, nombre_equipo, nombre_protocolo";
+            $valsHist = implode(', ', array_fill(0, 14, '?'));
+            $sqlHist = "INSERT INTO ot_historico ($colsHist) VALUES ($valsHist)";
+            $stmtHist = $this->db->prepare($sqlHist);
+
+            foreach ($historico as $hRow) {
+                $stmtHist->execute([
+                    $hRow[1], $hRow[0], date('Y-m-d H:i:s'), 'MANTENCION',
+                    $hRow[3], $hRow[4], $hRow[5], $hRow[6], '', null, null, null, $hRow[2], $hRow[9] ?? ''
+                ]);
+            }
+        }
     }
 
-    // =========================================================
-    // HELPERS
-    // =========================================================
     private function parseDate(?string $raw): ?string
     {
         if (empty($raw)) return null;
@@ -205,8 +206,8 @@ class MantencionImportService
 
     private function normalizeEstado(string $raw): string
     {
-        if (strpos($raw, 'complet') !== false || strpos($raw, 'cerrad') !== false) return 'cerrada';
-        if (strpos($raw, 'ejecuc') !== false || strpos($raw, 'proceso') !== false) return 'en_proceso';
+        if (strpos($raw, 'complet') !== false || strpos($raw, 'cerrad') !== false) return 'completada';
+        if (strpos($raw, 'ejecuc') !== false || strpos($raw, 'proceso') !== false) return 'en_ejecucion';
         if (strpos($raw, 'asignad') !== false) return 'asignada';
         return 'pendiente';
     }
