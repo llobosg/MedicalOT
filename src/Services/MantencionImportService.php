@@ -1,248 +1,212 @@
 <?php
-
+// src/Services/MantencionImportService.php
 namespace App\Services;
 
 use PDO;
 use Exception;
 use DateTime;
+use PhpOffice\PhpSpreadsheet\IOFactory; // Composer: phpoffice/phpspreadsheet
 
 class MantencionImportService
 {
     private PDO $db;
-
     public array $stats = [
         'processed' => 0,
-        'inserted' => 0,
-        'errors' => 0,
-        'logs' => []
+        'updated'   => 0,
+        'inserted'  => 0,
+        'not_found' => 0,
+        'errors'    => 0,
+        'logs'      => []
     ];
 
     public function __construct(PDO $pdo)
     {
         $this->db = $pdo;
-
-        ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 0);
-        set_time_limit(0);
+        ini_set('max_execution_time', 600);
+        set_time_limit(600);
+        ini_set('memory_limit', '512M');
     }
 
-    public function processFile(string $filePath, int $batchSize = 2000): void
+    public function processFile(string $filePath, string $fileName): void
     {
-        if (!file_exists($filePath)) {
-            throw new Exception("Archivo no encontrado");
-        }
+        $rows = $this->readFile($filePath);
+        if (empty($rows)) throw new Exception('No se encontraron datos válidos en el archivo.');
 
-        $delimiter = $this->detectDelimiter($filePath);
-        $this->stats['logs'][] = "Delimiter: $delimiter";
-
-        $mapping = $this->loadOtMapping();
-        $this->stats['logs'][] = "Mapping cargado: " . count($mapping);
-
-        $handle = fopen($filePath, 'r');
-        fgetcsv($handle, 0, $delimiter); // header
-
-        $historicoBatch = [];
-        $resumenBatch = [];
+        $this->stats['logs'][] = "📄 Archivo: {$fileName} | Filas leídas: " . count($rows);
 
         $this->db->beginTransaction();
+        try {
+            $historicoBatch = [];
+            $resumenBatch   = [];
+            $today = new DateTime();
+            $batchSize = 500;
 
-        $rowNum = 1;
-        $today = new DateTime();
+            foreach ($rows as $idx => $row) {
+                $this->processRow($row, $today, &$historicoBatch, &$resumenBatch, $idx + 2);
+                $this->stats['processed']++;
 
-        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
-            $rowNum++;
-
-            try {
-                if (count($row) < 12) continue;
-
-                $idPrevision = $this->parseId($row[0]);
-                if (!$idPrevision) continue;
-
-                // 🔥 FIX CLAVE: fallback si no existe mapping
-                $codigoOt = $mapping[$idPrevision] ?? ('OT-' . $idPrevision);
-
-                $fecha = $this->parseFecha($row[5]);
-                $hh = $this->parseFloat($row[10]);
-                $estado = $this->normalizeEstado($row[12] ?? '');
-                $tipo = $this->parseTipo($row[11] ?? '');
-                $nombreEquipo = trim($row[2] ?? '');
-                $protocolo = trim($row[1] ?? '');
-
-                $diasRetraso = $this->calcDelay($fecha, $estado, $today);
-
-                // === HISTORICO ===
-                $historicoBatch[] = [
-                    $codigoOt,
-                    $idPrevision,
-                    $fecha,
-                    $estado,
-                    $hh,
-                    null,
-                    null,
-                    null,
-                    $nombreEquipo,
-                    $protocolo
-                ];
-
-                // === RESUMEN ===
-                $resumenBatch[] = [
-                    $codigoOt,
-                    $idPrevision,
-                    $fecha,
-                    $fecha,
-                    $estado,
-                    $hh,
-                    $diasRetraso,
-                    null,
-                    null,
-                    $nombreEquipo,
-                    $tipo
-                ];
-
-                // === FLUSH ===
-                if (count($historicoBatch) >= $batchSize) {
-                    $this->flush($historicoBatch, $resumenBatch);
+                if (count($resumenBatch) >= $batchSize) {
+                    $this->flushBatch($historicoBatch, $resumenBatch);
                     $historicoBatch = [];
-                    $resumenBatch = [];
+                    $resumenBatch   = [];
                 }
-
-                if ($this->stats['processed'] % 5000 === 0) {
-                    $this->db->commit();
-                    $this->db->beginTransaction();
-                }
-
-                $this->stats['inserted']++;
-
-            } catch (Exception $e) {
-                $this->stats['errors']++;
             }
 
-            $this->stats['processed']++;
+            if (!empty($resumenBatch)) {
+                $this->flushBatch($historicoBatch, $resumenBatch);
+            }
+
+            $this->db->commit();
+            $this->stats['logs'][] = "✅ Finalizado. Actualizadas: {$this->stats['updated']} | Nuevas: {$this->stats['inserted']}";
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    // =========================================================
+    // LECTURA DE ARCHIVO (XLSX o CSV)
+    // =========================================================
+    private function readFile(string $path): array
+    {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        
+        if ($ext === 'xlsx') {
+            // Requiere: composer require phpoffice/phpspreadsheet
+            if (!class_exists(IOFactory::class)) {
+                throw new Exception('La librería PhpSpreadsheet no está instalada. Ejecuta: composer require phpoffice/phpspreadsheet');
+            }
+            $spreadsheet = IOFactory::load($path);
+            $sheet = $spreadsheet->getSheetByName('NEW BD');
+            if (!$sheet) throw new Exception('Hoja "NEW BD" no encontrada en el Excel.');
+            
+            $data = $sheet->toArray(null, false, false);
+            array_shift($data); // Saltar encabezados
+            return $data;
         }
 
-        if (!empty($historicoBatch)) {
-            $this->flush($historicoBatch, $resumenBatch);
-        }
-
+        // Fallback CSV
+        $handle = fopen($path, 'r');
+        if (!$handle) throw new Exception('No se pudo abrir el archivo');
+        fgetcsv($handle, 0, ','); // Saltar encabezados CSV
+        
+        $rows = [];
+        while (($row = fgetcsv($handle, 0, ',')) !== false) $rows[] = $row;
         fclose($handle);
-        $this->db->commit();
-
-        $this->stats['logs'][] = "Proceso OK";
+        return $rows;
     }
 
-    private function flush(array $hist, array $res): void
+    // =========================================================
+    // PROCESAMIENTO DE FILA
+    // =========================================================
+    private function processRow(array $row, DateTime $today, array &$historicoBatch, array &$resumenBatch, int $lineNum): void
     {
-        // === HISTORICO ===
-        if ($hist) {
-            $placeholders = [];
-            $values = [];
+        try {
+            if (count($row) < 12) return;
 
-            foreach ($hist as $r) {
-                $placeholders[] = "(?, ?, NOW(), 'MANTENCION', ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?)";
-                $values = array_merge($values, $r);
+            // 1. Parsear Columnas (0-based según Excel NEW BD)
+            $idPrevRaw   = trim($row[0] ?? '');
+            $codigoProt  = trim($row[1] ?? '');
+            $nombre      = trim($row[2] ?? '');
+            $fechaRaw    = trim($row[5] ?? '');
+            $hhRaw       = trim($row[10] ?? '0');
+            $tipoRaw     = strtoupper(trim($row[11] ?? 'INTERNA'));
+            $estadoRaw   = strtolower(trim($row[12] ?? ''));
+
+            $idPrev = preg_match('/^\d+$/', $idPrevRaw) ? (int)$idPrevRaw : null;
+            if (!$idPrev) return;
+
+            $hhPlan  = floatval(str_replace(',', '.', $hhRaw)) ?: 0.0;
+            $tipo    = ($tipoRaw === 'EXT') ? 'EXTERNA' : 'INTERNA';
+            $estado  = $this->normalizeEstado($estadoRaw);
+            $fecha   = $this->parseDate($fechaRaw);
+
+            // 2. Verificar si existe en ots_current
+            $stmt = $this->db->prepare("SELECT id_prevision_sic, hh_programadas, hh_reales, estado FROM ots_current WHERE id_prevision_sic = ?");
+            $stmt->execute([$idPrev]);
+            $current = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $isInsert = !$current;
+            $hhChanged = $current && abs($current['hh_programadas'] - $hhPlan) > 0.001;
+            $stateChanged = $current && $current['estado'] !== $estado;
+
+            if ($isInsert) $this->stats['inserted']++;
+            else $this->stats['updated']++;
+
+            // 3. Calcular retraso
+            $diasRetraso = 0;
+            if ($fecha && in_array($estado, ['pendiente', 'asignada', 'en_proceso'])) {
+                $dateObj = new DateTime($fecha);
+                if ($dateObj < $today) $diasRetraso = $today->diff($dateObj)->days;
             }
 
-            $sql = "INSERT INTO ot_historico (
-                codigo_ot, id_prevision_sic, fecha_carga, fuente,
-                fecha_programada, estado, hh_planificadas,
-                hh_reales, observaciones,
-                id_vertical, id_especialidad, id_equipo,
-                nombre_equipo, nombre_protocolo
-            ) VALUES " . implode(',', $placeholders);
+            // 4. Armar batches
+            $historicoBatch[] = [$idPrev, $codigoProt, $nombre, $fecha, $estado, $hhPlan, 0.0, $tipo, $tipoRaw, $lineNum];
+            
+            $resumenBatch[] = [
+                $idPrev, $codigoProt, $nombre, $fecha, $estado, 
+                $hhPlan, 0.0, $diasRetraso, $tipo, $isInsert ? 'NUEVO_SIC' : 'ACTUALIZACION'
+            ];
 
-            $this->db->prepare($sql)->execute($values);
-        }
+            // Log condicional para errores/ausentes
+            if (!$current && !$isInsert) $this->stats['not_found']++;
 
-        // === RESUMEN ===
-        if ($res) {
-            $placeholders = [];
-            $values = [];
-
-            foreach ($res as $r) {
-                $placeholders[] = "(?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, ?, ?, ?, ?, ?)";
-                $values = array_merge($values, $r);
+        } catch (Exception $e) {
+            $this->stats['errors']++;
+            if ($this->stats['errors'] <= 3) {
+                $this->stats['logs'][] = "⚠️ Error línea {$lineNum}: " . $e->getMessage();
             }
-
-            $sql = "INSERT INTO ot_resumen_actual (
-                codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga,
-                ultima_fecha_programada, ultimo_estado, ultima_carga,
-                total_hh_planificadas, total_hh_reales_acumuladas,
-                veces_reprogramadas, dias_retraso,
-                id_vertical, id_especialidad,
-                nombre_equipo, tipo_mantenimiento
-            ) VALUES " . implode(',', $placeholders) . "
-            ON DUPLICATE KEY UPDATE
-                ultima_fecha_programada = VALUES(ultima_fecha_programada),
-                ultimo_estado = VALUES(ultimo_estado),
-                total_hh_planificadas = VALUES(total_hh_planificadas),
-                dias_retraso = VALUES(dias_retraso),
-                tipo_mantenimiento = VALUES(tipo_mantenimiento)";
-
-            $this->db->prepare($sql)->execute($values);
         }
     }
 
-    private function loadOtMapping(): array
+    // =========================================================
+    // EJECUCIÓN MASIVA (BATCH)
+    // =========================================================
+    private function flushBatch(array $historico, array $resumen): void
     {
-        $stmt = $this->db->query("SELECT id_prevision_sic, codigo_ot FROM ordenes_trabajo WHERE id_prevision_sic IS NOT NULL");
-        $map = [];
-        foreach ($stmt as $r) {
-            $map[(int)$r['id_prevision_sic']] = $r['codigo_ot'];
-        }
-        return $map;
+        if (empty($historico)) return;
+
+        // UPSERT ots_current
+        $colsResumen = implode(', ', [
+            'id_prevision_sic', 'codigo_ot', 'nombre_equipo', 'fecha_programada', 'estado',
+            'hh_programadas', 'hh_reales', 'dias_retraso', 'tipo_mantenimiento', 'archivo_origen'
+        ]);
+        $valsResumen = implode(', ', array_fill(0, count($resumen[0]), '?'));
+        $updateFields = "estado=VALUES(estado), hh_programadas=VALUES(hh_programadas), fecha_programada=VALUES(fecha_programada), 
+                         dias_retraso=VALUES(dias_retraso), tipo_mantenimiento=VALUES(tipo_mantenimiento), archivo_origen=VALUES(archivo_origen)";
+
+        $sqlResumen = "INSERT INTO ots_current ($colsResumen) VALUES ($valsResumen) ON DUPLICATE KEY UPDATE $updateFields";
+        $stmtResumen = $this->db->prepare($sqlResumen);
+        foreach ($resumen as $row) $stmtResumen->execute($row);
+
+        // INSERT ot_historico
+        $colsHist = "id_prevision_sic, codigo_ot, nombre_equipo, fecha_programada, estado, hh_planificadas, hh_reales, tipo_mantenimiento, archivo_origen";
+        $valsHist = implode(', ', array_fill(0, count($historico[0]), '?'));
+        $sqlHist = "INSERT INTO ot_historico ($colsHist) VALUES ($valsHist)";
+        $stmtHist = $this->db->prepare($sqlHist);
+        foreach ($historico as $row) $stmtHist->execute($row);
     }
 
-    private function parseId($v): ?int
+    // =========================================================
+    // HELPERS
+    // =========================================================
+    private function parseDate(?string $raw): ?string
     {
-        $v = preg_replace('/\D/', '', $v);
-        return $v ? (int)$v : null;
-    }
-
-    private function parseFecha($v): ?string
-    {
-        if (!$v) return null;
-
-        $parts = explode('-', trim($v));
+        if (empty($raw)) return null;
+        $parts = explode('/', trim($raw));
         if (count($parts) !== 3) return null;
-
-        return "20{$parts[2]}-{$parts[1]}-{$parts[0]}";
+        $m = str_pad($parts[0], 2, '0', STR_PAD_LEFT);
+        $d = str_pad($parts[1], 2, '0', STR_PAD_LEFT);
+        $y = strlen($parts[2]) == 2 ? '20' . $parts[2] : $parts[2];
+        return "$y-$m-$d";
     }
 
-    private function parseFloat($v): float
+    private function normalizeEstado(string $raw): string
     {
-        return (float)str_replace(',', '.', $v);
-    }
-
-    private function parseTipo($v): string
-    {
-        return strtoupper(trim($v)) === 'EXT' ? 'EXTERNA' : 'INTERNA';
-    }
-
-    private function calcDelay($fecha, $estado, DateTime $today): int
-    {
-        if (!$fecha || $estado !== 'pendiente') return 0;
-
-        $f = new DateTime($fecha);
-        return ($f < $today) ? $today->diff($f)->days : 0;
-    }
-
-    private function detectDelimiter(string $file): string
-    {
-        $line = fgets(fopen($file, 'r'));
-        $delims = [',' => substr_count($line, ','), ';' => substr_count($line, ';')];
-        arsort($delims);
-        return key($delims);
-    }
-
-    private function normalizeEstado(string $v): string
-    {
-        $v = strtolower($v);
-
-        if (str_contains($v, 'complet')) return 'completada';
-        if (str_contains($v, 'ejec')) return 'en_ejecucion';
-        if (str_contains($v, 'reprog')) return 'reprogramada';
-        if (str_contains($v, 'cancel')) return 'no_realizada';
-
+        if (strpos($raw, 'complet') !== false || strpos($raw, 'cerrad') !== false) return 'cerrada';
+        if (strpos($raw, 'ejecuc') !== false || strpos($raw, 'proceso') !== false) return 'en_proceso';
+        if (strpos($raw, 'asignad') !== false) return 'asignada';
         return 'pendiente';
     }
 }
