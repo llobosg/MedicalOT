@@ -1,9 +1,26 @@
 <?php
-// api/carga_mantencion.php
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/auth.php';
+// Forzar headers JSON y evitar output HTML de errores
+header('Content-Type: application/json; charset=utf-8');
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
 
-header('Content-Type: application/json');
+if (!defined('APP_ENTRY_POINT')) define('APP_ENTRY_POINT', true);
+
+// Incluir config con ruta absoluta
+$configPath = realpath(__DIR__ . '/../../includes/config.php');
+if (!$configPath || !file_exists($configPath)) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Archivo de configuración no encontrado']);
+    exit;
+}
+require_once $configPath;
+
+// Verificar que $pdo esté disponible
+if (!isset($pdo) || !$pdo instanceof PDO) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Conexión a BD no disponible']);
+    exit;
+}
 
 if (!isLoggedIn() || !hasRole(['admin_hosp', 'admin'])) {
     http_response_code(403);
@@ -23,6 +40,18 @@ try {
     
     if ($ext !== 'csv') {
         throw new Exception("Solo se permiten archivos CSV");
+    }
+
+    // Validar archivo subido
+    if (!isset($_FILES['mantencion_file']) || $_FILES['mantencion_file']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'error' => 'Error al recibir el archivo']);
+        exit;
+    }
+
+    $file = $_FILES['mantencion_file']['tmp_name'];
+    if (!is_file($file) || pathinfo($_FILES['mantencion_file']['name'], PATHINFO_EXTENSION) !== 'csv') {
+        echo json_encode(['success' => false, 'error' => 'Archivo CSV inválido']);
+        exit;
     }
     
     $tempPath = sys_get_temp_dir() . '/mant_' . uniqid() . '.csv';
