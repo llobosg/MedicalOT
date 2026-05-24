@@ -42,7 +42,7 @@ class MantencionImportService
             $batchSize = 500;
 
             foreach ($rows as $idx => $row) {
-                $this->processRow($row, $today, &$historicoBatch, &$resumenBatch, $idx + 2);
+                $this->processRow($row, $today, $historicoBatch, $resumenBatch, $idx + 2);
                 $this->stats['processed']++;
 
                 if (count($resumenBatch) >= $batchSize) {
