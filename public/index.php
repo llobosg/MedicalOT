@@ -620,6 +620,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.5rem;">
                             <span id="kpi-hh-real" style="font-size:2rem; font-weight:700; color:#1e293b;">--</span>
                             <span style="font-size:0.9rem; color:#64748b;">/ <span id="kpi-hh-plan">--</span> hh plan</span>
+                            <span title="HH Reales se reportan desde terreno" style="font-size:0.75rem; color:#94a3b8; cursor:help;">ⓘ</span>
                         </div>
                         <div id="kpi-hh-bar" style="height:6px; background:#e2e8f0; border-radius:3px; margin-top:0.75rem; overflow:hidden;">
                             <div id="kpi-hh-progress" style="width:0%; height:100%; background:#3b82f6; transition:width 1s;"></div>
@@ -638,6 +639,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs en Riesgo</div>
                         <div id="kpi-ots-risk" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--</div>
                         <div style="font-size:0.8rem; color:#ef4444; margin-top:0.25rem;">⚠️ Retrasadas > 7 días</div>
+                        <div style="font-size:0.8rem; color:#ef4444; margin-top:0.25rem;">⚠️ Oportunidades de gestión (>7 días)</div>
                     </div>
                 </div>
 
@@ -2904,41 +2906,51 @@ async function loadKpis() {
     }
     
     try {
-        // 1. Cargar KPIs Globales
+        // 1. KPIs Globales
         const resGlobal = await fetch('/api/kpis.php?action=global');
         const dataGlobal = await resGlobal.json();
         
         if (dataGlobal.success) {
             const d = dataGlobal.data;
             
-            // Animar números
-            animateValue('kpi-sla', d.sla_percent, '%', 1000);
-            animateValue('kpi-hh-real', d.hh_real, '', 1000);
-            document.getElementById('kpi-hh-plan').textContent = d.hh_plan.toFixed(1);
-            animateValue('kpi-ots-closed', d.ots_closed, '', 1000);
-            animateValue('kpi-ots-risk', d.ots_riesgo, '', 1000);
+            // Animación segura de números (evita NaN)
+            animateValue('kpi-sla', isFinite(d.sla_percent) ? d.sla_percent : 0, '%', 1000);
             
-            // Barra de progreso HH con colores dinámicos
-            const percent = d.hh_plan > 0 ? (d.hh_real / d.hh_plan) * 100 : 0;
+            const hhReal = isFinite(d.hh_real) ? d.hh_real : 0;
+            const hhPlan = isFinite(d.hh_plan) ? d.hh_plan : 0;
+            
+            animateValue('kpi-hh-real', hhReal, '', 1000);
+            document.getElementById('kpi-hh-plan').textContent = hhPlan.toFixed(1);
+            
+            // OTs Cerradas: validar null/NaN
+            const closed = isFinite(d.ots_closed) ? d.ots_closed : 0;
+            animateValue('kpi-ots-closed', closed, '', 1000);
+            
+            animateValue('kpi-ots-risk', isFinite(d.ots_riesgo) ? d.ots_riesgo : 0, '', 1000);
+            
+            // Barra de progreso HH
+            const percent = hhPlan > 0 ? Math.min((hhReal / hhPlan) * 100, 100) : 0;
             const progressEl = document.getElementById('kpi-hh-progress');
-            progressEl.style.width = Math.min(percent, 100) + '%';
+            progressEl.style.width = percent + '%';
             
-            // Cambiar color según eficiencia
-            progressEl.classList.remove('progress-low', 'progress-med', 'progress-high');
-            if (percent < 50) progressEl.classList.add('progress-low');
-            else if (percent < 90) progressEl.classList.add('progress-med');
-            else progressEl.classList.add('progress-high');
+            // Tooltip informativo si HH Reales = 0
+            if (hhReal === 0 && hhPlan > 0) {
+                progressEl.title = dataGlobal.data.note_hh || 'HH Reales pendientes de reporte en terreno';
+            }
         }
         
-        // 2. Cargar Datos para Gráficos
-        const resChart = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
+        // 2. Gráfico Simplificado (Top 10)
+        const resChart = await fetch('/api/kpis.php?action=chart_data');
         const dataChart = await resChart.json();
         
-        if (dataChart.success) {
-            renderCharts(dataChart.data);
+        if (dataChart.success && dataChart.data?.length > 0) {
+            renderSimpleChart(dataChart.data);
+        } else {
+            document.getElementById('chartEspecialidad').parentNode.innerHTML = 
+                '<p style="text-align:center; color:#64748b; padding:2rem;">📊 Datos insuficientes para gráfico</p>';
         }
         
-        // 3. Cargar Tabla Reciente
+        // 3. Tabla Reciente (con límite seguro)
         const resRecent = await fetch('/api/kpis.php?action=recent_ots&limit=10');
         const dataRecent = await resRecent.json();
         
@@ -2949,8 +2961,8 @@ async function loadKpis() {
         Toast.success('📊 Datos actualizados', 'KPIs');
         
     } catch (err) {
-        console.error(err);
-        Toast.error('Error al cargar KPIs', 'Error');
+        console.error('Error KPIs:', err);
+        Toast.error('Error al cargar indicadores', 'Atención');
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -2959,21 +2971,91 @@ async function loadKpis() {
     }
 }
 
-// Animación de números
-function animateValue(elementId, end, suffix = '', duration = 1000) {
-    const el = document.getElementById(elementId);
+// === GRÁFICO SIMPLIFICADO (evita colapsos con muchos datos) ===
+function renderSimpleChart(data) {
+    const ctx = document.getElementById('chartEspecialidad').getContext('2d');
+    
+    // Destruir gráfico anterior si existe
+    if (window.simpleChart) window.simpleChart.destroy();
+    
+    const labels = data.map(d => d.label);
+    const hhPlan = data.map(d => d.hh_plan);
+    const hhReal = data.map(d => d.hh_real);
+    
+    window.simpleChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'HH Plan',
+                    data: hhPlan,
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderRadius: 4,
+                    barPercentage: 0.8
+                },
+                {
+                    label: 'HH Real*',
+                    data: hhReal,
+                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                    borderRadius: 4,
+                    barPercentage: 0.8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} HH`
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    ticks: { font: { size: 10 } },
+                    title: { display: true, text: 'Horas', font: { size: 11 } }
+                },
+                x: {
+                    ticks: { 
+                        font: { size: 9 },
+                        maxRotation: 45,
+                        minRotation: 45,
+                        callback: function(val, idx) {
+                            const label = this.getLabelForValue(val);
+                            return label.length > 15 ? label.substring(0, 12) + '...' : label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Animación segura de números
+function animateValue(elId, end, suffix = '', duration = 1000) {
+    const el = document.getElementById(elId);
     if (!el) return;
     
     const start = parseFloat(el.textContent) || 0;
+    if (!isFinite(start) || !isFinite(end)) {
+        el.textContent = '0' + suffix;
+        return;
+    }
+    
     const range = end - start;
     const startTime = performance.now();
     
-    function step(currentTime) {
-        const progress = Math.min((currentTime - startTime) / duration, 1);
-        const ease = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
+    function step(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
         const current = start + (range * ease);
         
-        el.textContent = (end % 1 === 0 ? Math.round(current) : current.toFixed(1)) + suffix;
+        el.textContent = (Number.isInteger(end) ? Math.round(current) : current.toFixed(1)) + suffix;
         
         if (progress < 1) requestAnimationFrame(step);
     }
