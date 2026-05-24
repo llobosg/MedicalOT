@@ -31,12 +31,6 @@ if (!isset($pdo) || !$pdo instanceof PDO) {
     exit;
 }
 
-// ✅ Ahora isLoggedIn() y hasRole() estarán disponibles
-if (!isLoggedIn() || !hasRole(['admin_hosp', 'admin'])) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Acceso denegado']);
-    exit;
-}
 
 try {
     $file = $_FILES['mantencion_file'];
