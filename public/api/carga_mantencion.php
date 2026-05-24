@@ -59,11 +59,6 @@ try {
         throw new Exception("Error al guardar archivo temporal");
     }
     
-    $tempPath = sys_get_temp_dir() . '/mant_' . uniqid() . '.csv';
-    if (!move_uploaded_file($file['tmp_name'], $tempPath)) {
-        throw new Exception("Error al guardar archivo");
-    }
-    
     $handle = fopen($tempPath, 'r');
     if (!$handle) throw new Exception("No se pudo abrir el archivo");
     
