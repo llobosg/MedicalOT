@@ -7,14 +7,22 @@ error_reporting(E_ALL);
 if (!defined('APP_ENTRY_POINT')) define('APP_ENTRY_POINT', true);
 
 // 🔧 Ruta dinámica para config.php (compatible Railway + local)
-    $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
-    $projectRoot = dirname($docRoot);
-    $configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
-    
-    if (!$configPath) {
-        throw new Exception("Archivo de configuración no encontrado");
-    }
-    require_once $configPath;
+$docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+$projectRoot = dirname($docRoot);
+$configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
+
+if (!$configPath) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Archivo de configuración no encontrado']);
+    exit;
+}
+require_once $configPath;
+
+// 🔐 INCLUIR FUNCIONES DE AUTENTICACIÓN (¡ESTO FALTABA!)
+$layoutPath = file_exists("$projectRoot/includes/layout.php") ? "$projectRoot/includes/layout.php" : null;
+if ($layoutPath) {
+    require_once $layoutPath;
+}
 
 // Verificar que $pdo esté disponible
 if (!isset($pdo) || !$pdo instanceof PDO) {
@@ -23,15 +31,10 @@ if (!isset($pdo) || !$pdo instanceof PDO) {
     exit;
 }
 
+// ✅ Ahora isLoggedIn() y hasRole() estarán disponibles
 if (!isLoggedIn() || !hasRole(['admin_hosp', 'admin'])) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Acceso denegado']);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['mantencion_file'])) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Archivo no proporcionado']);
     exit;
 }
 
@@ -45,14 +48,21 @@ try {
 
     // Validar archivo subido
     if (!isset($_FILES['mantencion_file']) || $_FILES['mantencion_file']['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode(['success' => false, 'error' => 'Error al recibir el archivo']);
+        echo json_encode(['success' => false, 'error' => 'Error al recibir el archivo: ' . $_FILES['mantencion_file']['error']]);
         exit;
     }
 
-    $file = $_FILES['mantencion_file']['tmp_name'];
-    if (!is_file($file) || pathinfo($_FILES['mantencion_file']['name'], PATHINFO_EXTENSION) !== 'csv') {
+    $sourcePath = $_FILES['mantencion_file']['tmp_name'];  // ← Ruta temporal del archivo
+    $fileName = $_FILES['mantencion_file']['name'];
+
+    if (!is_file($sourcePath) || pathinfo($fileName, PATHINFO_EXTENSION) !== 'csv') {
         echo json_encode(['success' => false, 'error' => 'Archivo CSV inválido']);
         exit;
+    }
+
+    $tempPath = sys_get_temp_dir() . '/mant_' . uniqid() . '.csv';
+    if (!move_uploaded_file($sourcePath, $tempPath)) {  // ← Usar $sourcePath, no $file['tmp_name']
+        throw new Exception("Error al guardar archivo temporal");
     }
     
     $tempPath = sys_get_temp_dir() . '/mant_' . uniqid() . '.csv';
