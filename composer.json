@@ -17,9 +17,8 @@
   },
   "autoload": {
     "psr-4": {
-      "MedicalOT\\": "src/"
-    },
-    "files": ["includes/helpers.php"]
+        "App\\": "src/"
+    }
   },
   "scripts": {
     "post-install-cmd": [

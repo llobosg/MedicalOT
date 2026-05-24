@@ -12,6 +12,17 @@ try {
     if (!$configPath) throw new Exception("Archivo de configuración no encontrado");
     require_once $configPath;
 
+    // 🔌 Cargar autoloader de Composer (CRÍTICO para PhpSpreadsheet)
+    $autoloadPath = file_exists("$projectRoot/vendor/autoload.php") ? "$projectRoot/vendor/autoload.php" : null;
+    if ($autoloadPath) {
+        require_once $autoloadPath;
+    } else {
+        throw new Exception("vendor/autoload.php no encontrado. Ejecuta 'composer install'");
+    }
+
+    // Ahora sí incluir el servicio
+    require_once "$projectRoot/src/Services/MantencionImportService.php";
+
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'] ?? '', ['admin', 'admin_hospital', 'admin_hosp'])) {
         http_response_code(403);
