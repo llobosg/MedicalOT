@@ -6,14 +6,15 @@ error_reporting(E_ALL);
 
 if (!defined('APP_ENTRY_POINT')) define('APP_ENTRY_POINT', true);
 
-// Incluir config con ruta absoluta
-$configPath = realpath(__DIR__ . '/../../includes/config.php');
-if (!$configPath || !file_exists($configPath)) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Archivo de configuración no encontrado']);
-    exit;
-}
-require_once $configPath;
+// 🔧 Ruta dinámica para config.php (compatible Railway + local)
+    $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+    $projectRoot = dirname($docRoot);
+    $configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
+    
+    if (!$configPath) {
+        throw new Exception("Archivo de configuración no encontrado");
+    }
+    require_once $configPath;
 
 // Verificar que $pdo esté disponible
 if (!isset($pdo) || !$pdo instanceof PDO) {
