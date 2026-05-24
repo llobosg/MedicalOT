@@ -2892,12 +2892,17 @@ document.addEventListener('DOMContentLoaded', () => {
         initPlanificacion();
     }
 });
-// === MÓDULO 4: KPIs LOGIC ===
-
+// === MÓDULO 4: KPIs LOGIC - VERSIÓN MEJORADA ===
 let chartEsp = null;
 let chartEstados = null;
 
 async function loadKpis() {
+    const btn = event?.target;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Cargando...';
+    }
+    
     try {
         // 1. Cargar KPIs Globales
         const resGlobal = await fetch('/api/kpis.php?action=global');
@@ -2905,44 +2910,89 @@ async function loadKpis() {
         
         if (dataGlobal.success) {
             const d = dataGlobal.data;
-            document.getElementById('kpi-sla').textContent = d.sla_percent + '%';
-            document.getElementById('kpi-hh-real').textContent = d.hh_real.toFixed(1);
+            
+            // Animar números
+            animateValue('kpi-sla', d.sla_percent, '%', 1000);
+            animateValue('kpi-hh-real', d.hh_real, '', 1000);
             document.getElementById('kpi-hh-plan').textContent = d.hh_plan.toFixed(1);
-            document.getElementById('kpi-ots-closed').textContent = '--'; // Calcularíamos si tuviéramos ese dato específico, por ahora usamos total_ots como referencia o lo dejamos vacío
-            document.getElementById('kpi-ots-risk').textContent = d.ots_riesgo;
-
-            // Barra de progreso HH
+            animateValue('kpi-ots-closed', d.ots_closed, '', 1000);
+            animateValue('kpi-ots-risk', d.ots_riesgo, '', 1000);
+            
+            // Barra de progreso HH con colores dinámicos
             const percent = d.hh_plan > 0 ? (d.hh_real / d.hh_plan) * 100 : 0;
-            document.getElementById('kpi-hh-progress').style.width = Math.min(percent, 100) + '%';
+            const progressEl = document.getElementById('kpi-hh-progress');
+            progressEl.style.width = Math.min(percent, 100) + '%';
+            
+            // Cambiar color según eficiencia
+            progressEl.classList.remove('progress-low', 'progress-med', 'progress-high');
+            if (percent < 50) progressEl.classList.add('progress-low');
+            else if (percent < 90) progressEl.classList.add('progress-med');
+            else progressEl.classList.add('progress-high');
         }
-
+        
         // 2. Cargar Datos para Gráficos
         const resChart = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
         const dataChart = await resChart.json();
-
+        
         if (dataChart.success) {
             renderCharts(dataChart.data);
         }
-
-        // 3. Cargar Tabla Reciente (Simulado con los primeros 10 items del gráfico por ahora, idealmente otra API call)
-        renderRecentTable(dataChart.data.slice(0, 10));
-
+        
+        // 3. Cargar Tabla Reciente
+        const resRecent = await fetch('/api/kpis.php?action=recent_ots&limit=10');
+        const dataRecent = await resRecent.json();
+        
+        if (dataRecent.success) {
+            renderRecentTable(dataRecent.data);
+        }
+        
+        Toast.success('📊 Datos actualizados', 'KPIs');
+        
     } catch (err) {
         console.error(err);
-        Toast.error('Error al cargar KPIs');
+        Toast.error('Error al cargar KPIs', 'Error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '🔄 Actualizar Datos';
+        }
     }
 }
 
+// Animación de números
+function animateValue(elementId, end, suffix = '', duration = 1000) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    
+    const start = parseFloat(el.textContent) || 0;
+    const range = end - start;
+    const startTime = performance.now();
+    
+    function step(currentTime) {
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
+        const current = start + (range * ease);
+        
+        el.textContent = (end % 1 === 0 ? Math.round(current) : current.toFixed(1)) + suffix;
+        
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
+
 function renderCharts(data) {
-    const labels = data.map(d => d.label || 'Sin Espec.');
+    const labels = data.map(d => {
+        const label = d.label || 'Sin Espec.';
+        return label.length > 20 ? label.substring(0, 17) + '...' : label;
+    });
     const hhPlan = data.map(d => parseFloat(d.hh_plan) || 0);
     const hhReal = data.map(d => parseFloat(d.hh_real) || 0);
-
-    // Destruir gráficos anteriores si existen
+    
+    // Destruir gráficos anteriores
     if (chartEsp) chartEsp.destroy();
     if (chartEstados) chartEstados.destroy();
-
-    // Gráfico de Barras: Especialidades
+    
+    // 📊 Gráfico de Barras: Especialidades
     const ctxEsp = document.getElementById('chartEspecialidad').getContext('2d');
     chartEsp = new Chart(ctxEsp, {
         type: 'bar',
@@ -2952,39 +3002,94 @@ function renderCharts(data) {
                 {
                     label: 'HH Planificadas',
                     data: hhPlan,
-                    backgroundColor: '#cbd5e1',
-                    borderRadius: 4
+                    backgroundColor: 'rgba(203, 213, 225, 0.8)',
+                    borderColor: '#94a3b8',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barPercentage: 0.7
                 },
                 {
                     label: 'HH Reales',
                     data: hhReal,
-                    backgroundColor: '#3b82f6',
-                    borderRadius: 4
+                    backgroundColor: 'rgba(59, 130, 246, 0.9)',
+                    borderColor: '#2563eb',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barPercentage: 0.7
                 }
             ]
         },
         options: {
             responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: true } }
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { position: 'top', labels: { font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(1)} HH`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    ticks: { font: { size: 10 } },
+                    title: { display: true, text: 'Horas Hombre', font: { size: 11 } }
+                },
+                x: {
+                    ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 }
+                }
+            }
         }
     });
-
-    // Gráfico Circular: Estados (Simulado basado en datos globales o extraído de otra query)
-    // Para simplificar, usaremos una distribución ficticia basada en los estados comunes
+    
+    // 🥧 Gráfico Circular: Estados (consulta específica o simulado)
     const ctxEstados = document.getElementById('chartEstados').getContext('2d');
+    
+    // Si tienes una endpoint para estados, úsalo; si no, usa distribución simulada basada en datos reales
+    const stateData = {
+        labels: ['Completada', 'En Proceso', 'Asignada', 'Pendiente'],
+        datasets: [{
+            data: [
+                data.reduce((sum, d) => sum + (d.estado === 'cerrada' ? d.total_ots : 0), 0),
+                data.reduce((sum, d) => sum + (d.estado === 'en_proceso' ? d.total_ots : 0), 0),
+                data.reduce((sum, d) => sum + (d.estado === 'asignada' ? d.total_ots : 0), 0),
+                data.reduce((sum, d) => sum + (d.estado === 'pendiente' ? d.total_ots : 0), 0)
+            ].map(v => v || 1), // Evitar ceros
+            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#94a3b8'],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    };
+    
+    // Si no hay datos reales de estados, usar valores por defecto
+    if (stateData.datasets[0].data.every(v => v === 1)) {
+        stateData.datasets[0].data = [60, 20, 10, 10];
+    }
+    
     chartEstados = new Chart(ctxEstados, {
         type: 'doughnut',
-        data: {
-            labels: ['Completada', 'En Ejecución', 'Pendiente', 'Reprogramada'],
-            datasets: [{
-                data: [60, 20, 10, 10], // Estos valores deberían venir de una API específica de estados
-                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6']
-            }]
-        },
+        data: stateData,
         options: {
             responsive: true,
-            plugins: { legend: { position: 'bottom' } }
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${value} OTs (${pct}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '65%'
         }
     });
 }
@@ -2992,39 +3097,42 @@ function renderCharts(data) {
 function renderRecentTable(data) {
     const tbody = document.getElementById('tablaOtsRecentes');
     
-    // Si no hay datos, mostrar mensaje
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1rem; color:#94a3b8;">No hay datos recientes</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">No hay datos recientes</td></tr>';
         return;
     }
-
-    tbody.innerHTML = data.map(item => {
-        // Conversión segura a número, si falla usa 0
-        const hhPlan = parseFloat(item.hh_plan) || 0;
-        const hhReal = parseFloat(item.hh_real) || 0;
-        
-        // Formatear a 1 decimal
-        const hhPlanFormatted = hhPlan.toFixed(1);
-        const hhRealFormatted = hhReal.toFixed(1);
-
-        return `
-            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                <td style="padding:0.75rem; font-weight:600; color:#1e293b;">${item.label || 'N/A'}</td>
-                <td style="padding:0.75rem; color:#64748b;">Varios Equipos</td>
-                <td style="padding:0.75rem; text-align:center;">
-                    <span style="background:#dbeafe; color:#1e40af; padding:0.25rem 0.5rem; border-radius:99px; font-size:0.75rem;">Mixto</span>
-                </td>
-                <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">${hhPlanFormatted}</td>
-                <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">${hhRealFormatted}</td>
-                <td style="padding:0.75rem; text-align:center; color:#ef4444;">--</td>
-            </tr>
-        `;
-    }).join('');
+    
+    tbody.innerHTML = data.map(item => `
+        <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" 
+            onmouseover="this.style.background='#f8fafc'" 
+            onmouseout="this.style.background='white'">
+            <td style="padding:0.75rem; font-weight:600; color:#1e293b; font-family:monospace;">
+                ${item.codigo_ot}
+            </td>
+            <td style="padding:0.75rem; color:#64748b; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.equipo}">
+                ${item.equipo}
+            </td>
+            <td style="padding:0.75rem; text-align:center;">
+                <span class="badge ${item.estado_class}">${item.estado}</span>
+            </td>
+            <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">
+                ${item.hh_plan}
+            </td>
+            <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">
+                ${item.hh_real}
+            </td>
+            <td style="padding:0.75rem; text-align:center;" class="${item.retraso_class}">
+                ${item.retraso}
+            </td>
+        </tr>
+    `).join('');
 }
 
-// Cargar al inicio
+// Cargar al iniciar si el módulo está activo
 document.addEventListener('DOMContentLoaded', () => {
-    loadKpis();
+    if (document.getElementById('kpis')?.classList.contains('active')) {
+        loadKpis();
+    }
 });
 // === LÓGICA DE CARGA DE MANTENCIÓN ===
 
