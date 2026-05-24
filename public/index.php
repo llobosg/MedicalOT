@@ -460,8 +460,8 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <input type="file" id="mantencionFile" accept=".csv" style="display:none">
                         <div style="text-align:center; padding:2rem;">
                             <div style="font-size:2rem; margin-bottom:0.5rem;">📄</div>
-                            <p style="font-weight:600; color:#334155; margin:0;">Arrastra tu archivo CSV aquí o haz clic para seleccionar</p>
-                            <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.5rem;">Solo archivos .csv | Hoja "NEW BD"</p>
+                            <p style="font-weight:600; color:#334155; margin:0;">Arrastra tu archivo Mantenimiento aquí o haz clic para seleccionar</p>
+                            <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.5rem;">Solo archivos .xlsx | Leerá automáticamente la hoja "NEW BD"</p>
                         </div>
                     </div>
                     
@@ -3173,9 +3173,12 @@ if (dropZoneMantencion && mantencionInput) {
 }
 
 async function handleMantencionUpload(file) {
-    // Validación básica
-    if (!file.name.endsWith('.csv')) {
-        alert('Por favor selecciona un archivo CSV válido.');
+    // ✅ Validación ampliada: acepta .xlsx, .xls y .csv
+    const validExts = ['.xlsx', '.xls', '.csv'];
+    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+    
+    if (!validExts.includes(fileExt)) {
+        alert('Por favor selecciona un archivo .xlsx o .csv válido.');
         return;
     }
 
@@ -3183,7 +3186,6 @@ async function handleMantencionUpload(file) {
     formData.append('mantencion_file', file);
 
     try {
-        // Mostrar estado de carga
         mantencionSummary.style.display = 'block';
         mantencionLog.innerHTML = '<span style="color:#3b82f6; font-weight:600;">⏳ Procesando archivo... Esto puede tomar unos segundos.</span>';
         mantencionLog.style.color = '#3b82f6';
