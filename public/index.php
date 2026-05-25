@@ -620,6 +620,11 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <button onclick="loadKpis()" style="background:#10b981; color:white; border:none; padding:0.5rem 1rem; border-radius:0.5rem; cursor:pointer; font-weight:600; font-size:0.85rem;">
                         🔄 Actualizar
                     </button>
+                    <!-- 🆕 AGREGAR AQUÍ: Switch IA -->
+                    <div class="ai-toggle-container" id="aiToggleContainer">
+                        <span class="ai-toggle-label">🤖 IA</span>
+                        <div class="ai-toggle-switch" id="aiToggleSwitch" onclick="toggleAI()"></div>
+                    </div>
                 </div>
             </div>
 
@@ -4253,5 +4258,486 @@ function restoreStandardTitles() {
         100% { transform: rotate(360deg); }
     }
     </style>
+    <!-- ═══════════════════════════════════════════════════════ -->
+<!-- 🤖 WIDGET IA ASISTENTE + SWITCH ON/OFF                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<style>
+    /* Switch On/Off en header del módulo KPIs */
+    .ai-toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.8rem;
+        background: #f1f5f9;
+        border-radius: 2rem;
+        border: 1px solid #e2e8f0;
+    }
+    .ai-toggle-label {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+    .ai-toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        background: #cbd5e1;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    .ai-toggle-switch.active {
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    }
+    .ai-toggle-switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.3s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .ai-toggle-switch.active::after {
+        transform: translateX(20px);
+    }
+    
+    /* Botón flotante del chat */
+    .ai-chat-button {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.8rem;
+        transition: all 0.3s;
+        z-index: 1500;
+        animation: pulseAI 2s infinite;
+    }
+    .ai-chat-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 12px 32px rgba(139, 92, 246, 0.5);
+    }
+    .ai-chat-button.hidden {
+        display: none;
+    }
+    @keyframes pulseAI {
+        0%, 100% { box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4); }
+        50% { box-shadow: 0 8px 32px rgba(139, 92, 246, 0.7); }
+    }
+    
+    /* Ventana del chat */
+    .ai-chat-window {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        width: 400px;
+        height: 600px;
+        max-height: calc(100vh - 4rem);
+        background: white;
+        border-radius: 1.5rem;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        display: none;
+        flex-direction: column;
+        z-index: 1501;
+        overflow: hidden;
+        animation: slideInChat 0.3s ease;
+    }
+    .ai-chat-window.open {
+        display: flex;
+    }
+    @keyframes slideInChat {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Header del chat */
+    .ai-chat-header {
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        color: white;
+        padding: 1rem 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .ai-chat-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+    }
+    .ai-chat-close {
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .ai-chat-close:hover {
+        background: rgba(255,255,255,0.3);
+    }
+    
+    /* Mensajes */
+    .ai-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        background: #f8fafc;
+    }
+    .ai-message {
+        margin-bottom: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        animation: fadeIn 0.3s ease;
+    }
+    .ai-message.user {
+        flex-direction: row-reverse;
+    }
+    .ai-message-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    .ai-message.ai .ai-message-avatar {
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        color: white;
+    }
+    .ai-message.user .ai-message-avatar {
+        background: #3b82f6;
+        color: white;
+    }
+    .ai-message-bubble {
+        max-width: 80%;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    .ai-message.ai .ai-message-bubble {
+        background: white;
+        color: #1e293b;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .ai-message.user .ai-message-bubble {
+        background: #3b82f6;
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+    .ai-message-bubble strong { font-weight: 700; }
+    .ai-message-bubble ul { margin: 0.5rem 0; padding-left: 1.2rem; }
+    
+    /* Sugerencias rápidas */
+    .ai-suggestions {
+        padding: 0.5rem 1rem;
+        background: white;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .ai-suggestion {
+        padding: 0.4rem 0.8rem;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .ai-suggestion:hover {
+        background: #e0e7ff;
+        border-color: #8b5cf6;
+        color: #6366f1;
+    }
+    
+    /* Input */
+    .ai-chat-input-container {
+        padding: 0.75rem 1rem;
+        background: white;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 0.5rem;
+    }
+    .ai-chat-input {
+        flex: 1;
+        padding: 0.6rem 0.9rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 1.5rem;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .ai-chat-input:focus {
+        border-color: #8b5cf6;
+    }
+    .ai-chat-send {
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+    .ai-chat-send:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    /* Indicador de escritura */
+    .ai-typing {
+        display: flex;
+        gap: 4px;
+        padding: 0.75rem 1rem;
+    }
+    .ai-typing-dot {
+        width: 8px;
+        height: 8px;
+        background: #cbd5e1;
+        border-radius: 50%;
+        animation: typing 1.4s infinite;
+    }
+    .ai-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .ai-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing {
+        0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+        30% { opacity: 1; transform: translateY(-4px); }
+    }
+</style>
+
+<!-- Botón flotante -->
+<button class="ai-chat-button hidden" id="aiChatButton" onclick="openAIChat()" title="Asistente IA">
+    🤖
+</button>
+
+<!-- Ventana del chat -->
+<div class="ai-chat-window" id="aiChatWindow">
+    <div class="ai-chat-header">
+        <div class="ai-chat-title">
+            <span>🤖</span>
+            <span>Asistente MedicalOT</span>
+        </div>
+        <button class="ai-chat-close" onclick="closeAIChat()">✕</button>
+    </div>
+    
+    <div class="ai-chat-messages" id="aiChatMessages">
+        <!-- Mensaje de bienvenida -->
+        <div class="ai-message ai">
+            <div class="ai-message-avatar">🤖</div>
+            <div class="ai-message-bubble">
+                ¡Hola! Soy tu asistente de MedicalOT. Puedo ayudarte a analizar los datos de mantenimiento del hospital.
+                <br><br>
+                ¿Qué te gustaría saber? Por ejemplo:
+                <ul>
+                    <li>Resumen del mes</li>
+                    <li>OTs en riesgo</li>
+                    <li>Análisis por especialidad</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ai-suggestions" id="aiSuggestions">
+        <button class="ai-suggestion" onclick="sendSuggestion('Dame un resumen ejecutivo del mes actual')">📊 Resumen del mes</button>
+        <button class="ai-suggestion" onclick="sendSuggestion('¿Qué OTs debería priorizar hoy?')">🎯 Prioridades</button>
+        <button class="ai-suggestion" onclick="sendSuggestion('Analiza las especialidades con más riesgo')">⚠️ Especialidades en riesgo</button>
+        <button class="ai-suggestion" onclick="sendSuggestion('¿Hay algo inusual en los datos?')">🔍 Anomalías</button>
+    </div>
+    
+    <div class="ai-chat-input-container">
+        <input type="text" 
+               class="ai-chat-input" 
+               id="aiChatInput" 
+               placeholder="Pregunta algo sobre los datos..."
+               onkeypress="if(event.key==='Enter') sendMessage()">
+        <button class="ai-chat-send" id="aiChatSend" onclick="sendMessage()">➤</button>
+    </div>
+</div>
+
+<script>
+    // ═══════════════════════════════════════════════════════
+    // 🤖 LÓGICA DEL ASISTENTE IA
+    // ═══════════════════════════════════════════════════════
+
+    // Estado global de la IA (persistente en localStorage)
+    const AI_STORAGE_KEY = 'medicalot_ai_enabled';
+
+    // Inicializar estado al cargar
+    (function initAI() {
+        const isEnabled = localStorage.getItem(AI_STORAGE_KEY) !== 'false'; // Default: ON
+        updateAIToggle(isEnabled);
+    })();
+
+    function toggleAI() {
+        const currentState = localStorage.getItem(AI_STORAGE_KEY) !== 'false';
+        const newState = !currentState;
+        localStorage.setItem(AI_STORAGE_KEY, newState);
+        updateAIToggle(newState);
+        
+        if (!newState) {
+            closeAIChat();
+            Toast.info('🤖 Asistente IA desactivado', 'Configuración');
+        } else {
+            Toast.success('🤖 Asistente IA activado', 'Configuración');
+        }
+    }
+
+    function updateAIToggle(enabled) {
+        const toggle = document.getElementById('aiToggleSwitch');
+        const button = document.getElementById('aiChatButton');
+        const container = document.getElementById('aiToggleContainer');
+        
+        if (enabled) {
+            toggle.classList.add('active');
+            button.classList.remove('hidden');
+        } else {
+            toggle.classList.remove('active');
+            button.classList.add('hidden');
+        }
+    }
+
+    function isAIEnabled() {
+        return localStorage.getItem(AI_STORAGE_KEY) !== 'false';
+    }
+
+    function openAIChat() {
+        if (!isAIEnabled()) {
+            Toast.error('Activa la IA primero con el switch', 'Atención');
+            return;
+        }
+        document.getElementById('aiChatWindow').classList.add('open');
+        document.getElementById('aiChatButton').classList.add('hidden');
+        document.getElementById('aiChatInput').focus();
+    }
+
+    function closeAIChat() {
+        document.getElementById('aiChatWindow').classList.remove('open');
+        if (isAIEnabled()) {
+            document.getElementById('aiChatButton').classList.remove('hidden');
+        }
+    }
+
+    function addMessage(content, isUser = false) {
+        const messages = document.getElementById('aiChatMessages');
+        const avatar = isUser ? '👤' : '🤖';
+        const className = isUser ? 'user' : 'ai';
+        
+        // Formato básico de markdown (negritas, bullets, saltos)
+        let formattedContent = content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^\s*[-•]\s+(.+)$/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+            .replace(/\n/g, '<br>');
+        
+        const messageHTML = `
+            <div class="ai-message ${className}">
+                <div class="ai-message-avatar">${avatar}</div>
+                <div class="ai-message-bubble">${formattedContent}</div>
+            </div>
+        `;
+        messages.insertAdjacentHTML('beforeend', messageHTML);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function showTyping() {
+        const messages = document.getElementById('aiChatMessages');
+        const typingHTML = `
+            <div class="ai-message ai" id="aiTyping">
+                <div class="ai-message-avatar">🤖</div>
+                <div class="ai-message-bubble">
+                    <div class="ai-typing">
+                        <div class="ai-typing-dot"></div>
+                        <div class="ai-typing-dot"></div>
+                        <div class="ai-typing-dot"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        messages.insertAdjacentHTML('beforeend', typingHTML);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function hideTyping() {
+        const typing = document.getElementById('aiTyping');
+        if (typing) typing.remove();
+    }
+
+    function sendSuggestion(text) {
+        document.getElementById('aiChatInput').value = text;
+        sendMessage();
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('aiChatInput');
+        const sendBtn = document.getElementById('aiChatSend');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        // Deshabilitar input
+        input.value = '';
+        input.disabled = true;
+        sendBtn.disabled = true;
+        
+        // Mostrar mensaje del usuario
+        addMessage(message, true);
+        
+        // Mostrar indicador de escritura
+        showTyping();
+        
+        try {
+            const response = await fetch('/api/ai_assistant.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+            
+            const data = await response.json();
+            
+            hideTyping();
+            
+            if (data.success) {
+                addMessage(data.message, false);
+            } else {
+                addMessage(`⚠️ Error: ${data.error || 'No se pudo obtener respuesta'}`, false);
+            }
+        } catch (err) {
+            hideTyping();
+            addMessage(`⚠️ Error de conexión: ${err.message}`, false);
+        } finally {
+            input.disabled = false;
+            sendBtn.disabled = false;
+            input.focus();
+        }
+    }
+</script>
 </body>
 </html>
