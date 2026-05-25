@@ -604,6 +604,41 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </button>
                 </div>
 
+                <!-- Filtros Temporales -->
+                <div style="display:flex; gap:0.75rem; align-items:center; margin-bottom:1rem; flex-wrap:wrap;">
+                    <label style="font-size:0.85rem; color:#64748b; font-weight:500;">📅 Filtrar por:</label>
+                    
+                    <select id="filterYear" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff;">
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                    
+                    <select id="filterMonth" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff;">
+                        <option value="">Todo el año</option>
+                        <option value="enero">Enero</option>
+                        <option value="febrero">Febrero</option>
+                        <option value="marzo">Marzo</option>
+                        <option value="abril">Abril</option>
+                        <option value="mayo">Mayo</option>
+                        <option value="junio">Junio</option>
+                        <option value="julio">Julio</option>
+                        <option value="agosto">Agosto</option>
+                        <option value="septiembre">Septiembre</option>
+                        <option value="octubre">Octubre</option>
+                        <option value="noviembre">Noviembre</option>
+                        <option value="diciembre">Diciembre</option>
+                    </select>
+                    
+                    <select id="filterWeek" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff;">
+                        <option value="">Todo el mes</option>
+                        <!-- Se llena dinámicamente -->
+                    </select>
+                    
+                    <button onclick="resetFilters()" style="padding:0.5rem 1rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer; color:#64748b;">
+                        🔄 Limpiar
+                    </button>
+                </div>
+
                 <!-- Fichas Superiores (KPIs Globales) -->
                 <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1.5rem; margin-bottom:2rem; overflow-x:auto;">
                     
@@ -3468,6 +3503,112 @@ async function handleMantencionUpload(file) {
         console.error(err);
         mantencionLog.innerHTML = '<div style="color:#ef4444; font-weight:bold;">❌ Error de conexión con el servidor.</div>';
         mantencionLog.style.color = '#ef4444';
+    }
+}
+
+let currentFilters = { year: '2026', month: '', week: '' };
+
+async function applyFilters() {
+    currentFilters.year = document.getElementById('filterYear').value;
+    currentFilters.month = document.getElementById('filterMonth').value;
+    currentFilters.week = document.getElementById('filterWeek').value;
+    
+    // Actualizar lista de semanas disponibles según mes seleccionado
+    await loadWeeks();
+    
+    // Recargar KPIs con filtros
+    await loadKpis();
+}
+
+async function loadWeeks() {
+    const params = new URLSearchParams({
+        year: currentFilters.year,
+        month: currentFilters.month
+    });
+    
+    try {
+        const res = await fetch(`/api/kpis.php?action=get_weeks&${params}`);
+        const data = await res.json();
+        
+        const weekSelect = document.getElementById('filterWeek');
+        if (data.success) {
+            weekSelect.innerHTML = '<option value="">Todo el mes</option>' + 
+                data.data.map(w => `<option value="${w}" ${currentFilters.week == w ? 'selected' : ''}>Semana ${w}</option>`).join('');
+        }
+    } catch (err) {
+        console.error('Error cargando semanas:', err);
+    }
+}
+
+function resetFilters() {
+    document.getElementById('filterYear').value = '2026';
+    document.getElementById('filterMonth').value = '';
+    document.getElementById('filterWeek').value = '';
+    currentFilters = { year: '2026', month: '', week: '' };
+    loadKpis();
+}
+
+// Modificar loadKpis() para incluir filtros
+async function loadKpis() {
+    const btn = event?.target;
+    if (btn && btn.id !== 'filterYear' && btn.id !== 'filterMonth' && btn.id !== 'filterWeek') {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Cargando...';
+    }
+    
+    try {
+        // Construir query string con filtros
+        const params = new URLSearchParams({
+            year: currentFilters.year,
+            month: currentFilters.month || '',
+            week: currentFilters.week || ''
+        });
+        
+        // 1. KPIs Globales con filtros
+        const resGlobal = await fetch(`/api/kpis.php?action=global&${params}`);
+        const dataGlobal = await resGlobal.json();
+        
+        if (dataGlobal.success) {
+            const d = dataGlobal.data;
+            
+            // Función helper segura
+            const updateText = (id, value, suffix = '') => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = (isFinite(value) ? value : 0) + suffix;
+            };
+            
+            updateText('kpi-sla', d.sla_percent, '%');
+            updateText('kpi-hh-plan', d.hh_plan.toFixed(1), '');
+            document.getElementById('kpi-hh-real').textContent = d.hh_plan.toFixed(1);
+            updateText('kpi-ots-closed', d.ots_closed, '');
+            updateText('kpi-ots-risk', d.ots_riesgo, '');
+            
+            document.getElementById('kpi-hh-progress').style.width = '100%';
+        }
+        
+        // 2. Gráfico de Barras: HHs Planificadas por Especialidad
+        const resBar = await fetch(`/api/kpis.php?action=chart_especialidad&${params}`);
+        const dataBar = await resBar.json();
+        if (dataBar.success) renderBarChartEspecialidad(dataBar.data);
+        
+        // 3. Gráfico Circular: Estados
+        const resPie = await fetch(`/api/kpis.php?action=chart_data&group_by=estado&${params}`);
+        const dataPie = await resPie.json();
+        if (dataPie.success) renderPieChart(dataPie.data);
+
+        // 4. Tabla Reprogramadas
+        const resRep = await fetch(`/api/kpis.php?action=reprogramadas&limit=10&${params}`);
+        const dataRep = await resRep.json();
+        if (dataRep.success) renderReproTable(dataRep.data);
+        
+    } catch (err) {
+        console.error('Error KPIs:', err);
+        Toast.error('Error al cargar indicadores', 'Atención');
+    } finally {
+        if (btn && btn.id !== 'filterYear' && btn.id !== 'filterMonth' && btn.id !== 'filterWeek') {
+            btn.disabled = false;
+            btn.innerHTML = '🔄 Actualizar Datos';
+        }
     }
 }
 </script>
