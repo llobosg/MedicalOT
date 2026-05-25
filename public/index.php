@@ -614,16 +614,15 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <div style="font-size:0.8rem; color:#10b981; margin-top:0.25rem;">✅ De OTs completadas a tiempo</div>
                     </div>
 
-                    <!-- Ficha 2: HHs Plan vs Real -->
+                    <!-- Ficha 2: HHs Planificadas (etapa de carga) -->
                     <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #3b82f6;">
-                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">HHs Ejecutadas</div>
+                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">HHs Planificadas</div>
                         <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.5rem;">
                             <span id="kpi-hh-real" style="font-size:2rem; font-weight:700; color:#1e293b;">--</span>
-                            <span style="font-size:0.9rem; color:#64748b;">/ <span id="kpi-hh-plan">--</span> hh plan</span>
-                            <span title="HH Reales se reportan desde terreno" style="font-size:0.75rem; color:#94a3b8; cursor:help;">ⓘ</span>
+                            <span style="font-size:0.9rem; color:#64748b;">HH</span>
                         </div>
-                        <div id="kpi-hh-bar" style="height:6px; background:#e2e8f0; border-radius:3px; margin-top:0.75rem; overflow:hidden;">
-                            <div id="kpi-hh-progress" style="width:0%; height:100%; background:#3b82f6; transition:width 1s;"></div>
+                        <div style="font-size:0.8rem; color:#64748b; margin-top:0.25rem;">
+                            ℹ️ Valores desde planilla de planificación
                         </div>
                     </div>
 
@@ -2899,26 +2898,65 @@ let chartEsp = null;
 let chartEstados = null;
 
 async function loadKpis() {
+    const btn = event?.target;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Cargando...';
+    }
+    
     try {
+        // 1. KPIs Globales
         const resGlobal = await fetch('/api/kpis.php?action=global');
-        const d = (await resGlobal.json()).data;
-        document.getElementById('kpi-sla').textContent = d.sla_percent + '%';
-        document.getElementById('kpi-hh-real').textContent = d.hh_real.toFixed(1);
-        document.getElementById('kpi-hh-plan').textContent = d.hh_plan.toFixed(1);
-        document.getElementById('kpi-ots-risk').textContent = d.ots_riesgo;
-        document.getElementById('kpi-hh-progress').style.width = Math.min((d.hh_plan>0 ? (d.hh_real/d.hh_plan)*100 : 0), 100) + '%';
-
-        // Gráficos
-        const resBar = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
-        if (resBar.ok) renderBarChart((await resBar.json()).data);
+        const dataGlobal = await resGlobal.json();
         
+        if (dataGlobal.success) {
+            const d = dataGlobal.data;
+            
+            // ✅ Animar todos los valores numéricos
+            animateValue('kpi-sla', isFinite(d.sla_percent) ? d.sla_percent : 0, '%', 1000);
+            
+            // HHs: Mostramos PLANIFICADAS (etapa de carga)
+            const hhPlan = isFinite(d.hh_plan) ? d.hh_plan : 0;
+            animateValue('kpi-hh-plan', hhPlan, '', 1000);
+            document.getElementById('kpi-hh-real').textContent = hhPlan.toFixed(1); // Mismo valor para esta etapa
+            
+            // Barra de progreso: 100% porque mostramos planificadas vs planificadas
+            document.getElementById('kpi-hh-progress').style.width = '100%';
+            
+            // OTs Cerradas (validar null/NaN)
+            const closed = isFinite(d.ots_closed) ? d.ots_closed : 0;
+            animateValue('kpi-ots-closed', closed, '', 1000);
+            
+            // OTs en Riesgo
+            animateValue('kpi-ots-risk', isFinite(d.ots_riesgo) ? d.ots_riesgo : 0, '', 1000);
+        }
+        
+        // 2. Gráfico de Barras: HHs PLANIFICADAS por Especialidad (una sola serie)
+        const resBar = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
+        if (resBar.ok) {
+            const chartData = (await resBar.json()).data;
+            renderSimpleBarChart(chartData); // Nueva función de una sola barra
+        }
+        
+        // 3. Gráfico Circular: Estados (se mantiene igual)
         const resPie = await fetch('/api/kpis.php?action=chart_data&group_by=estado');
         if (resPie.ok) renderPieChart((await resPie.json()).data);
 
-        // Tabla Reprogramadas
+        // 4. Tabla Reprogramadas
         const resRep = await fetch('/api/kpis.php?action=reprogramadas&limit=10');
         if (resRep.ok) renderReproTable((await resRep.json()).data);
-    } catch(e) { console.error(e); Toast.error('Error cargando KPIs'); }
+        
+        Toast.success('📊 Datos actualizados', 'KPIs');
+        
+    } catch (err) {
+        console.error('Error KPIs:', err);
+        Toast.error('Error al cargar indicadores', 'Atención');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '🔄 Actualizar Datos';
+        }
+    }
 }
 
 let chartBar=null, chartPie=null;
@@ -2927,6 +2965,72 @@ function renderBarChart(data) {
     chartBar = new Chart(document.getElementById('chartEspecialidad').getContext('2d'), {
         type:'bar', data:{labels:data.map(d=>d.label), datasets:[{label:'HH Plan', data:data.map(d=>d.value), backgroundColor:'#3b82f6', borderRadius:4}]},
         options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+    });
+}
+
+// === GRÁFICO DE BARRAS SIMPLIFICADO: Solo HHs Planificadas ===
+function renderSimpleBarChart(data) {
+    const ctx = document.getElementById('chartEspecialidad').getContext('2d');
+    
+    // Destruir gráfico anterior si existe
+    if (window.simpleBarChart) window.simpleBarChart.destroy();
+    
+    const labels = data.map(d => {
+        const label = d.label || 'Sin Espec.';
+        return label.length > 20 ? label.substring(0, 17) + '...' : label;
+    });
+    const hhPlan = data.map(d => parseFloat(d.value || d.hh_plan) || 0);
+    
+    window.simpleBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'HH Planificadas',
+                data: hhPlan,
+                backgroundColor: 'rgba(59, 130, 246, 0.8)', // Azul primario
+                borderColor: '#2563eb',
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }, // Ocultar leyenda (solo una serie)
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `HH Planificadas: ${context.parsed.y.toFixed(1)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { font: { size: 10 } },
+                    title: { 
+                        display: true, 
+                        text: 'Horas Hombre Planificadas', 
+                        font: { size: 11, weight: '600' } 
+                    }
+                },
+                x: {
+                    ticks: { 
+                        font: { size: 9 },
+                        maxRotation: 45,
+                        minRotation: 45,
+                        callback: function(val, idx) {
+                            const label = this.getLabelForValue(val);
+                            return label.length > 15 ? label.substring(0, 12) + '...' : label;
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -3020,9 +3124,9 @@ function renderSimpleChart(data) {
     });
 }
 
-// Animación segura de números
-function animateValue(elId, end, suffix = '', duration = 1000) {
-    const el = document.getElementById(elId);
+// === ANIMACIÓN DE NÚMEROS PARA KPIs ===
+function animateValue(elementId, end, suffix = '', duration = 1000) {
+    const el = document.getElementById(elementId);
     if (!el) return;
     
     const start = parseFloat(el.textContent) || 0;
@@ -3036,9 +3140,10 @@ function animateValue(elId, end, suffix = '', duration = 1000) {
     
     function step(now) {
         const progress = Math.min((now - startTime) / duration, 1);
-        const ease = 1 - Math.pow(1 - progress, 3);
+        const ease = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
         const current = start + (range * ease);
         
+        // Formatear: entero si el valor final es entero, 1 decimal si no
         el.textContent = (Number.isInteger(end) ? Math.round(current) : current.toFixed(1)) + suffix;
         
         if (progress < 1) requestAnimationFrame(step);

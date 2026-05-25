@@ -92,7 +92,7 @@ class MantencionImportService
         return $rows;
     }
 
-    private function processRow(array $row, DateTime $today, array &$historicoBatch, array &$resumenBatch, int $lineNum): void
+       private function processRow(array $row, DateTime $today, array &$historicoBatch, array &$resumenBatch, int $lineNum): void
     {
         try {
             if (count($row) < 13) return;
@@ -104,10 +104,12 @@ class MantencionImportService
             $hhRaw       = trim($row[10] ?? '0');
             $tipoRaw     = strtoupper(trim($row[11] ?? 'INTERNA'));
             $estadoRaw   = strtolower(trim($row[12] ?? ''));
+            $idEspRaw    = trim($row[8] ?? '0'); // Columna I: CODIGO ESPECIALIDAD
 
             $idPrev = preg_match('/^\d+$/', $idPrevRaw) ? (int)$idPrevRaw : null;
             if (!$idPrev) return;
 
+            $idEspecialidad = is_numeric($idEspRaw) ? (int)$idEspRaw : 0;
             $hhPlan  = floatval(str_replace(',', '.', $hhRaw)) ?: 0.0;
             $tipo    = ($tipoRaw === 'EXT') ? 'EXTERNA' : 'INTERNA';
             $estado  = $this->normalizeEstado($estadoRaw);
@@ -127,12 +129,12 @@ class MantencionImportService
                 if ($dateObj < $today) $diasRetraso = $today->diff($dateObj)->days;
             }
 
-            // Estructura fija de 10 elementos para garantizar índices
+            // Array de 11 elementos para flushBatch
             $historicoBatch[] = [$idPrev, $codigoProt, $nombre, $fecha, $estado, $hhPlan, 0.0, $tipo, $tipoRaw, $lineNum];
             
             $resumenBatch[] = [
                 $idPrev, $codigoProt, $nombre, $fecha, $estado, 
-                $hhPlan, 0.0, $diasRetraso, $tipo, $isInsert ? 'NUEVO' : 'ACTUALIZACION'
+                $hhPlan, 0.0, $diasRetraso, $tipo, $idEspecialidad, $isInsert ? 'NUEVO' : 'ACTUALIZACION'
             ];
 
         } catch (Exception $e) {
@@ -143,14 +145,9 @@ class MantencionImportService
         }
     }
 
-    /**
-     * EJECUCIÓN MASIVA CORREGIDA
-     * Placeholders hardcodeados + mapeo explícito para evitar HY093
-     */
     private function flushBatch(array $historico, array $resumen): void
     {
         if (!empty($resumen)) {
-            // 11 placeholders exactos
             $sqlResumen = "INSERT INTO ot_resumen_actual (
                 codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga, 
                 ultima_fecha_programada, ultimo_estado, ultima_carga, 
@@ -175,7 +172,7 @@ class MantencionImportService
             
             $stmtResumen = $this->db->prepare($sqlResumen);
             foreach ($resumen as $r) {
-                // $r = [0:idPrev, 1:codProt, 2:nombre, 3:fecha, 4:estado, 5:hhPlan, 6:hhReal, 7:diasRet, 8:tipo, 9:origen]
+                // 11 placeholders exactos
                 $stmtResumen->execute([
                     $r[1],                 // 1. codigo_ot
                     $r[0],                 // 2. id_prevision_sic
@@ -185,7 +182,7 @@ class MantencionImportService
                     $r[5],                 // 6. total_hh_planificadas
                     $r[7],                 // 7. dias_retraso
                     null,                  // 8. id_vertical
-                    null,                  // 9. id_especialidad
+                    $r[9],                 // 9. id_especialidad  <-- CORREGIDO
                     $r[2],                 // 10. nombre_equipo
                     $r[8]                  // 11. tipo_mantenimiento
                 ]);
@@ -193,7 +190,6 @@ class MantencionImportService
         }
 
         if (!empty($historico)) {
-            // 10 placeholders exactos
             $sqlHist = "INSERT INTO ot_historico (
                 codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada, 
                 estado, hh_planificadas, hh_reales, observaciones, id_vertical, 
@@ -204,22 +200,13 @@ class MantencionImportService
             
             $stmtHist = $this->db->prepare($sqlHist);
             foreach ($historico as $h) {
-                // $h = [0:idPrev, 1:codProt, 2:nombre, 3:fecha, 4:estado, 5:hhPlan, 6:hhReal, 7:tipo, 8:tipoRaw, 9:line]
                 $stmtHist->execute([
-                    $h[1],                 // 1. codigo_ot
-                    $h[0],                 // 2. id_prevision_sic
-                    $h[3],                 // 3. fecha_programada
-                    $h[4],                 // 4. estado
-                    $h[5],                 // 5. hh_planificadas
-                    null,                  // 6. id_vertical
-                    null,                  // 7. id_especialidad
-                    null,                  // 8. id_equipo
-                    $h[2],                 // 9. nombre_equipo
-                    $h[1]                  // 10. nombre_protocolo
+                    $h[1], date('Y-m-d H:i:s'), 'MANTENCION',
+                    $h[3], $h[4], $h[5], $h[6], '', null, null, null, $h[2], $h[9] ?? ''
                 ]);
             }
         }
-    }
+    } 
 
     private function parseDate(?string $raw): ?string
     {
