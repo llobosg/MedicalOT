@@ -68,22 +68,42 @@ try {
 
         case 'chart_data':
             $group = $_GET['group_by'] ?? 'especialidad';
+            $year = $_GET['year'] ?? date('Y');
+            $month = $_GET['month'] ?? null;
+            $week = $_GET['week'] ?? null;
+            
+            // Construir WHERE dinámico
+            $where = ["YEAR(ultima_fecha_programada) = ?"];
+            $params = [$year];
+            
+            if ($month && $month !== '') {
+                $where[] = "mes_carga = ?";
+                $params[] = $month;
+            }
+            if ($week && $week !== '') {
+                $where[] = "semana_carga = ?";
+                $params[] = (int)$week;
+            }
+            
+            $whereClause = implode(" AND ", $where);
+            
             if ($group === 'estado') {
-                $stmt = $pdo->query("SELECT ultimo_estado as label, COUNT(*) as count FROM ot_resumen_actual WHERE ultimo_estado IS NOT NULL GROUP BY ultimo_estado");
+                $stmt = $pdo->prepare("SELECT ultimo_estado as label, COUNT(*) as count FROM ot_resumen_actual WHERE ultimo_estado IS NOT NULL AND $whereClause GROUP BY ultimo_estado");
+                $stmt->execute($params);
                 $data = array_map(fn($r)=>['label'=>$r['label'], 'value'=>(int)$r['count']], $stmt->fetchAll(PDO::FETCH_ASSOC));
             } else {
-                // ✅ LIMIT 10 para evitar sobrecarga en frontend
-                $stmt = $pdo->query("
+                $stmt = $pdo->prepare("
                     SELECT 
                         COALESCE(id_especialidad, 0) as code,
                         COUNT(*) as count,
-                        ROUND(SUM(total_hh_planificadas), 0) as hh 
+                        ROUND(SUM(total_hh_planificadas), 1) as hh 
                     FROM ot_resumen_actual 
-                    WHERE id_especialidad IS NOT NULL
+                    WHERE id_especialidad IS NOT NULL AND $whereClause
                     GROUP BY id_especialidad 
                     ORDER BY hh DESC 
                     LIMIT 10
                 ");
+                $stmt->execute($params);
                 
                 $espMap = [
                     50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA',
@@ -93,7 +113,8 @@ try {
                 
                 $data = array_map(fn($r)=>[
                     'label'=>$espMap[$r['code']] ?? "Esp. {$r['code']}", 
-                    'value'=>floatval($r['hh'])
+                    'value'=>floatval($r['hh']),
+                    'count'=>(int)$r['count']
                 ], $stmt->fetchAll(PDO::FETCH_ASSOC));
             }
             echo json_encode(['success'=>true, 'data'=>$data]);

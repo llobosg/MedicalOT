@@ -650,14 +650,17 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
 
                     <!-- Ficha 2: HHs Planificadas (etapa de carga) -->
-                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #3b82f6;">
-                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">HHs Planificadas</div>
-                        <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.5rem;">
-                            <span id="kpi-hh-real" style="font-size:2rem; font-weight:700; color:#1e293b;">--</span>
-                            <span style="font-size:0.9rem; color:#64748b;">HH</span>
+                    <!-- Gráfico 1: HHs por Especialidad (Versión Cards Rápidas) -->
+                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">🏆 Ranking de Especialidades (HH Plan)</h3>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <span id="kpi-total-hh-esp" style="font-size:1.1rem; font-weight:700; color:#3b82f6;">--</span>
+                                <span style="font-size:0.8rem; color:#64748b;">HH totales</span>
+                            </div>
                         </div>
-                        <div style="font-size:0.8rem; color:#64748b; margin-top:0.25rem;">
-                            ℹ️ Valores desde planilla de planificación
+                        <div id="containerEspecialidades" style="display:flex; flex-direction:column; gap:0.75rem; max-height:350px; overflow-y:auto;">
+                            <!-- Se llena con JS -->
                         </div>
                     </div>
 
@@ -2969,12 +2972,16 @@ async function loadKpis() {
         }
         
         // 2. Gráfico HHs por Especialidad
-        const resBar = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
-        if (resBar.ok) {
-            const barData = await resBar.json();
-            if (barData.success && barData.data?.length > 0) {
-                renderCharts(barData.data);
-            }
+        const params = new URLSearchParams({
+            year: currentFilters.year || new Date().getFullYear(),
+            month: currentFilters.month || '',
+            week: currentFilters.week || ''
+        });
+
+        const resEsp = await fetch(`/api/kpis.php?action=chart_data&group_by=especialidad&${params}`);
+        if (resEsp.ok) {
+            const espData = await resEsp.json();
+            if (espData.success) renderSpecialtyCards(espData.data);
         }
         
         // 3. Gráfico de Estados
@@ -3645,6 +3652,77 @@ function renderPieChartEstados(data) {
             cutout: '65%'
         }
     });
+}
+// === CARDS DE ESPECIALIDADES (Rápido + Atractivo + Sin Canvas) ===
+function renderSpecialtyCards(data) {
+    const container = document.getElementById('containerEspecialidades');
+    const totalEl = document.getElementById('kpi-total-hh-esp');
+    
+    if (!container) return;
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:2rem;">Sin datos para el periodo seleccionado</p>';
+        if (totalEl) totalEl.textContent = '0';
+        return;
+    }
+    
+    // Calcular total para porcentajes
+    const totalHH = data.reduce((sum, d) => sum + (parseFloat(d.value) || 0), 0);
+    const maxHH = Math.max(...data.map(d => parseFloat(d.value) || 0));
+    
+    if (totalEl) totalEl.textContent = totalHH.toLocaleString('es-CL', {maximumFractionDigits: 1});
+    
+    // Paleta de colores por especialidad
+    const colors = {
+        'M-POLIVALENTE': { bg: '#dbeafe', bar: '#3b82f6', text: '#1e40af' },
+        'M-ELECTRICIDAD': { bg: '#fef3c7', bar: '#f59e0b', text: '#92400e' },
+        'M-GASFITERIA': { bg: '#d1fae5', bar: '#10b981', text: '#065f46' },
+        'M-GASFITERÍA': { bg: '#d1fae5', bar: '#10b981', text: '#065f46' },
+        'M-ELECTRONICA': { bg: '#ede9fe', bar: '#8b5cf6', text: '#5b21b6' },
+        'M-ELECTRÓNICA': { bg: '#ede9fe', bar: '#8b5cf6', text: '#5b21b6' },
+        'M-ELECTROMECANICA': { bg: '#fee2e2', bar: '#ef4444', text: '#991b1b' },
+        'M-ELECTROMECÁNICA': { bg: '#fee2e2', bar: '#ef4444', text: '#991b1b' },
+        'M-CARPINTERIA': { bg: '#fed7aa', bar: '#f97316', text: '#9a3412' },
+        'M-CARPINTERÍA': { bg: '#fed7aa', bar: '#f97316', text: '#9a3412' },
+        'M-CLIMATIZACIÓN': { bg: '#cffafe', bar: '#06b6d4', text: '#155e75' }
+    };
+    
+    const defaultColor = { bg: '#f1f5f9', bar: '#64748b', text: '#1e293b' };
+    
+    // Generar cards
+    container.innerHTML = data.map((d, idx) => {
+        const hh = parseFloat(d.value) || 0;
+        const pct = totalHH > 0 ? ((hh / totalHH) * 100) : 0;
+        const barWidth = maxHH > 0 ? ((hh / maxHH) * 100) : 0;
+        const color = colors[d.label] || defaultColor;
+        const rank = idx + 1;
+        const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+        
+        return `
+            <div style="background:${color.bg}; border-radius:0.75rem; padding:0.85rem 1rem; transition:transform 0.2s;" 
+                 onmouseover="this.style.transform='translateX(4px)'" 
+                 onmouseout="this.style.transform='translateX(0)'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-size:1rem; min-width:28px;">${rankIcon}</span>
+                        <span style="font-weight:700; color:${color.text}; font-size:0.95rem;">${d.label}</span>
+                    </div>
+                    <div style="display:flex; align-items:baseline; gap:0.4rem;">
+                        <span style="font-weight:700; color:${color.text}; font-size:1.05rem; font-family:monospace;">
+                            ${hh.toLocaleString('es-CL', {maximumFractionDigits: 1})}
+                        </span>
+                        <span style="font-size:0.75rem; color:${color.text}; opacity:0.8;">HH</span>
+                        <span style="background:white; color:${color.text}; padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600;">
+                            ${pct.toFixed(1)}%
+                        </span>
+                    </div>
+                </div>
+                <div style="height:8px; background:rgba(255,255,255,0.6); border-radius:4px; overflow:hidden;">
+                    <div style="height:100%; background:${color.bar}; width:${barWidth}%; border-radius:4px; transition:width 0.8s ease-out;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 </script>
     <!-- MODAL ESPECIALIDADES -->
