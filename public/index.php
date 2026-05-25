@@ -3010,22 +3010,25 @@ async function loadKpis() {
             updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
             updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
             
-            // 🎯 Animación del contador de Total HHs
-            const targetHH = d.hh_plan || 0;
-            const durationHH = 1200;
-            const startTimeHH = performance.now();
-
-            function animateHH(now) {
-                const progress = Math.min((now - startTimeHH) / durationHH, 1);
-                const ease = 1 - Math.pow(1 - progress, 3); // ease-out
-                const current = targetHH * ease;
-                totalHHEl.textContent = current.toLocaleString('es-CL', {
-                    minimumFractionDigits: 1,
-                    maximumFractionDigits: 1
-                });
-                if (progress < 1) requestAnimationFrame(animateHH);
+            // 🎯 KPI TOTAL HH con animación (scope unificado)
+            const totalHHEl = document.getElementById('kpi-total-hh');
+            if (totalHHEl && d.hh_plan !== undefined) {
+                const targetHH = d.hh_plan || 0;
+                const durationHH = 1200;
+                const startTimeHH = performance.now();
+                
+                // ✅ Función dentro del mismo scope
+                (function animateHH(now) {
+                    const progress = Math.min((now - startTimeHH) / durationHH, 1);
+                    const ease = 1 - Math.pow(1 - progress, 3);
+                    const current = targetHH * ease;
+                    totalHHEl.textContent = current.toLocaleString('es-CL', {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1
+                    });
+                    if (progress < 1) requestAnimationFrame(animateHH);
+                })(performance.now());
             }
-            requestAnimationFrame(animateHH);
         }
         
         // 2. Según el modo, cargar ranking estándar o de riesgo
