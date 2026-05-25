@@ -106,74 +106,76 @@ try {
 
         case 'chart_data':
             $group = $_GET['group_by'] ?? 'especialidad';
-            $year = $_GET['year'] ?? date('Y');
-            $month = $_GET['month'] ?? null;
-            $week = $_GET['week'] ?? null;
+            $year  = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+            $month = !empty($_GET['month']) ? $_GET['month'] : null;
+            $week  = !empty($_GET['week']) ? (int)$_GET['week'] : null;
             
-            // Construir WHERE dinámico (igual que en global)
-            $where = [];
-            $params = [];
+            // WHERE dinámico (solo agrega condiciones si hay valor)
+            $where = ["YEAR(ultima_fecha_programada) = ?"];
+            $params = [$year];
             
-            if ($year && $year !== '') {
-                $where[] = "YEAR(ultima_fecha_programada) = ?";
-                $params[] = (int)$year;
-            }
-            if ($month && $month !== '' && $month !== '0') {
+            if ($month !== null) {
                 $where[] = "mes_carga = ?";
                 $params[] = $month;
             }
-            if ($week && $week !== '' && $week !== '0') {
+            if ($week !== null) {
                 $where[] = "semana_carga = ?";
-                $params[] = (int)$week;
+                $params[] = $week;
             }
             
-            $whereClause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+            $whereClause = "WHERE " . implode(" AND ", $where);
             
-            if ($group === 'estado') {
-                $sql = "SELECT ultimo_estado as label, COUNT(*) as count 
-                        FROM ot_resumen_actual 
-                        $whereClause AND ultimo_estado IS NOT NULL 
-                        GROUP BY ultimo_estado";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
-                $data = array_map(fn($r)=>['label'=>$r['label'], 'value'=>(int)$r['count']], $stmt->fetchAll(PDO::FETCH_ASSOC));
-            } else {
-                $sql = "SELECT 
-                    COALESCE(id_especialidad, 0) as code,
-                    COUNT(*) as count,
-                    ROUND(SUM(total_hh_planificadas), 1) as hh 
-                FROM ot_resumen_actual 
-                $whereClause AND id_especialidad IS NOT NULL
-                GROUP BY id_especialidad 
-                ORDER BY hh DESC 
-                LIMIT 10";
+            try {
+                if ($group === 'estado') {
+                    $sql = "SELECT ultimo_estado as label, COUNT(*) as count 
+                            FROM ot_resumen_actual 
+                            $whereClause AND ultimo_estado IS NOT NULL 
+                            GROUP BY ultimo_estado";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $data = array_map(fn($r) => [
+                        'label' => $r['label'], 
+                        'value' => (int)$r['count']
+                    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+                } else {
+                    $sql = "SELECT 
+                        COALESCE(id_especialidad, 0) as code,
+                        COUNT(*) as count,
+                        ROUND(SUM(total_hh_planificadas), 1) as hh 
+                    FROM ot_resumen_actual 
+                    $whereClause AND id_especialidad IS NOT NULL
+                    GROUP BY id_especialidad 
+                    ORDER BY hh DESC 
+                    LIMIT 10";
+                    
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    
+                    $espMap = [
+                        50 => 'M-CLIMATIZACIÓN', 51 => 'M-ELECTRICIDAD', 52 => 'M-GASFITERÍA',
+                        53 => 'M-ELECTRÓNICA', 54 => 'M-CARPINTERÍA', 55 => 'M-ELECTROMECÁNICA',
+                        57 => 'M-POLIVALENTE'
+                    ];
+                    
+                    $data = array_map(fn($r) => [
+                        'label' => $espMap[$r['code']] ?? "Esp. {$r['code']}", 
+                        'value' => floatval($r['hh']),
+                        'count' => (int)$r['count']
+                    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+                }
                 
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
-                
-                $espMap = [
-                    50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA',
-                    53=>'M-ELECTRÓNICA', 54=>'M-CARPINTERÍA', 55=>'M-ELECTROMECÁNICA',
-                    57=>'M-POLIVALENTE'
-                ];
-                
-                $data = array_map(fn($r)=>[
-                    'label'=>$espMap[$r['code']] ?? "Esp. {$r['code']}", 
-                    'value'=>floatval($r['hh']),
-                    'count'=>(int)$r['count']
-                ], $stmt->fetchAll(PDO::FETCH_ASSOC));
-            }
-            
-            echo json_encode([
-                'success'=>true, 
-                'data'=>$data,
-                'debug' => [
-                    'group' => $group,
-                    'where_clause' => $whereClause,
-                    'params' => $params,
+                echo json_encode([
+                    'success' => true, 
+                    'data' => $data,
                     'count' => count($data)
-                ]
-            ]);
+                ]);
+            } catch (Exception $e) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'data' => []
+                ]);
+            }
             break;
 
         case 'reprogramadas':

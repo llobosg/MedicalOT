@@ -2981,79 +2981,109 @@ document.addEventListener('DOMContentLoaded', () => {
 let chartEsp = null;
 let chartEstados = null;
 
-async function loadKpis() {
+async function loadKpis(mode = 'standard') {
+    const btn = event?.target;
+    if (btn && btn.tagName === 'BUTTON') {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Cargando...';
+    }
+    
     try {
-        // 1. Cargar KPIs Globales
-        const resGlobal = await fetch('/api/kpis.php?action=global');
-        const dataGlobal = await resGlobal.json();
-        
-        if (dataGlobal.success && dataGlobal.data) {
-            const d = dataGlobal.data;
-            
-            // Helper seguro
-            const updateText = (id, value, suffix = '') => {
-                const el = document.getElementById(id);
-                if (el && value !== undefined && value !== null) {
-                    el.textContent = (isFinite(value) ? value : 0) + suffix;
-                }
-            };
-            
-            // KPIs existentes
-            updateText('kpi-sla', d.sla_percent, '%');
-            updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
-            updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
-            
-            // 🆕 KPI NUEVO: Total HHs Planificadas (con formato de miles + animación)
-            const totalHHEl = document.getElementById('kpi-total-hh');
-            if (totalHHEl && d.hh_plan !== undefined) {
-                const targetValue = d.hh_plan || 0;
-                const duration = 1200;
-                const startTime = performance.now();
-                
-                function animateCounter(now) {
-                    const progress = Math.min((now - startTime) / duration, 1);
-                    const ease = 1 - Math.pow(1 - progress, 3);
-                    const current = targetValue * ease;
-                    totalHHEl.textContent = current.toLocaleString('es-CL', {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1
-                    });
-                    if (progress < 1) requestAnimationFrame(animateCounter);
-                }
-                requestAnimationFrame(animateCounter);
-            }
-        }
-        
-        // 2. Gráfico HHs por Especialidad
         const params = new URLSearchParams({
             year: currentFilters.year || new Date().getFullYear(),
             month: currentFilters.month || '',
             week: currentFilters.week || ''
         });
-
-        // 3. Tabla Reprogramadas (Modo Estándar)
-        const resRep = await fetch(`/api/kpis.php?action=reprogramadas&limit=10&${params}`);
-        if (resRep.ok) {
-            const repData = await resRep.json();
-            if (repData.success) {
-                renderReproTable(repData.data); // ✅ Llama a renderReproTable, no renderRiskTable
+        
+        console.log('🔄 Cargando KPIs en modo:', mode, 'con filtros:', Object.fromEntries(params));
+        
+        // 1. KPIs Globales
+        const resGlobal = await fetch(`/api/kpis.php?action=global&${params}`);
+        const dataGlobal = await resGlobal.json();
+        
+        if (dataGlobal.success && dataGlobal.data) {
+            const d = dataGlobal.data;
+            
+            const updateText = (id, value, suffix = '') => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = (isFinite(value) ? value : 0) + suffix;
+            };
+            
+            updateText('kpi-sla', d.sla_percent, '%');
+            updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
+            updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
+            
+            // KPI TOTAL HH con animación
+            const totalHHEl = document.getElementById('kpi-total-hh');
+            if (totalHHEl && d.hh_plan !== undefined) {
+                const target = d.hh_plan || 0;
+                const duration = 1200;
+                const startTime = performance.now();
+                
+                function animate(now) {
+                    const progress = Math.min((now - startTime) / duration, 1);
+                    const ease = 1 - Math.pow(1 - progress, 3);
+                    totalHHEl.textContent = (target * ease).toLocaleString('es-CL', {
+                        minimumFractionDigits: 1, maximumFractionDigits: 1
+                    });
+                    if (progress < 1) requestAnimationFrame(animate);
+                }
+                requestAnimationFrame(animate);
             }
         }
         
-        // 4. Gráfico de Estados
-        const resPie = await fetch('/api/kpis.php?action=chart_data&group_by=estado');
-        if (resPie.ok) {
-            const pieData = await resPie.json();
-            if (pieData.success && pieData.data?.length > 0) {
-                renderPieChartEstados(pieData.data);
+        // 2. 🏆 RANKING DE ESPECIALIDADES (solo en modo estándar)
+        if (mode === 'standard') {
+            console.log('📊 Cargando Ranking Estándar de Especialidades...');
+            const resEsp = await fetch(`/api/kpis.php?action=chart_data&group_by=especialidad&${params}`);
+            const dataEsp = await resEsp.json();
+            
+            console.log('📊 Respuesta especialidades:', dataEsp);
+            
+            if (dataEsp.success) {
+                renderSpecialtyCards(dataEsp.data);
+                // Restaurar título estándar
+                const rankingTitle = document.querySelector('#containerEspecialidades')
+                    ?.closest('div[style*="background:white"]')
+                    ?.querySelector('h3');
+                if (rankingTitle) rankingTitle.innerHTML = '🏆 Ranking de Especialidades';
+            } else {
+                console.error('❌ Error cargando especialidades:', dataEsp.error);
             }
         }
         
-        Toast.success('📊 Datos actualizados', 'KPIs');
+        // 3. Torta de Estados
+        const resPie = await fetch(`/api/kpis.php?action=chart_data&group_by=estado&${params}`);
+        const dataPie = await resPie.json();
+        if (dataPie.success && dataPie.data?.length > 0) {
+            renderPieChart(dataPie.data);
+        }
+        
+        // 4. Tabla Reprogramadas (solo en modo estándar)
+        if (mode === 'standard') {
+            const resRep = await fetch(`/api/kpis.php?action=reprogramadas&limit=10&${params}`);
+            const dataRep = await resRep.json();
+            if (dataRep.success) {
+                renderReproTable(dataRep.data);
+                // Restaurar título de tabla
+                const tableTitle = document.getElementById('tablaComodinTitle');
+                if (tableTitle) tableTitle.innerHTML = '🔄 OTs Reprogramadas (Mayor Impacto)';
+            }
+        }
+        
+        // Toast solo si fue invocado por botón
+        if (btn && btn.tagName === 'BUTTON') {
+            Toast.success('📊 Datos actualizados', 'KPIs');
+        }
         
     } catch (err) {
-        console.error('Error KPIs:', err);
+        console.error('❌ Error KPIs:', err);
         Toast.error('Error al cargar indicadores', 'Atención');
+    } finally {
+        if (btn && btn.tagName === 'BUTTON') {
+            btn.disabled = false;
+            btn.innerHTML = '🔄 Actualizar';
+        }
     }
 }
 
@@ -3791,28 +3821,38 @@ async function toggleRiskMode() {
 }
 
 async function activateRiskMode() {
+    console.log('🚨 Activando modo riesgo...');
     dashboardMode.mode = 'risk';
     
-    // 1. Resaltar la ficha
+    // 1. Resaltar ficha
     const card = document.getElementById('kpi-risk-card');
-    card.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
-    card.style.color = 'white';
-    card.querySelector('[id="kpi-risk-hint"]').style.color = '#fecaca';
-    card.querySelector('[id="kpi-risk-hint"]').innerHTML = '🔍 Filtro activo · Click para desactivar';
-    
-    // 2. Mostrar botón X
-    document.getElementById('kpi-risk-close').style.display = 'flex';
-    
-    // 3. Actualizar título del Ranking
-    const rankingTitle = document.querySelector('#containerEspecialidades').closest('div[style*="background:white"]').querySelector('h3');
-    if (rankingTitle) {
-        rankingTitle.innerHTML = '⚠️ OTs en Riesgo por Especialidad';
+    if (card) {
+        card.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
+        card.style.color = 'white';
+        const hint = card.querySelector('[id="kpi-risk-hint"]');
+        if (hint) {
+            hint.style.color = '#fecaca';
+            hint.innerHTML = '🔍 Filtro activo · Click para desactivar';
+        }
     }
     
-    // 4. Actualizar título de la tabla
-    const tableTitle = document.getElementById('tablaReprogramadas').closest('div[style*="background:white"]').querySelector('h3');
-    if (tableTitle) {
-        tableTitle.innerHTML = '⚠️ Detalle OTs en Riesgo (Mayor Retraso)';
+    // 2. Mostrar botón X
+    const closeBtn = document.getElementById('kpi-risk-close');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    
+    // 3. Cambiar títulos
+    const rankingTitle = document.querySelector('#containerEspecialidades')
+        ?.closest('div[style*="background:white"]')
+        ?.querySelector('h3');
+    if (rankingTitle) rankingTitle.innerHTML = '⚠️ OTs en Riesgo por Especialidad';
+    
+    const tableTitle = document.getElementById('tablaComodinTitle');
+    if (tableTitle) tableTitle.innerHTML = '⚠️ Detalle OTs en Riesgo (Mayor Retraso)';
+    
+    // 4. Cambiar etiqueta a "OTs" en lugar de "HH"
+    const totalEspEl = document.getElementById('kpi-total-hh-esp');
+    if (totalEspEl && totalEspEl.nextElementSibling) {
+        totalEspEl.nextElementSibling.textContent = 'OTs';
     }
     
     // 5. Cargar datos filtrados
@@ -3822,6 +3862,7 @@ async function activateRiskMode() {
 }
 
 function clearRiskMode() {
+    console.log('🧹 Limpiando filtro de riesgo...');
     dashboardMode.mode = 'standard';
     
     // 1. Restaurar estilos de la ficha
@@ -3840,21 +3881,31 @@ function clearRiskMode() {
     const closeBtn = document.getElementById('kpi-risk-close');
     if (closeBtn) closeBtn.style.display = 'none';
     
-    // 3. Restaurar títulos
-    const rankingTitle = document.querySelector('#containerEspecialidades')?.closest('div[style*="background:white"]')?.querySelector('h3');
-    if (rankingTitle) rankingTitle.innerHTML = dashboardMode.originalTitle;
+    // 3. ✅ Restaurar título del Ranking EXPLÍCITAMENTE
+    const rankingTitle = document.querySelector('#containerEspecialidades')
+        ?.closest('div[style*="background:white"]')
+        ?.querySelector('h3');
+    if (rankingTitle) {
+        rankingTitle.innerHTML = '🏆 Ranking de Especialidades';
+    }
     
+    // 4. ✅ Restaurar título y encabezados de la tabla
     const tableTitle = document.getElementById('tablaComodinTitle');
-    if (tableTitle) tableTitle.innerHTML = dashboardMode.originalTableTitle;
+    if (tableTitle) tableTitle.innerHTML = '🔄 OTs Reprogramadas (Mayor Impacto)';
     
-    // 4. Restaurar encabezados de tabla
     const thCol4 = document.getElementById('thCol4');
     const thCol6 = document.getElementById('thCol6');
     if (thCol4) thCol4.textContent = 'Veces Reprog.';
     if (thCol6) thCol6.textContent = 'Retraso';
     
-    // 5. ✅ Recargar datos estándar
-    loadKpis();
+    // 5. ✅ Restaurar total HH etiqueta
+    const totalEspEl = document.getElementById('kpi-total-hh-esp');
+    if (totalEspEl && totalEspEl.nextElementSibling) {
+        totalEspEl.nextElementSibling.textContent = 'HH';
+    }
+    
+    // 6. ✅ Recargar datos en modo estándar (fuerza renderizado limpio)
+    loadKpis('standard');
     
     Toast.success('✅ Vista estándar restaurada', 'Filtro limpiado');
 }
