@@ -170,18 +170,19 @@ try {
         $contextText .= "\n";
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 🤖 LLAMAR A MULEROUTER (compatible con OpenAI)
+        // ═══════════════════════════════════════════════════════
+    // 🤖 LLAMAR A MULEROUTER (endpoint completo)
     // ═══════════════════════════════════════════════════════
     $apiKey = getenv('OPENAI_API_KEY');
-    $apiEndpoint = 'https://api.mulerouter.ai/v1/chat/completions';
-    $aiModel = 'gpt-4o-mini'; // MuleRouter soporta modelos de OpenAI
+    // Usar endpoint completo en lugar del alias
+    $apiEndpoint = 'https://api.mulerouter.ai/vendors/openai/v1/chat/completions';
+    $aiModel = 'gpt-4o-mini';
 
     if (!$apiKey) {
         echo json_encode([
             'success' => true,
-            'message' => generateFallbackResponse($userMessage, $stats),
-            'mode' => 'fallback'
+            'message' => generateMockResponse($userMessage, $stats) ?? generateSimpleFallback($stats),
+            'mode' => 'mock'
         ]);
         exit;
     }
@@ -207,25 +208,35 @@ try {
         ])
     ]);
 
+    error_log("🔍 Probando endpoint: $apiEndpoint");
+    error_log("🔍 Con modelo: $aiModel");
+    error_log("🔍 API Key: " . substr($apiKey, 0, 10) . "...");
+
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
     curl_close($ch);
 
-    // Si falla, usar fallback
+    // Si falla, usar modo mock
     if ($httpCode !== 200) {
         error_log("❌ MuleRouter API Error (HTTP $httpCode): $response");
+        $mockResponse = generateMockResponse($userMessage, $stats);
         echo json_encode([
             'success' => true,
-            'message' => generateFallbackResponse($userMessage, $stats),
-            'mode' => 'fallback',
-            'debug' => "HTTP $httpCode"
+            'message' => $mockResponse ?? generateSimpleFallback($stats),
+            'mode' => 'mock',
+            'debug' => "MuleRouter HTTP $httpCode - usando modo mock"
         ]);
         exit;
     }
 
     $result = json_decode($response, true);
-    $aiResponse = $result['choices'][0]['message']['content'] ?? generateFallbackResponse($userMessage, $stats);
+    $aiResponse = $result['choices'][0]['message']['content'] ?? null;
+    
+    // Si la respuesta está vacía, usar mock
+    if (empty($aiResponse)) {
+        $aiResponse = generateMockResponse($userMessage, $stats) ?? generateSimpleFallback($stats);
+    }
 
     echo json_encode([
         'success' => true,
@@ -236,10 +247,37 @@ try {
 
 } catch (\Throwable $e) {
     error_log("❌ Error AI Assistant: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode([
-        'success' => false, 
-        'error' => 'Error: ' . $e->getMessage()
-    ]);
+    
+    // Intentar generar respuesta mock incluso en error
+    try {
+        $mockResponse = generateMockResponse($userMessage ?? '', $stats ?? []);
+        echo json_encode([
+            'success' => true,
+            'message' => $mockResponse ?? '⚠️ Error temporal. Por favor intenta de nuevo.',
+            'mode' => 'mock'
+        ]);
+    } catch (\Throwable $e2) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Error: ' . $e->getMessage()
+        ]);
+    }
     exit;
+}
+
+// ═══════════════════════════════════════════════════════
+// 📊 FUNCIÓN FALLBACK SIMPLE
+// ═══════════════════════════════════════════════════════
+function generateSimpleFallback($stats) {
+    return "📊 **DATOS ACTUALES DEL SISTEMA**\n\n" .
+           "Tengo estos indicadores disponibles:\n\n" .
+           "• **{$stats['general']['total_ots']}** OTs totales\n" .
+           "• **{$stats['general']['hh_plan']}** HHs planificadas\n" .
+           "• **{$stats['general']['ots_riesgo']}** OTs en riesgo\n" .
+           "• **{$stats['general']['ots_cerradas']}** OTs cerradas\n\n" .
+           "¿Qué te gustaría analizar? Puedo ayudarte con:\n" .
+           "📊 Resúmenes ejecutivos\n" .
+           "⚠️ Análisis de riesgos\n" .
+           "🏆 Desglose por especialidad";
 }
