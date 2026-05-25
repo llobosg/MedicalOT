@@ -187,10 +187,10 @@ try {
             break;
         
         case 'risk_ots':
-            // Detalle de OTs en riesgo (para la tabla comodín)
             $year = $_GET['year'] ?? date('Y');
             $month = $_GET['month'] ?? null;
-            $limit = min((int)($_GET['limit'] ?? 20), 50);
+            $especialidad = $_GET['especialidad'] ?? null; // 🆕 Filtro de especialidad
+            $limit = min((int)($_GET['limit'] ?? 50), 100);
             
             $where = ["YEAR(ultima_fecha_programada) = ?"];
             $params = [$year];
@@ -200,6 +200,12 @@ try {
                 $params[] = $month;
             }
             
+            // 🆕 Filtro por especialidad (drill-down)
+            if ($especialidad && $especialidad !== '') {
+                $where[] = "id_especialidad = ?";
+                $params[] = (int)$especialidad;
+            }
+            
             $where[] = "ultimo_estado IN ('pendiente', 'asignada', 'en_ejecucion')";
             $where[] = "dias_retraso > 7";
             
@@ -207,13 +213,10 @@ try {
             
             $stmt = $pdo->prepare("
                 SELECT 
-                    codigo_ot,
-                    nombre_equipo,
+                    codigo_ot, nombre_equipo, 
                     COALESCE(id_especialidad, 0) as id_especialidad,
-                    ultimo_estado,
-                    dias_retraso,
-                    ultima_fecha_programada,
-                    total_hh_planificadas
+                    ultimo_estado, dias_retraso,
+                    ultima_fecha_programada, total_hh_planificadas
                 FROM ot_resumen_actual
                 WHERE $whereClause
                 ORDER BY dias_retraso DESC, total_hh_planificadas DESC
@@ -224,7 +227,6 @@ try {
             
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Mapear especialidad
             $espMap = [
                 50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA',
                 53=>'M-ELECTRÓNICA', 54=>'M-CARPINTERÍA', 55=>'M-ELECTROMECÁNICA',
@@ -234,11 +236,10 @@ try {
                 $r['especialidad_nombre'] = $espMap[$r['id_especialidad']] ?? "Esp. {$r['id_especialidad']}";
             }
             
-            echo json_encode(['success' => true, 'data' => $rows, 'total_count' => count($rows)]);
+            echo json_encode(['success' => true, 'data' => $rows]);
             break;
 
         case 'risk_by_especialidad':
-            // Ranking de especialidades SOLO con OTs en riesgo
             $year = $_GET['year'] ?? date('Y');
             $month = $_GET['month'] ?? null;
             
@@ -277,6 +278,7 @@ try {
             ];
             
             $data = array_map(fn($r) => [
+                'code' => (int)$r['code'], // 🆕 Agregar código para click
                 'label' => $espMap[$r['code']] ?? "Esp. {$r['code']}",
                 'value' => (int)$r['count_ots'],
                 'hh' => floatval($r['hh_total']),

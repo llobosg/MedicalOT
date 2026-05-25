@@ -1256,11 +1256,14 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     </footer>
 
     <script>
-        // 🎯 ESTADO DEL DASHBOARD: Estándar o Filtrado por Riesgo
-        let dashboardMode = {
-            mode: 'standard', // 'standard' | 'risk'
-            originalTitle: '🏆 Ranking de Especialidades',
-            originalTableTitle: '🔄 OTs Reprogramadas (Mayor Impacto)'
+        // 🎯 ESTADO GLOBAL DE FILTROS EN CASCADA
+        let dashboardFilters = {
+            year: '2026',
+            month: '',
+            week: '',
+            mode: 'standard',        // 'standard' | 'risk'
+            especialidad: null,       // 🆕 Código de especialidad seleccionada (drill-down)
+            especialidadLabel: ''     // 🆕 Nombre para mostrar
         };
 
         // ✅ ÚNICA DECLARACIÓN GLOBAL DE FILTROS
@@ -2981,23 +2984,17 @@ document.addEventListener('DOMContentLoaded', () => {
 let chartEsp = null;
 let chartEstados = null;
 
-async function loadKpis(mode = 'standard') {
-    const btn = event?.target;
-    if (btn && btn.tagName === 'BUTTON') {
-        btn.disabled = true;
-        btn.innerHTML = '⏳ Cargando...';
-    }
-    
+async function loadKpis() {
     try {
         const params = new URLSearchParams({
-            year: currentFilters.year || new Date().getFullYear(),
-            month: currentFilters.month || '',
-            week: currentFilters.week || ''
+            year: dashboardFilters.year,
+            month: dashboardFilters.month,
+            week: dashboardFilters.week
         });
         
-        console.log('🔄 Cargando KPIs en modo:', mode, 'con filtros:', Object.fromEntries(params));
+        console.log('🔄 Cargando con filtros:', dashboardFilters);
         
-        // 1. KPIs Globales
+        // 1. KPIs Globales (siempre se cargan)
         const resGlobal = await fetch(`/api/kpis.php?action=global&${params}`);
         const dataGlobal = await resGlobal.json();
         
@@ -3013,77 +3010,72 @@ async function loadKpis(mode = 'standard') {
             updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
             updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
             
-            // KPI TOTAL HH con animación
+            // Total HH animado
             const totalHHEl = document.getElementById('kpi-total-hh');
             if (totalHHEl && d.hh_plan !== undefined) {
-                const target = d.hh_plan || 0;
-                const duration = 1200;
-                const startTime = performance.now();
-                
-                function animate(now) {
-                    const progress = Math.min((now - startTime) / duration, 1);
-                    const ease = 1 - Math.pow(1 - progress, 3);
-                    totalHHEl.textContent = (target * ease).toLocaleString('es-CL', {
-                        minimumFractionDigits: 1, maximumFractionDigits: 1
-                    });
-                    if (progress < 1) requestAnimationFrame(animate);
-                }
-                requestAnimationFrame(animate);
+                animateCounter(totalHHEl, d.hh_plan || 0, 1200);
             }
         }
         
-        // 2. 🏆 RANKING DE ESPECIALIDADES (solo en modo estándar)
-        if (mode === 'standard') {
-            console.log('📊 Cargando Ranking Estándar de Especialidades...');
+        // 2. Según el modo, cargar ranking estándar o de riesgo
+        if (dashboardFilters.mode === 'standard') {
+            // MODO ESTÁNDAR: HHs por especialidad
             const resEsp = await fetch(`/api/kpis.php?action=chart_data&group_by=especialidad&${params}`);
             const dataEsp = await resEsp.json();
-            
-            console.log('📊 Respuesta especialidades:', dataEsp);
-            
             if (dataEsp.success) {
                 renderSpecialtyCards(dataEsp.data);
-                // Restaurar título estándar
-                const rankingTitle = document.querySelector('#containerEspecialidades')
-                    ?.closest('div[style*="background:white"]')
-                    ?.querySelector('h3');
-                if (rankingTitle) rankingTitle.innerHTML = '🏆 Ranking de Especialidades';
-            } else {
-                console.error('❌ Error cargando especialidades:', dataEsp.error);
+                restoreStandardTitles();
             }
+            
+            // Tabla de reprogramadas estándar
+            const resRep = await fetch(`/api/kpis.php?action=reprogramadas&limit=10&${params}`);
+            const dataRep = await resRep.json();
+            if (dataRep.success) renderReproTable(dataRep.data);
+            
+        } else {
+            // MODO RIESGO: OTs en riesgo por especialidad
+            const resRisk = await fetch(`/api/kpis.php?action=risk_by_especialidad&${params}`);
+            const dataRisk = await resRisk.json();
+            if (dataRisk.success) {
+                renderRiskSpecialtyCards(dataRisk.data);
+                updateRiskTitles();
+            }
+            
+            // Tabla de detalle (con posible filtro de especialidad)
+            await loadRiskTable();
         }
         
-        // 3. Torta de Estados
+        // 3. Torta de estados (siempre)
         const resPie = await fetch(`/api/kpis.php?action=chart_data&group_by=estado&${params}`);
         const dataPie = await resPie.json();
         if (dataPie.success && dataPie.data?.length > 0) {
             renderPieChart(dataPie.data);
         }
         
-        // 4. Tabla Reprogramadas (solo en modo estándar)
-        if (mode === 'standard') {
-            const resRep = await fetch(`/api/kpis.php?action=reprogramadas&limit=10&${params}`);
-            const dataRep = await resRep.json();
-            if (dataRep.success) {
-                renderReproTable(dataRep.data);
-                // Restaurar título de tabla
-                const tableTitle = document.getElementById('tablaComodinTitle');
-                if (tableTitle) tableTitle.innerHTML = '🔄 OTs Reprogramadas (Mayor Impacto)';
-            }
-        }
-        
-        // Toast solo si fue invocado por botón
-        if (btn && btn.tagName === 'BUTTON') {
-            Toast.success('📊 Datos actualizados', 'KPIs');
-        }
-        
     } catch (err) {
-        console.error('❌ Error KPIs:', err);
+        console.error('Error KPIs:', err);
         Toast.error('Error al cargar indicadores', 'Atención');
-    } finally {
-        if (btn && btn.tagName === 'BUTTON') {
-            btn.disabled = false;
-            btn.innerHTML = '🔄 Actualizar';
-        }
+    }
+}
+
+// 🆕 Cargar tabla de riesgo (con posible drill-down)
+async function loadRiskTable() {
+    const params = new URLSearchParams({
+        year: dashboardFilters.year,
+        month: dashboardFilters.month,
+        limit: 50
+    });
+    
+    // 🆕 Si hay especialidad seleccionada, agregarla
+    if (dashboardFilters.especialidad) {
+        params.append('especialidad', dashboardFilters.especialidad);
+    }
+    
+    const resOts = await fetch(`/api/kpis.php?action=risk_ots&${params}`);
+    const otsData = await resOts.json();
+    if (otsData.success) {
+        renderRiskTable(otsData.data);
+        updateTableTitle();
     }
 }
 
@@ -3821,10 +3813,10 @@ async function toggleRiskMode() {
 }
 
 async function activateRiskMode() {
-    console.log('🚨 Activando modo riesgo...');
-    dashboardMode.mode = 'risk';
+    dashboardFilters.mode = 'risk';
+    dashboardFilters.especialidad = null; // Reset drill-down
     
-    // 1. Resaltar ficha
+    // Estilos de ficha
     const card = document.getElementById('kpi-risk-card');
     if (card) {
         card.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
@@ -3836,36 +3828,16 @@ async function activateRiskMode() {
         }
     }
     
-    // 2. Mostrar botón X
-    const closeBtn = document.getElementById('kpi-risk-close');
-    if (closeBtn) closeBtn.style.display = 'flex';
+    document.getElementById('kpi-risk-close').style.display = 'flex';
     
-    // 3. Cambiar títulos
-    const rankingTitle = document.querySelector('#containerEspecialidades')
-        ?.closest('div[style*="background:white"]')
-        ?.querySelector('h3');
-    if (rankingTitle) rankingTitle.innerHTML = '⚠️ OTs en Riesgo por Especialidad';
-    
-    const tableTitle = document.getElementById('tablaComodinTitle');
-    if (tableTitle) tableTitle.innerHTML = '⚠️ Detalle OTs en Riesgo (Mayor Retraso)';
-    
-    // 4. Cambiar etiqueta a "OTs" en lugar de "HH"
-    const totalEspEl = document.getElementById('kpi-total-hh-esp');
-    if (totalEspEl && totalEspEl.nextElementSibling) {
-        totalEspEl.nextElementSibling.textContent = 'OTs';
-    }
-    
-    // 5. Cargar datos filtrados
-    await loadRiskData();
-    
+    await loadKpis();
     Toast.info('🔍 Mostrando OTs en Riesgo', 'Filtro activo');
 }
 
 function clearRiskMode() {
-    console.log('🧹 Limpiando filtro de riesgo...');
-    dashboardMode.mode = 'standard';
+    dashboardFilters.mode = 'standard';
+    dashboardFilters.especialidad = null;
     
-    // 1. Restaurar estilos de la ficha
     const card = document.getElementById('kpi-risk-card');
     if (card) {
         card.style.background = 'white';
@@ -3877,37 +3849,20 @@ function clearRiskMode() {
         }
     }
     
-    // 2. Ocultar botón X
-    const closeBtn = document.getElementById('kpi-risk-close');
-    if (closeBtn) closeBtn.style.display = 'none';
-    
-    // 3. ✅ Restaurar título del Ranking EXPLÍCITAMENTE
-    const rankingTitle = document.querySelector('#containerEspecialidades')
-        ?.closest('div[style*="background:white"]')
-        ?.querySelector('h3');
-    if (rankingTitle) {
-        rankingTitle.innerHTML = '🏆 Ranking de Especialidades';
-    }
-    
-    // 4. ✅ Restaurar título y encabezados de la tabla
-    const tableTitle = document.getElementById('tablaComodinTitle');
-    if (tableTitle) tableTitle.innerHTML = '🔄 OTs Reprogramadas (Mayor Impacto)';
-    
-    const thCol4 = document.getElementById('thCol4');
-    const thCol6 = document.getElementById('thCol6');
-    if (thCol4) thCol4.textContent = 'Veces Reprog.';
-    if (thCol6) thCol6.textContent = 'Retraso';
-    
-    // 5. ✅ Restaurar total HH etiqueta
-    const totalEspEl = document.getElementById('kpi-total-hh-esp');
-    if (totalEspEl && totalEspEl.nextElementSibling) {
-        totalEspEl.nextElementSibling.textContent = 'HH';
-    }
-    
-    // 6. ✅ Recargar datos en modo estándar (fuerza renderizado limpio)
-    loadKpis('standard');
-    
+    document.getElementById('kpi-risk-close').style.display = 'none';
+    loadKpis();
     Toast.success('✅ Vista estándar restaurada', 'Filtro limpiado');
+}
+
+// Cuando cambian los filtros superiores
+function applyFilters() {
+    dashboardFilters.year = document.getElementById('filterYear').value;
+    dashboardFilters.month = document.getElementById('filterMonth').value;
+    dashboardFilters.week = document.getElementById('filterWeek').value;
+    dashboardFilters.especialidad = null; // Reset drill-down al cambiar filtros globales
+    
+    loadWeeks();
+    loadKpis();
 }
 
 // 📊 CARGAR DATOS FILTRADOS POR RIESGO
@@ -3953,10 +3908,9 @@ function renderRiskSpecialtyCards(data) {
     const totalOts = data.reduce((sum, d) => sum + (d.value || 0), 0);
     const maxOts = Math.max(...data.map(d => d.value || 0));
     
-    // Cambiar etiqueta a "OTs" en lugar de "HH"
     if (totalEl) {
         totalEl.textContent = totalOts.toLocaleString('es-CL');
-        totalEl.nextElementSibling && (totalEl.nextElementSibling.textContent = 'OTs');
+        if (totalEl.nextElementSibling) totalEl.nextElementSibling.textContent = 'OTs';
     }
     
     const colors = {
@@ -3965,7 +3919,6 @@ function renderRiskSpecialtyCards(data) {
         'M-GASFITERÍA': { bg: '#fed7aa', bar: '#f97316', text: '#9a3412' },
         'M-GASFITERIA': { bg: '#fed7aa', bar: '#f97316', text: '#9a3412' },
         'M-ELECTRÓNICA': { bg: '#ede9fe', bar: '#8b5cf6', text: '#5b21b6' },
-        'M-ELECTRONICA': { bg: '#ede9fe', bar: '#8b5cf6', text: '#5b21b6' },
         'M-ELECTROMECÁNICA': { bg: '#fecaca', bar: '#dc2626', text: '#7f1d1d' },
         'M-CLIMATIZACIÓN': { bg: '#cffafe', bar: '#06b6d4', text: '#155e75' }
     };
@@ -3978,12 +3931,24 @@ function renderRiskSpecialtyCards(data) {
         const color = colors[d.label] || defaultColor;
         const rankIcon = idx === 0 ? '🚨' : idx === 1 ? '⚠️' : idx === 2 ? '⚡' : `#${idx + 1}`;
         
+        // 🆕 ¿Esta especialidad está seleccionada?
+        const isSelected = dashboardFilters.especialidad === d.code;
+        const selectedStyle = isSelected 
+            ? `border: 3px solid ${color.bar}; box-shadow: 0 0 0 3px ${color.bar}40;` 
+            : 'border: 3px solid transparent;';
+        
         return `
-            <div style="background:${color.bg}; border-radius:0.75rem; padding:0.85rem 1rem; border-left:3px solid ${color.bar};">
+            <div onclick="filterByEspecialidad(${d.code}, '${d.label}')" 
+                 style="background:${color.bg}; border-radius:0.75rem; padding:0.85rem 1rem; border-left:3px solid ${color.bar}; cursor:pointer; transition:all 0.2s; ${selectedStyle}"
+                 onmouseover="this.style.transform='translateX(4px)'" 
+                 onmouseout="this.style.transform='translateX(0)'">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                     <div style="display:flex; align-items:center; gap:0.5rem;">
                         <span style="font-size:1rem;">${rankIcon}</span>
-                        <span style="font-weight:700; color:${color.text}; font-size:0.95rem;">${d.label}</span>
+                        <span style="font-weight:700; color:${color.text}; font-size:0.95rem;">
+                            ${d.label}
+                            ${isSelected ? ' <span style="font-size:0.7rem; background:white; padding:1px 6px; border-radius:8px;">✓ FILTRADO</span>' : ''}
+                        </span>
                     </div>
                     <div style="display:flex; align-items:baseline; gap:0.4rem;">
                         <span style="font-weight:700; color:${color.text}; font-size:1.05rem; font-family:monospace;">${ots}</span>
@@ -3994,11 +3959,38 @@ function renderRiskSpecialtyCards(data) {
                     </div>
                 </div>
                 <div style="height:8px; background:rgba(255,255,255,0.6); border-radius:4px; overflow:hidden;">
-                    <div style="height:100%; background:${color.bar}; width:${barWidth}%; border-radius:4px;"></div>
+                    <div style="height:100%; background:${color.bar}; width:${barWidth}%; border-radius:4px; transition:width 0.5s;"></div>
+                </div>
+                <div style="font-size:0.7rem; color:${color.text}; opacity:0.7; margin-top:0.3rem;">
+                    ${isSelected ? '🔍 Click de nuevo para quitar filtro' : '👆 Click para ver detalle'}
                 </div>
             </div>
         `;
     }).join('');
+}
+
+// 🆕 FUNCIÓN DRILL-DOWN: Click en especialidad
+function filterByEspecialidad(code, label) {
+    // Toggle: si ya está seleccionada, quitar filtro
+    if (dashboardFilters.especialidad === code) {
+        dashboardFilters.especialidad = null;
+        dashboardFilters.especialidadLabel = '';
+        Toast.info(`🔄 Mostrando todas las especialidades`, 'Filtro quitado');
+    } else {
+        dashboardFilters.especialidad = code;
+        dashboardFilters.especialidadLabel = label;
+        Toast.success(`🔍 Filtrando: ${label}`, 'Drill-down activo');
+    }
+    
+    // Recargar solo lo necesario
+    loadRiskTable();
+    
+    // Re-renderizar ranking para mostrar selección
+    fetch(`/api/kpis.php?action=risk_by_especialidad&year=${dashboardFilters.year}&month=${dashboardFilters.month}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) renderRiskSpecialtyCards(data.data);
+        });
 }
 
 // 📋 RENDER TABLA DE OTs EN RIESGO (Comodín reutilizable)
@@ -4069,6 +4061,39 @@ function updateTableHeaders(mode) {
     } else {
         ths[5].textContent = 'Veces Reprog.';
     }
+}
+function updateTableTitle() {
+    const tableTitle = document.getElementById('tablaComodinTitle');
+    if (!tableTitle) return;
+    
+    if (dashboardFilters.especialidad) {
+        tableTitle.innerHTML = `⚠️ Detalle OTs en Riesgo: <strong style="color:#3b82f6;">${dashboardFilters.especialidadLabel}</strong>
+            <button onclick="filterByEspecialidad(${dashboardFilters.especialidad}, '${dashboardFilters.especialidadLabel}')" 
+                    style="background:#fee2e2; color:#ef4444; border:none; padding:2px 8px; border-radius:12px; font-size:0.75rem; cursor:pointer; margin-left:0.5rem;">
+                ✕ Quitar filtro
+            </button>`;
+    } else {
+        tableTitle.innerHTML = '⚠️ Detalle OTs en Riesgo (Mayor Retraso)';
+    }
+}
+
+function updateRiskTitles() {
+    const rankingTitle = document.querySelector('#containerEspecialidades')
+        ?.closest('div[style*="background:white"]')
+        ?.querySelector('h3');
+    if (rankingTitle) {
+        rankingTitle.innerHTML = '⚠️ OTs en Riesgo por Especialidad <span style="font-size:0.75rem; color:#64748b; font-weight:normal;">(Click para filtrar)</span>';
+    }
+}
+
+function restoreStandardTitles() {
+    const rankingTitle = document.querySelector('#containerEspecialidades')
+        ?.closest('div[style*="background:white"]')
+        ?.querySelector('h3');
+    if (rankingTitle) rankingTitle.innerHTML = '🏆 Ranking de Especialidades';
+    
+    const tableTitle = document.getElementById('tablaComodinTitle');
+    if (tableTitle) tableTitle.innerHTML = '🔄 OTs Reprogramadas (Mayor Impacto)';
 }
 </script>
     <!-- MODAL ESPECIALIDADES -->
