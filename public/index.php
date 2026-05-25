@@ -640,7 +640,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 </div>
 
                 <!-- Fichas Superiores (KPIs Globales) -->
-                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1.5rem; margin-bottom:2rem; overflow-x:auto;">
+                <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:1rem; margin-bottom: 1.5rem; overflow-x:auto;">
                     
                     <!-- Ficha 1: SLA Cumplido -->
                     <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #10b981;">
@@ -678,43 +678,57 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <div style="font-size:0.8rem; color:#ef4444; margin-top:0.25rem;">⚠️ Retrasadas > 7 días</div>
                         <div style="font-size:0.8rem; color:#ef4444; margin-top:0.25rem;">⚠️ Oportunidades de gestión (>7 días)</div>
                     </div>
+
+                    <!-- 🆕 Ficha 5: Total HHs Planificadas (Destacada) -->
+                    <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(59,130,246,0.3); color:white; position:relative; overflow:hidden;">
+                        <div style="position:absolute; top:-10px; right:-10px; font-size:4rem; opacity:0.15;">⚡</div>
+                        <div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; opacity:0.9; letter-spacing:0.5px;">
+                            Total HHs Planificadas
+                        </div>
+                        <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.5rem;">
+                            <span id="kpi-total-hh" style="font-size:2.2rem; font-weight:800; font-family:monospace; letter-spacing:-1px;">--</span>
+                            <span style="font-size:1rem; opacity:0.85; font-weight:500;">HH</span>
+                        </div>
+                        <div style="font-size:0.75rem; opacity:0.85; margin-top:0.25rem; display:flex; align-items:center; gap:0.25rem;">
+                            <span>📊</span> Carga anual acumulada
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Gráficos -->
-                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+                <!-- FILA 2: Gráficos Reorganizados -->
+                <div style="display:grid; grid-template-columns: 7fr 3fr; gap:1.5rem; margin-bottom:2rem;">
                     
-                    <!-- Gráfico Principal: HHs por Especialidad -->
-                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
-                        <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">Horas Hombre por Especialidad</h3>
-                        <canvas id="chartEspecialidad" height="250"></canvas>
+                    <!-- 🏆 RANKING DE ESPECIALIDADES (AHORA EN ESPACIO PRINCIPAL) -->
+                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-top:4px solid #3b82f6;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:2px solid #f1f5f9;">
+                            <div>
+                                <h3 style="margin:0; font-size:1.2rem; color:#1e293b; font-weight:700;">
+                                    🏆 Ranking de Especialidades
+                                </h3>
+                                <p style="margin:0.25rem 0 0 0; font-size:0.8rem; color:#64748b;">
+                                    Distribución de Horas Hombre Planificadas por especialidad
+                                </p>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:0.75rem; color:#64748b; text-transform:uppercase; font-weight:600;">Total</div>
+                                <div id="kpi-total-hh-esp" style="font-size:1.4rem; font-weight:800; color:#3b82f6; font-family:monospace;">--</div>
+                                <div style="font-size:0.7rem; color:#94a3b8;">HH</div>
+                            </div>
+                        </div>
+                        <div id="containerEspecialidades" style="display:flex; flex-direction:column; gap:0.6rem; max-height:400px; overflow-y:auto; padding-right:0.5rem;">
+                            <!-- Se llena con JS -->
+                        </div>
                     </div>
 
-                    <!-- Gráfico Secundario: Estados -->
+                    <!-- 🥧 DISTRIBUCIÓN POR ESTADO (se mantiene a la derecha) -->
                     <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
-                        <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">Distribución de Estados</h3>
-                        <canvas id="chartEstados" height="250"></canvas>
-                    </div>
-                </div>
-
-                <!-- Lista Reciente -->
-                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
-                    <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">🔄 OTs Reprogramadas (Mayor Impacto)</h3>
-                    <div style="overflow-x:auto;">
-                        <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
-                            <thead>
-                                <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
-                                    <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
-                                    <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
-                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado Actual</th>
-                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Veces Reprog.</th>
-                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Fecha Programada</th>
-                                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaOtsRecentes">
-                                <!-- Se llena con JS -->
-                            </tbody>
-                        </table>
+                        <h3 style="margin:0 0 1rem 0; font-size:1rem; color:#1e293b; font-weight:700;">
+                            🥧 Distribución por Estado
+                        </h3>
+                        <div style="position:relative; height:280px;">
+                            <canvas id="chartEstados"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -2958,27 +2972,42 @@ async function loadKpis() {
                 console.warn('⚠️ No se encontraron OTs con los filtros aplicados:', d.debug?.filters_applied);
             }
             
-            // ✅ HELPER SEGURO: Solo actualiza si el elemento existe
-            const safeSetText = (id, value, suffix = '') => {
+            / ✅ Helper seguro (ya lo tienes)
+            const updateText = (id, value, suffix = '') => {
                 const el = document.getElementById(id);
-                if (el) el.textContent = (isFinite(value) ? value : 0) + suffix;
+                if (el && value !== undefined && value !== null) {
+                    el.textContent = (isFinite(value) ? value : 0) + suffix;
+                }
             };
             
-            const safeSetStyle = (id, prop, value) => {
-                const el = document.getElementById(id);
-                if (el) el.style[prop] = value;
-            };
-            
-            // Actualizar fichas KPI (solo las que existen)
-            safeSetText('kpi-sla', d.sla_percent, '%');
-            safeSetText('kpi-hh-real', (d.hh_plan ?? 0).toFixed(1), '');
-            safeSetText('kpi-hh-plan', (d.hh_plan ?? 0).toFixed(1), '');
-            safeSetText('kpi-ots-closed', d.ots_closed ?? 0, '');
-            safeSetText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
-            
-            // Barra de progreso (segura)
-            const percent = d.hh_plan > 0 ? Math.min((d.hh_real / d.hh_plan) * 100, 100) : 0;
-            safeSetStyle('kpi-hh-progress', 'width', percent + '%');
+            // KPIs existentes
+            updateText('kpi-sla', d.sla_percent, '%');
+            updateText('kpi-hh-real', (d.hh_plan ?? 0).toFixed(1), '');
+            updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
+            updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
+
+            // 🆕 KPI NUEVO con animación de conteo
+            const totalHHEl = document.getElementById('kpi-total-hh');
+            if (totalHHEl && d.hh_plan !== undefined) {
+                const targetValue = d.hh_plan || 0;
+                const duration = 1500; // 1.5 segundos
+                const startTime = performance.now();
+                const startValue = 0;
+                
+                function animateCounter(now) {
+                    const progress = Math.min((now - startTime) / duration, 1);
+                    const ease = 1 - Math.pow(1 - progress, 3); // ease-out
+                    const current = startValue + (targetValue - startValue) * ease;
+                    
+                    totalHHEl.textContent = current.toLocaleString('es-CL', {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1
+                    });
+                    
+                    if (progress < 1) requestAnimationFrame(animateCounter);
+                }
+                requestAnimationFrame(animateCounter);
+            }
         }
         
         // 2. Gráfico HHs por Especialidad
