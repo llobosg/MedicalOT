@@ -18,50 +18,88 @@ try {
 
     switch ($action) {
         case 'global':
-            // 1. HHs Plan (desde planilla) + HHs Reales (calculadas por tiempo en sistema)
-            $stats = $pdo->query("
-                SELECT 
-                    COUNT(*) as total_ots,
-                    COALESCE(SUM(total_hh_planificadas), 0) as hh_plan,
-                    COALESCE(SUM(
-                        CASE 
-                            WHEN ultimo_estado IN ('completada', 'cerrada') 
-                            THEN TIMESTAMPDIFF(HOUR, primera_carga, ultima_carga) 
-                            ELSE 0 
-                        END
-                    ), 0) as hh_real_calc
-                FROM ot_resumen_actual
-            ")->fetch(PDO::FETCH_ASSOC);
+            // Obtener filtros del query string
+            $year = $_GET['year'] ?? date('Y');
+            $month = $_GET['month'] ?? null;
+            $week = $_GET['week'] ?? null;
+            
+            // Construir WHERE dinámico
+            $where = [];
+            $params = [];
+            
+            // Solo filtrar por año si se especificó explícitamente
+            if ($year && $year !== '') {
+                $where[] = "YEAR(ultima_fecha_programada) = ?";
+                $params[] = (int)$year;
+            }
+            
+            // Filtrar por mes solo si se especificó
+            if ($month && $month !== '' && $month !== '0') {
+                $where[] = "mes_carga = ?";
+                $params[] = $month;
+            }
+            
+            // Filtrar por semana solo si se especificó
+            if ($week && $week !== '' && $week !== '0') {
+                $where[] = "semana_carga = ?";
+                $params[] = (int)$week;
+            }
+            
+            $whereClause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+            
+            // Consulta con filtros
+            $sqlStats = "SELECT 
+                COUNT(*) as total_ots,
+                COALESCE(SUM(total_hh_planificadas), 0) as hh_plan,
+                COALESCE(SUM(total_hh_reales_acumuladas), 0) as hh_real
+            FROM ot_resumen_actual $whereClause";
+            
+            $stats = $pdo->prepare($sqlStats);
+            $stats->execute($params);
+            $stats = $stats->fetch(PDO::FETCH_ASSOC);
 
-            // 2. SLA (mismo filtro de estados finales)
-            $sla = $pdo->query("
-                SELECT 
-                    COUNT(*) as total_cerradas,
-                    SUM(CASE WHEN dias_retraso <= 3 THEN 1 ELSE 0 END) as dentro_sla
-                FROM ot_resumen_actual 
-                WHERE ultimo_estado IN ('completada', 'cerrada')
-            ")->fetch(PDO::FETCH_ASSOC);
+            // SLA con mismos filtros
+            $sqlSla = "SELECT 
+                COUNT(*) as total_cerradas,
+                SUM(CASE WHEN dias_retraso <= 3 THEN 1 ELSE 0 END) as dentro_sla
+            FROM ot_resumen_actual 
+            $whereClause AND ultimo_estado IN ('completada', 'cerrada')";
+            
+            $sla = $pdo->prepare($sqlSla);
+            $sla->execute($params);
+            $sla = $sla->fetch(PDO::FETCH_ASSOC);
             
             $total_cerradas = (int)($sla['total_cerradas'] ?? 0);
             $dentro_sla = (int)($sla['dentro_sla'] ?? 0);
             $slaPercent = $total_cerradas > 0 ? round(($dentro_sla / $total_cerradas) * 100, 1) : 0;
 
-            // 3. OTs en Riesgo
-            $riesgo = $pdo->query("
-                SELECT COUNT(*) FROM ot_resumen_actual 
-                WHERE ultimo_estado IN ('pendiente', 'asignada', 'en_ejecucion') 
-                AND dias_retraso > 7
-            ")->fetchColumn();
+            // OTs en Riesgo con filtros
+            $sqlRiesgo = "SELECT COUNT(*) FROM ot_resumen_actual 
+            $whereClause AND ultimo_estado IN ('pendiente', 'asignada', 'en_ejecucion') 
+            AND dias_retraso > 7";
+            
+            $riesgoStmt = $pdo->prepare($sqlRiesgo);
+            $riesgoStmt->execute($params);
+            $riesgo = $riesgoStmt->fetchColumn();
 
             echo json_encode([
                 'success' => true,
                 'data' => [
                     'total_ots'   => (int)($stats['total_ots'] ?? 0),
                     'hh_plan'     => floatval($stats['hh_plan'] ?? 0),
-                    'hh_real'     => floatval($stats['hh_real_calc'] ?? 0), // ✅ Calculado automáticamente
+                    'hh_real'     => floatval($stats['hh_real'] ?? 0),
                     'sla_percent' => floatval($slaPercent),
                     'ots_closed'  => $total_cerradas,
-                    'ots_riesgo'  => (int)($riesgo ?? 0)
+                    'ots_riesgo'  => (int)($riesgo ?? 0),
+                    'debug' => [
+                        'filters_applied' => [
+                            'year' => $year,
+                            'month' => $month,
+                            'week' => $week
+                        ],
+                        'where_clause' => $whereClause,
+                        'params' => $params
+                    ]
                 ]
             ]);
             break;
@@ -72,37 +110,45 @@ try {
             $month = $_GET['month'] ?? null;
             $week = $_GET['week'] ?? null;
             
-            // Construir WHERE dinámico
-            $where = ["YEAR(ultima_fecha_programada) = ?"];
-            $params = [$year];
+            // Construir WHERE dinámico (igual que en global)
+            $where = [];
+            $params = [];
             
-            if ($month && $month !== '') {
+            if ($year && $year !== '') {
+                $where[] = "YEAR(ultima_fecha_programada) = ?";
+                $params[] = (int)$year;
+            }
+            if ($month && $month !== '' && $month !== '0') {
                 $where[] = "mes_carga = ?";
                 $params[] = $month;
             }
-            if ($week && $week !== '') {
+            if ($week && $week !== '' && $week !== '0') {
                 $where[] = "semana_carga = ?";
                 $params[] = (int)$week;
             }
             
-            $whereClause = implode(" AND ", $where);
+            $whereClause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
             
             if ($group === 'estado') {
-                $stmt = $pdo->prepare("SELECT ultimo_estado as label, COUNT(*) as count FROM ot_resumen_actual WHERE ultimo_estado IS NOT NULL AND $whereClause GROUP BY ultimo_estado");
+                $sql = "SELECT ultimo_estado as label, COUNT(*) as count 
+                        FROM ot_resumen_actual 
+                        $whereClause AND ultimo_estado IS NOT NULL 
+                        GROUP BY ultimo_estado";
+                $stmt = $pdo->prepare($sql);
                 $stmt->execute($params);
                 $data = array_map(fn($r)=>['label'=>$r['label'], 'value'=>(int)$r['count']], $stmt->fetchAll(PDO::FETCH_ASSOC));
             } else {
-                $stmt = $pdo->prepare("
-                    SELECT 
-                        COALESCE(id_especialidad, 0) as code,
-                        COUNT(*) as count,
-                        ROUND(SUM(total_hh_planificadas), 1) as hh 
-                    FROM ot_resumen_actual 
-                    WHERE id_especialidad IS NOT NULL AND $whereClause
-                    GROUP BY id_especialidad 
-                    ORDER BY hh DESC 
-                    LIMIT 10
-                ");
+                $sql = "SELECT 
+                    COALESCE(id_especialidad, 0) as code,
+                    COUNT(*) as count,
+                    ROUND(SUM(total_hh_planificadas), 1) as hh 
+                FROM ot_resumen_actual 
+                $whereClause AND id_especialidad IS NOT NULL
+                GROUP BY id_especialidad 
+                ORDER BY hh DESC 
+                LIMIT 10";
+                
+                $stmt = $pdo->prepare($sql);
                 $stmt->execute($params);
                 
                 $espMap = [
@@ -117,7 +163,17 @@ try {
                     'count'=>(int)$r['count']
                 ], $stmt->fetchAll(PDO::FETCH_ASSOC));
             }
-            echo json_encode(['success'=>true, 'data'=>$data]);
+            
+            echo json_encode([
+                'success'=>true, 
+                'data'=>$data,
+                'debug' => [
+                    'group' => $group,
+                    'where_clause' => $whereClause,
+                    'params' => $params,
+                    'count' => count($data)
+                ]
+            ]);
             break;
 
         case 'reprogramadas':

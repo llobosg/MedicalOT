@@ -2947,6 +2947,16 @@ async function loadKpis() {
         
         if (dataGlobal.success && dataGlobal.data) {
             const d = dataGlobal.data;
+
+            // Mostrar debug en consola para diagnóstico
+            if (d.debug) {
+                console.log('🔍 KPIs Debug:', d.debug);
+            }
+            
+            // Si no hay datos, mostrar mensaje informativo
+            if (d.total_ots === 0) {
+                console.warn('⚠️ No se encontraron OTs con los filtros aplicados:', d.debug?.filters_applied);
+            }
             
             // ✅ HELPER SEGURO: Solo actualiza si el elemento existe
             const safeSetText = (id, value, suffix = '') => {
