@@ -164,7 +164,11 @@ class MantencionImportService
 
     private function flushBatch(array $historico, array $resumen): void
     {
+        // ============================================================
+        // 1. UPSERT en ot_resumen_actual
+        // ============================================================
         if (!empty($resumen)) {
+            // 18 columnas, 14 placeholders (NOW() x2 y 0 x2 no son placeholders)
             $sqlResumen = "INSERT INTO ot_resumen_actual (
                 codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga,
                 ultima_fecha_programada, ultimo_estado, ultima_carga,
@@ -194,37 +198,68 @@ class MantencionImportService
             
             $stmtResumen = $this->db->prepare($sqlResumen);
             foreach ($resumen as $r) {
+                // $r = [0:idPrev, 1:codProt, 2:nombre, 3:fecha, 4:estado, 
+                //       5:hhPlan, 6:hhReal, 7:diasRet, 8:tipo, 9:idEsp,
+                //       10:mes, 11:semana, 12:periodicidad, 13:origen]
+                
+                // ✅ EXACTAMENTE 14 valores (matching 14 placeholders)
                 $stmtResumen->execute([
                     $r[1],  // 1. codigo_ot
                     $r[0],  // 2. id_prevision_sic
                     $r[3],  // 3. primera_fecha_programada
-                    $r[3],  // 4. ultima_fecha_programada
-                    $r[4],  // 5. ultimo_estado
-                    $r[5],  // 6. total_hh_planificadas
-                    $r[7],  // 7. dias_retraso
-                    null,   // 8. id_vertical
-                    $r[9],  // 9. id_especialidad
-                    $r[2],  // 10. nombre_equipo
-                    $r[8],  // 11. tipo_mantenimiento
-                    $r[10], // 12. mes_carga
-                    $r[11], // 13. semana_carga
-                    $r[12]  // 14. periodicidad
+                    // [NOW()] 4. primera_carga
+                    $r[3],  // 5. ultima_fecha_programada
+                    $r[4],  // 6. ultimo_estado
+                    // [NOW()] 7. ultima_carga
+                    $r[5],  // 8. total_hh_planificadas
+                    // [0] 9. total_hh_reales_acumuladas
+                    // [0] 10. veces_reprogramadas
+                    $r[7],  // 11. dias_retraso
+                    null,   // 12. id_vertical
+                    $r[9],  // 13. id_especialidad
+                    $r[2],  // 14. nombre_equipo
+                    $r[8],  // 15. tipo_mantenimiento
+                    $r[10], // 16. mes_carga
+                    $r[11], // 17. semana_carga
+                    $r[12]  // 18. periodicidad
                 ]);
             }
         }
 
+        // ============================================================
+        // 2. INSERT en ot_historico
+        // ============================================================
         if (!empty($historico)) {
+            // 14 columnas, 10 placeholders (NOW(), 'MANTENCION', 0, '' no son placeholders)
             $sqlHist = "INSERT INTO ot_historico (
                 codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada,
                 estado, hh_planificadas, hh_reales, observaciones, id_vertical,
                 id_especialidad, id_equipo, nombre_equipo, nombre_protocolo
-            ) VALUES (?, ?, NOW(), 'MANTENCION', ?, ?, ?, 0, '', ?, ?, ?, ?, ?)";
+            ) VALUES (
+                ?, ?, NOW(), 'MANTENCION', ?, ?, ?, 0, '', ?, ?, ?, ?, ?
+            )";
             
             $stmtHist = $this->db->prepare($sqlHist);
             foreach ($historico as $h) {
+                // $h = [0:idPrev, 1:codProt, 2:nombre, 3:fecha, 4:estado, 
+                //       5:hhPlan, 6:hhReal, 7:tipo, 8:tipoRaw, 9:line]
+                
+                // ✅ EXACTAMENTE 10 valores (matching 10 placeholders)
                 $stmtHist->execute([
-                    $h[1], $h[0], $h[3], $h[4], $h[5], $h[6],
-                    null, null, null, $h[2], $h[1]
+                    $h[1],  // 1. codigo_ot
+                    $h[0],  // 2. id_prevision_sic
+                    // [NOW()] 3. fecha_carga
+                    // ['MANTENCION'] 4. fuente
+                    $h[3],  // 5. fecha_programada
+                    $h[4],  // 6. estado
+                    $h[5],  // 7. hh_planificadas
+                    // [0] 8. hh_reales
+                    // [''] 9. observaciones
+                    null,   // 10. id_vertical
+                    null,   // 11. id_especialidad
+                    null,   // 12. id_equipo
+                    $h[2],  // 13. nombre_equipo
+                    $h[1]   // 14. nombre_protocolo
                 ]);
             }
         }
