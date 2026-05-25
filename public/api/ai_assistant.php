@@ -27,6 +27,31 @@ try {
         throw new Exception("Mensaje vacío");
     }
 
+    function buildSystemPrompt() {
+        return "Eres el asistente experto de MedicalOT para el Hospital de Antofagasta. 
+                Responde basándote SOLO en los datos proporcionados. 
+                Sé conciso, profesional y orientado a la acción. 
+                Usa emojis y formato estructurado.";
+    }
+
+    function buildContext($stats) {
+        $espMap = [50=>'M-CLIMATIZACIÓN',51=>'M-ELECTRICIDAD',52=>'M-GASFITERÍA',53=>'M-ELECTRÓNICA',54=>'M-CARPINTERÍA',55=>'M-ELECTROMECÁNICA',57=>'M-POLIVALENTE'];
+        
+        $ctx = "📊 ESTADÍSTICAS:\n";
+        $ctx .= "- Total OTs: {$stats['general']['total_ots']}\n";
+        $ctx .= "- HHs Planificadas: {$stats['general']['hh_plan']}\n";
+        $ctx .= "- OTs en Riesgo: {$stats['general']['ots_riesgo']}\n";
+        $ctx .= "- OTs Cerradas: {$stats['general']['ots_cerradas']}\n\n";
+        
+        $ctx .= "🏆 ESPECIALIDADES:\n";
+        foreach ($stats['especialidades'] as $e) {
+            $nombre = $espMap[$e['id_especialidad']] ?? "Esp.{$e['id_especialidad']}";
+            $ctx .= "- {$nombre}: {$e['total']} OTs, {$e['hh']} HHs, {$e['en_riesgo']} en riesgo\n";
+        }
+        
+        return $ctx;
+    }
+
     // ═══════════════════════════════════════════════════════
     // 🔍 OBTENER CONTEXTO DE LA BASE DE DATOS
     // ═══════════════════════════════════════════════════════
@@ -146,44 +171,24 @@ try {
     }
 
     // ═══════════════════════════════════════════════════════
-    // 🔐 LLAMAR A OPENAI
+    // 🤖 LLAMAR A MULEROUTER (compatible con OpenAI)
     // ═══════════════════════════════════════════════════════
     $apiKey = getenv('OPENAI_API_KEY');
+    $apiEndpoint = 'https://api.mulerouter.ai/v1/chat/completions';
+    $aiModel = 'gpt-4o-mini'; // MuleRouter soporta modelos de OpenAI
+
     if (!$apiKey) {
-        throw new Exception("API Key de OpenAI no configurada en Railway (variable OPENAI_API_KEY)");
+        echo json_encode([
+            'success' => true,
+            'message' => generateFallbackResponse($userMessage, $stats),
+            'mode' => 'fallback'
+        ]);
+        exit;
     }
-
-    $systemPrompt = <<<PROMPT
-Eres el asistente experto de MedicalOT, el sistema de gestión de mantenimiento del Hospital de Antofagasta.
-
-REGLAS ESTRICTAS:
-1. Responde ÚNICAMENTE basándote en los datos proporcionados en el contexto.
-2. Si NO tienes información para responder, di claramente: "No tengo esa información en los datos disponibles actualmente."
-3. Sé conciso, profesional y orientado a la acción.
-4. Usa formato estructurado: títulos en MAYÚSCULAS, bullets (•), negritas con **texto**.
-5. SIEMPRE termina con una recomendación accionable o pregunta de seguimiento.
-6. NO inventes datos, cifras ni IDs.
-7. Si el usuario saluda, preséntate brevemente y pregunta qué necesita analizar.
-8. Usa emojis moderadamente para hacer la lectura más amigable.
-
-TU PERSONALIDAD:
-- Profesional pero cercano
-- Orientado a datos y decisiones
-- Proactivo en sugerir análisis
-- Consciente del impacto en pacientes
-
-EJEMPLOS DE BUENAS RESPUESTAS:
-📊 RESUMEN EJECUTIVO
-• Total de OTs: X
-• Alertas principales: Y
-
-💡 RECOMENDACIÓN
-Revisar las Z OTs con más de 30 días de retraso en M-ELECTRICIDAD.
-PROMPT;
 
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL => "https://api.openai.com/v1/chat/completions",
+        CURLOPT_URL => $apiEndpoint,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_TIMEOUT => 30,
@@ -192,10 +197,10 @@ PROMPT;
             "Authorization: Bearer $apiKey"
         ],
         CURLOPT_POSTFIELDS => json_encode([
-            "model" => "gpt-4o-mini",
+            "model" => $aiModel,
             "messages" => [
-                ["role" => "system", "content" => $systemPrompt],
-                ["role" => "user", "content" => "Contexto de datos actuales:\n$contextText\n\nPregunta del usuario: $userMessage"]
+                ["role" => "system", "content" => buildSystemPrompt()],
+                ["role" => "user", "content" => "Contexto:\n" . buildContext($stats) . "\n\nPregunta: $userMessage"]
             ],
             "temperature" => 0.7,
             "max_tokens" => 800
@@ -207,16 +212,25 @@ PROMPT;
     $error = curl_error($ch);
     curl_close($ch);
 
+    // Si falla, usar fallback
     if ($httpCode !== 200) {
-        throw new Exception("Error OpenAI (HTTP $httpCode): $response");
+        error_log("❌ MuleRouter API Error (HTTP $httpCode): $response");
+        echo json_encode([
+            'success' => true,
+            'message' => generateFallbackResponse($userMessage, $stats),
+            'mode' => 'fallback',
+            'debug' => "HTTP $httpCode"
+        ]);
+        exit;
     }
 
     $result = json_decode($response, true);
-    $aiResponse = $result['choices'][0]['message']['content'] ?? "Lo siento, no pude generar una respuesta.";
+    $aiResponse = $result['choices'][0]['message']['content'] ?? generateFallbackResponse($userMessage, $stats);
 
     echo json_encode([
         'success' => true,
         'message' => $aiResponse,
+        'mode' => 'mulerouter',
         'usage' => $result['usage'] ?? null
     ]);
 
