@@ -180,7 +180,16 @@ try {
 
         case 'reprogramadas':
             $limit = min((int)($_GET['limit']??10), 50);
-            $stmt = $pdo->prepare("SELECT codigo_ot, nombre_equipo, veces_reprogramadas, ultima_fecha_programada, dias_retraso, ultimo_estado FROM ot_resumen_actual WHERE veces_reprogramadas > 0 ORDER BY veces_reprogramadas DESC, ultima_carga DESC LIMIT ?");
+            $stmt = $pdo->prepare("
+                SELECT 
+                    id_prevision_sic, codigo_ot, nombre_equipo, 
+                    veces_reprogramadas, ultima_fecha_programada, 
+                    dias_retraso, ultimo_estado
+                FROM ot_resumen_actual 
+                WHERE veces_reprogramadas > 0 $whereExtra
+                ORDER BY veces_reprogramadas DESC, ultima_carga DESC
+                LIMIT ?
+            ");
             $stmt->bindValue(1, $limit, PDO::PARAM_INT);
             $stmt->execute();
             echo json_encode(['success'=>true, 'data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
@@ -213,7 +222,7 @@ try {
             
             $stmt = $pdo->prepare("
                 SELECT 
-                    codigo_ot, nombre_equipo, 
+                    id_prevision_sic, codigo_ot, nombre_equipo, 
                     COALESCE(id_especialidad, 0) as id_especialidad,
                     ultimo_estado, dias_retraso,
                     ultima_fecha_programada, total_hh_planificadas

@@ -738,7 +738,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <!-- ✅ THEAD ESTÁTICO (fuera del JS) -->
                         <thead>
                             <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
-                                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
+                                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">ID Previsión</th>
                                 <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
                                 <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
                                 <th id="thCol4" style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Veces Reprog.</th>
@@ -3269,8 +3269,8 @@ function renderReproTable(data) {
         <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" 
             onmouseover="this.style.background='#f8fafc'" 
             onmouseout="this.style.background='white'">
-            <td style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
-                ${o.codigo_ot || '-'}
+            <tbody style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
+                ${o.id_prevision_sic || '-'}
             </td>
             <td style="padding:0.75rem; color:#64748b; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" 
                 title="${o.nombre_equipo || ''}">
@@ -4060,8 +4060,8 @@ function renderRiskTable(data) {
             <tr style="border-bottom:1px solid #f1f5f9; background:${riesgoBg}; transition:background 0.2s;" 
                 onmouseover="this.style.background='#fef2f2'" 
                 onmouseout="this.style.background='${riesgoBg}'">
-                <td style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
-                    ${o.codigo_ot || '-'}
+                <tbody style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
+                    ${o.id_prevision_sic || '-'}
                 </td>
                 <td style="padding:0.75rem; color:#64748b;">
                     ${o.nombre_equipo || '-'}
