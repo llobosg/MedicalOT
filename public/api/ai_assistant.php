@@ -175,7 +175,7 @@ try {
     // ═══════════════════════════════════════════════════════
     $apiKey = getenv('OPENAI_API_KEY');
     // Usar endpoint completo en lugar del alias
-    $apiEndpoint = 'https://api.mulerouter.ai/vendors/openai/chat/completions';
+    $apiEndpoint = 'https://api.mulerouter.ai/chat/completions';
     $aiModel = 'gpt-4o-mini';
 
     if (!$apiKey) {
