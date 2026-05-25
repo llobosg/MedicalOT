@@ -2938,49 +2938,64 @@ let chartEstados = null;
 
 async function loadKpis() {
     try {
+        // 1. Cargar KPIs Globales
         const resGlobal = await fetch('/api/kpis.php?action=global');
         const dataGlobal = await resGlobal.json();
         
         if (dataGlobal.success && dataGlobal.data) {
             const d = dataGlobal.data;
             
-            // ✅ Helper 100% seguro: nunca lanza error si el ID no existe
-            const updateEl = (id, value, suffix = '') => {
+            // ✅ HELPER SEGURO: Solo actualiza si el elemento existe
+            const safeSetText = (id, value, suffix = '') => {
                 const el = document.getElementById(id);
-                if (el && value !== undefined && value !== null) {
-                    el.textContent = (isFinite(value) ? value : 0) + suffix;
-                }
+                if (el) el.textContent = (isFinite(value) ? value : 0) + suffix;
             };
             
-            // Asignamos HHs Reales (calculadas) al único ID disponible
-            updateEl('kpi-sla', d.sla_percent, '%');
-            updateEl('kpi-hh-real', d.hh_real.toFixed(1), '');
-            updateEl('kpi-ots-closed', d.ots_closed, '');
-            updateEl('kpi-ots-risk', d.ots_riesgo, '');
+            const safeSetStyle = (id, prop, value) => {
+                const el = document.getElementById(id);
+                if (el) el.style[prop] = value;
+            };
+            
+            // Actualizar fichas KPI (solo las que existen)
+            safeSetText('kpi-sla', d.sla_percent, '%');
+            safeSetText('kpi-hh-real', (d.hh_plan ?? 0).toFixed(1), '');
+            safeSetText('kpi-hh-plan', (d.hh_plan ?? 0).toFixed(1), '');
+            safeSetText('kpi-ots-closed', d.ots_closed ?? 0, '');
+            safeSetText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
             
             // Barra de progreso (segura)
-            const progressEl = document.getElementById('kpi-hh-progress');
-            if (progressEl) progressEl.style.width = '100%';
+            const percent = d.hh_plan > 0 ? Math.min((d.hh_real / d.hh_plan) * 100, 100) : 0;
+            safeSetStyle('kpi-hh-progress', 'width', percent + '%');
         }
         
-        // Gráficos y Tabla (carga condicional segura)
+        // 2. Gráfico HHs por Especialidad
         const resBar = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
         if (resBar.ok) {
             const barData = await resBar.json();
-            if (barData.success && barData.data?.length) renderBarChart(barData.data);
+            if (barData.success && barData.data?.length > 0) {
+                renderCharts(barData.data);
+            }
         }
-
+        
+        // 3. Gráfico de Estados
         const resPie = await fetch('/api/kpis.php?action=chart_data&group_by=estado');
         if (resPie.ok) {
             const pieData = await resPie.json();
-            if (pieData.success && pieData.data?.length) renderPieChart(pieData.data);
+            if (pieData.success && pieData.data?.length > 0) {
+                renderPieChartEstados(pieData.data);
+            }
         }
-
+        
+        // 4. Tabla de Reprogramadas
         const resRep = await fetch('/api/kpis.php?action=reprogramadas&limit=10');
         if (resRep.ok) {
             const repData = await resRep.json();
-            if (repData.success) renderReproTable(repData.data);
+            if (repData.success) {
+                renderReproTable(repData.data);
+            }
         }
+        
+        Toast.success('📊 Datos actualizados', 'KPIs');
         
     } catch (err) {
         console.error('Error KPIs:', err);
@@ -3512,69 +3527,6 @@ function resetFilters() {
     loadKpis();
 }
 
-// Modificar loadKpis() para incluir filtros
-async function loadKpis() {
-    const btn = event?.target;
-    if (btn && btn.id !== 'filterYear' && btn.id !== 'filterMonth' && btn.id !== 'filterWeek') {
-        btn.disabled = true;
-        btn.innerHTML = '⏳ Cargando...';
-    }
-    
-    try {
-        // Construir query string con filtros
-        const params = new URLSearchParams({
-            year: currentFilters.year,
-            month: currentFilters.month || '',
-            week: currentFilters.week || ''
-        });
-        
-        // 1. KPIs Globales con filtros
-        const resGlobal = await fetch(`/api/kpis.php?action=global&${params}`);
-        const dataGlobal = await resGlobal.json();
-        
-        if (dataGlobal.success) {
-            const d = dataGlobal.data;
-            
-            // Función helper segura
-            const updateText = (id, value, suffix = '') => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = (isFinite(value) ? value : 0) + suffix;
-            };
-            
-            updateText('kpi-sla', d.sla_percent, '%');
-            updateText('kpi-hh-plan', d.hh_plan.toFixed(1), '');
-            document.getElementById('kpi-hh-real').textContent = d.hh_plan.toFixed(1);
-            updateText('kpi-ots-closed', d.ots_closed, '');
-            updateText('kpi-ots-risk', d.ots_riesgo, '');
-            
-            document.getElementById('kpi-hh-progress').style.width = '100%';
-        }
-        
-        // 2. Gráfico de Barras: HHs Planificadas por Especialidad
-        const resBar = await fetch(`/api/kpis.php?action=chart_especialidad&${params}`);
-        const dataBar = await resBar.json();
-        if (dataBar.success) renderBarChartEspecialidad(dataBar.data);
-        
-        // 3. Gráfico Circular: Estados
-        const resPie = await fetch(`/api/kpis.php?action=chart_data&group_by=estado&${params}`);
-        const dataPie = await resPie.json();
-        if (dataPie.success) renderPieChart(dataPie.data);
-
-        // 4. Tabla Reprogramadas
-        const resRep = await fetch(`/api/kpis.php?action=reprogramadas&limit=10&${params}`);
-        const dataRep = await resRep.json();
-        if (dataRep.success) renderReproTable(dataRep.data);
-        
-    } catch (err) {
-        console.error('Error KPIs:', err);
-        Toast.error('Error al cargar indicadores', 'Atención');
-    } finally {
-        if (btn && btn.id !== 'filterYear' && btn.id !== 'filterMonth' && btn.id !== 'filterWeek') {
-            btn.disabled = false;
-            btn.innerHTML = '🔄 Actualizar Datos';
-        }
-    }
-}
 </script>
     <!-- MODAL ESPECIALIDADES -->
     <div id="modalEspecialidades" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
