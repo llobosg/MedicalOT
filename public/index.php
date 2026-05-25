@@ -3100,31 +3100,38 @@ function renderPieChart(data) {
 
 // === TABLA DE REPROGRAMADAS ===
 function renderReproTable(data) {
-    const tbody = document.getElementById('tablaReprogramadas');
-    if (!tbody) return;
+    // ✅ Usamos el ID que SÍ existe en tu HTML
+    const tbody = document.getElementById('tablaOtsRecentes');
+    if (!tbody) return; // Blindaje: si no existe, sale silenciosamente
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">No hay OTs reprogramadas en el periodo</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">No hay OTs recientes para mostrar</td></tr>';
         return;
     }
     
     tbody.innerHTML = data.map(o => `
-        <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:0.75rem; font-weight:600;">${o.codigo_ot || '-'}</td>
-            <td style="padding:0.75rem; color:#64748b;">${o.nombre_equipo || '-'}</td>
+        <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" 
+            onmouseover="this.style.background='#f8fafc'" 
+            onmouseout="this.style.background='white'">
+            <td style="padding:0.75rem; font-weight:600; color:#1e293b; font-family:monospace;">
+                ${o.codigo_ot || '-'}
+            </td>
+            <td style="padding:0.75rem; color:#64748b; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${o.nombre_equipo || ''}">
+                ${o.nombre_equipo || '-'}
+            </td>
             <td style="padding:0.75rem; text-align:center;">
-                <span class="badge" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:0.75rem;">
-                    ${o.ultimo_estado || 'pendiente'}
+                <span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:0.75rem;">
+                    ${(o.ultimo_estado || o.estado || 'pendiente').replace('_', ' ')}
                 </span>
             </td>
-            <td style="padding:0.75rem; text-align:center; font-weight:bold; color:#ef4444;">
-                ${o.veces_reprogramadas || 0}
+            <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">
+                ${parseFloat(o.total_hh_planificadas || o.hh_plan || 0).toFixed(1)}
             </td>
-            <td style="padding:0.75rem; text-align:center;">
-                ${o.ultima_fecha_programada ? new Date(o.ultima_fecha_programada).toLocaleDateString('es-CL') : '-'}
+            <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">
+                ${parseFloat(o.total_hh_reales_acumuladas || o.hh_real || 0).toFixed(1)}
             </td>
-            <td style="padding:0.75rem; text-align:center; color:${(o.dias_retraso || 0) > 7 ? '#ef4444' : '#64748b'}">
-                ${(o.dias_retraso || 0) > 0 ? `+${o.dias_retraso}d` : '0d'}
+            <td style="padding:0.75rem; text-align:center; color:${(o.dias_retraso || 0) > 7 ? '#ef4444' : '#64748b'}; font-weight:${(o.dias_retraso || 0) > 7 ? 'bold' : 'normal'}">
+                ${(o.dias_retraso || 0) > 0 ? '+' + o.dias_retraso + 'd' : '0d'}
             </td>
         </tr>
     `).join('');
@@ -3139,20 +3146,6 @@ function renderPieChart(data) {
     });
 }
 
-function renderReproTable(data) {
-    const tb = document.getElementById('tablaReprogramadas');
-    if(!data.length) { tb.innerHTML='<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#94a3b8;">No hay OTs reprogramadas en el periodo</td></tr>'; return; }
-    tb.innerHTML = data.map(o => `
-        <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:0.75rem;font-weight:600;">${o.codigo_ot}</td>
-            <td style="padding:0.75rem;color:#64748b;">${o.nombre_equipo||'-'}</td>
-            <td style="padding:0.75rem;text-align:center;"><span class="badge" style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:0.75rem;">${o.ultimo_estado}</span></td>
-            <td style="padding:0.75rem;text-align:center;font-weight:bold;color:#ef4444;">${o.veces_reprogramadas}</td>
-            <td style="padding:0.75rem;text-align:center;">${o.ultima_fecha_programada ? new Date(o.ultima_fecha_programada).toLocaleDateString('es-CL') : '-'}</td>
-            <td style="padding:0.75rem;text-align:center;color:${o.dias_retraso>7?'#ef4444':'#64748b'}">${o.dias_retraso>0 ? o.dias_retraso+'d' : '0d'}</td>
-        </tr>
-    `).join('');
-}
 document.addEventListener('DOMContentLoaded', loadKpis);
 
 // === GRÁFICO SIMPLIFICADO (evita colapsos con muchos datos) ===
