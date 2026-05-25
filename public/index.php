@@ -3818,8 +3818,9 @@ function renderSpecialtyCards(data) {
     }).join('');
 }
 // 🎯 ACTIVAR/DESACTIVAR MODO RIESGO
+// 🎯 TOGGLE MODO RIESGO (corregido para usar dashboardFilters)
 async function toggleRiskMode() {
-    if (dashboardMode.mode === 'standard') {
+    if (dashboardFilters.mode === 'standard') {
         await activateRiskMode();
     } else {
         clearRiskMode();
@@ -3827,8 +3828,9 @@ async function toggleRiskMode() {
 }
 
 async function activateRiskMode() {
+    console.log('🚨 Activando modo riesgo con filtros:', dashboardFilters);
     dashboardFilters.mode = 'risk';
-    dashboardFilters.especialidad = null; // Reset drill-down
+    dashboardFilters.especialidad = null;
     
     // Estilos de ficha
     const card = document.getElementById('kpi-risk-card');
@@ -3842,16 +3844,28 @@ async function activateRiskMode() {
         }
     }
     
-    document.getElementById('kpi-risk-close').style.display = 'flex';
+    const closeBtn = document.getElementById('kpi-risk-close');
+    if (closeBtn) closeBtn.style.display = 'flex';
     
+    // Cambiar etiqueta total a "OTs"
+    const totalEspEl = document.getElementById('kpi-total-hh-esp');
+    if (totalEspEl && totalEspEl.nextElementSibling) {
+        totalEspEl.nextElementSibling.textContent = 'OTs';
+    }
+    
+    // Recargar todo con modo riesgo
     await loadKpis();
+    
     Toast.info('🔍 Mostrando OTs en Riesgo', 'Filtro activo');
 }
 
 function clearRiskMode() {
+    console.log('🧹 Limpiando filtro de riesgo...');
     dashboardFilters.mode = 'standard';
     dashboardFilters.especialidad = null;
+    dashboardFilters.especialidadLabel = '';
     
+    // Restaurar ficha
     const card = document.getElementById('kpi-risk-card');
     if (card) {
         card.style.background = 'white';
@@ -3863,7 +3877,16 @@ function clearRiskMode() {
         }
     }
     
-    document.getElementById('kpi-risk-close').style.display = 'none';
+    const closeBtn = document.getElementById('kpi-risk-close');
+    if (closeBtn) closeBtn.style.display = 'none';
+    
+    // Restaurar etiqueta a "HH"
+    const totalEspEl = document.getElementById('kpi-total-hh-esp');
+    if (totalEspEl && totalEspEl.nextElementSibling) {
+        totalEspEl.nextElementSibling.textContent = 'HH';
+    }
+    
+    // Recargar datos estándar
     loadKpis();
     Toast.success('✅ Vista estándar restaurada', 'Filtro limpiado');
 }

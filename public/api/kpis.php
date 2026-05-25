@@ -287,6 +287,48 @@ try {
             
             echo json_encode(['success' => true, 'data' => $data]);
             break;
+        
+        case 'get_weeks':
+            try {
+                $year = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+                $month = !empty($_GET['month']) ? $_GET['month'] : null;
+                
+                $where = ["YEAR(ultima_fecha_programada) = ?"];
+                $params = [$year];
+                
+                if ($month !== null && $month !== '') {
+                    $where[] = "mes_carga = ?";
+                    $params[] = $month;
+                }
+                
+                $where[] = "semana_carga IS NOT NULL";
+                
+                $whereClause = implode(" AND ", $where);
+                
+                $stmt = $pdo->prepare("
+                    SELECT DISTINCT semana_carga 
+                    FROM ot_resumen_actual 
+                    WHERE $whereClause
+                    ORDER BY semana_carga ASC
+                ");
+                $stmt->execute($params);
+                $weeks = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                
+                echo json_encode([
+                    'success' => true,
+                    'data' => $weeks,
+                    'count' => count($weeks)
+                ]);
+            } catch (Exception $e) {
+                error_log("❌ Error get_weeks: " . $e->getMessage());
+                http_response_code(500);
+                echo json_encode([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'data' => []
+                ]);
+            }
+            break;
 
         default: throw new Exception("Acción no válida");
     }
