@@ -1218,7 +1218,11 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     </footer>
 
     <script>
-        let currentFilters = { page: 1, search: '', esp: '', estado: '', mes: '' };
+        // ✅ ÚNICA DECLARACIÓN GLOBAL DE FILTROS
+        let currentFilters = { 
+            page: 1, search: '', esp: '', estado: '', mes: '', 
+            year: '2026', month: '', week: '' 
+        };
         let searchTimeout, selectedOTData = null, currentPage = 1, totalPages = 1;
 
         // === FUNCIÓN DE NAVEGACIÓN Y CARGA DE MÓDULOS ===
@@ -3505,8 +3509,6 @@ async function handleMantencionUpload(file) {
         mantencionLog.style.color = '#ef4444';
     }
 }
-
-let currentFilters = { year: '2026', month: '', week: '' };
 
 async function applyFilters() {
     currentFilters.year = document.getElementById('filterYear').value;
