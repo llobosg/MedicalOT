@@ -72,28 +72,31 @@ try {
                 $stmt = $pdo->query("SELECT ultimo_estado as label, COUNT(*) as count FROM ot_resumen_actual WHERE ultimo_estado IS NOT NULL GROUP BY ultimo_estado");
                 $data = array_map(fn($r)=>['label'=>$r['label'], 'value'=>(int)$r['count']], $stmt->fetchAll(PDO::FETCH_ASSOC));
             } else {
-                // Trae id_especialidad y suma HH
-                $stmt = $pdo->query("SELECT COALESCE(id_especialidad,0) as code, COUNT(*) as count, ROUND(SUM(total_hh_planificadas),1) as hh FROM ot_resumen_actual GROUP BY id_especialidad ORDER BY hh DESC LIMIT 10");
+                // ✅ LIMIT 10 para evitar sobrecarga en frontend
+                $stmt = $pdo->query("
+                    SELECT 
+                        COALESCE(id_especialidad, 0) as code,
+                        COUNT(*) as count,
+                        ROUND(SUM(total_hh_planificadas), 0) as hh 
+                    FROM ot_resumen_actual 
+                    WHERE id_especialidad IS NOT NULL
+                    GROUP BY id_especialidad 
+                    ORDER BY hh DESC 
+                    LIMIT 10
+                ");
                 
-                // Mapeo ampliado según tus datos reales
                 $espMap = [
-                    50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA', 
-                    53=>'M-ELECTRÓNICA', 55=>'M-ELECTROMECÁNICA', 57=>'M-POLIVALENTE'
+                    50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA',
+                    53=>'M-ELECTRÓNICA', 54=>'M-CARPINTERÍA', 55=>'M-ELECTROMECÁNICA',
+                    57=>'M-POLIVALENTE'
                 ];
                 
-                $data = array_map(function($r) use ($espMap) {
-                    $code = (int)$r['code'];
-                    return [
-                        'label' => $espMap[$code] ?? ($code > 0 ? "Esp. {$code}" : "Sin Asignar"),
-                        'value' => floatval($r['hh']), // <-- Este es el campo que usa renderSimpleBarChart
-                        'hh_plan' => floatval($r['hh']) // Mantener para compatibilidad
-                    ];
-                }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+                $data = array_map(fn($r)=>[
+                    'label'=>$espMap[$r['code']] ?? "Esp. {$r['code']}", 
+                    'value'=>floatval($r['hh'])
+                ], $stmt->fetchAll(PDO::FETCH_ASSOC));
             }
-            echo json_encode([
-                'success' => true,
-                'data' => $data ?: [] // Nunca null, siempre array vacío si no hay datos
-            ]);
+            echo json_encode(['success'=>true, 'data'=>$data]);
             break;
 
         case 'reprogramadas':

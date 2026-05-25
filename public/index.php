@@ -3018,13 +3018,19 @@ function renderSimpleBarChart(data) {
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
+    
+    // Destruir gráfico anterior
     if (window.simpleBarChart) window.simpleBarChart.destroy();
     
     const labels = data.map(d => {
         const label = d.label || 'Sin Espec.';
-        return label.length > 20 ? label.substring(0, 17) + '...' : label;
+        return label.length > 18 ? label.substring(0, 15) + '...' : label;
     });
     const values = data.map(d => parseFloat(d.value || d.hh_plan) || 0);
+    
+    // ✅ Calcular máximo redondeado al siguiente 1000
+    const maxValue = Math.max(...values);
+    const yMax = Math.ceil(maxValue / 1000) * 1000;
     
     window.simpleBarChart = new Chart(ctx, {
         type: 'bar',
@@ -3034,20 +3040,71 @@ function renderSimpleBarChart(data) {
                 label: 'HH Planificadas',
                 data: values,
                 backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                borderColor: '#2563eb',
+                borderWidth: 1,
                 borderRadius: 4,
-                barPercentage: 0.8
+                barPercentage: 0.7
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            // ✅ DESACTIVAR animaciones pesadas
+            animation: {
+                duration: 400,
+                easing: 'easeOutQuart'
+            },
             plugins: {
                 legend: { display: false },
-                tooltip: { callbacks: { label: (ctx) => `HH Plan: ${ctx.parsed.y.toFixed(1)}` } }
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: (ctx) => `${ctx.parsed.y.toLocaleString('es-CL')} HH`
+                    }
+                }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { font: { size: 10 } } },
-                x: { ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 } }
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: yMax, // ✅ Límite superior calculado
+                    // ✅ INDICADORES CADA 1.000 HH
+                    ticks: {
+                        stepSize: 1000,
+                        font: { size: 11 },
+                        color: '#64748b',
+                        callback: function(value) {
+                            if (value >= 1000) {
+                                return (value / 1000).toFixed(0) + 'k'; // 1k, 2k, 3k...
+                            }
+                            return value;
+                        }
+                    },
+                    title: { 
+                        display: true, 
+                        text: 'Horas Hombre (HH)', 
+                        font: { size: 12, weight: '600' },
+                        color: '#334155'
+                    },
+                    grid: {
+                        color: '#f1f5f9',
+                        drawBorder: false
+                    }
+                },
+                x: {
+                    ticks: { 
+                        font: { size: 10 },
+                        maxRotation: 45,
+                        minRotation: 30,
+                        color: '#64748b'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            // ✅ Decimación para datasets grandes (opcional pero ayuda)
+            parsing: {
+                xAxisKey: false
             }
         }
     });
