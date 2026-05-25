@@ -2972,7 +2972,6 @@ async function loadKpis() {
                 console.warn('⚠️ No se encontraron OTs con los filtros aplicados:', d.debug?.filters_applied);
             }
             
-            / ✅ Helper seguro (ya lo tienes)
             const updateText = (id, value, suffix = '') => {
                 const el = document.getElementById(id);
                 if (el && value !== undefined && value !== null) {
