@@ -730,21 +730,26 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             <!-- ═══════════════════════════════════════════════════════════ -->
             <!-- FILA 3: TABLA DE OTs REPROGRAMADAS                         -->
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
-                <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">🔄 OTs Reprogramadas (Mayor Impacto)</h3>
+            <!-- Tabla de OTs Reprogramadas (Comodín) -->
+            <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); margin-top:1.5rem;">
+                <h3 id="tablaComodinTitle" style="margin-top:0; font-size:1.1rem; color:#1e293b;">🔄 OTs Reprogramadas (Mayor Impacto)</h3>
                 <div style="overflow-x:auto;">
                     <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
+                        <!-- ✅ THEAD ESTÁTICO (fuera del JS) -->
                         <thead>
                             <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
                                 <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
                                 <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
                                 <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
-                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Veces Reprog.</th>
+                                <th id="thCol4" style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Veces Reprog.</th>
                                 <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Fecha Programada</th>
-                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso</th>
+                                <th id="thCol6" style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso</th>
                             </tr>
                         </thead>
-                        <tbody id="tablaReprogramadas"></tbody>
+                        <!-- ✅ TBODY DINÁMICO (se llena con JS) -->
+                        <tbody id="tablaReprogramadas">
+                            <!-- Las filas se generan aquí -->
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -3026,27 +3031,21 @@ async function loadKpis() {
             week: currentFilters.week || ''
         });
 
-        const resEsp = await fetch(`/api/kpis.php?action=chart_data&group_by=especialidad&${params}`);
-        if (resEsp.ok) {
-            const espData = await resEsp.json();
-            if (espData.success) renderSpecialtyCards(espData.data);
+        // 3. Tabla Reprogramadas (Modo Estándar)
+        const resRep = await fetch(`/api/kpis.php?action=reprogramadas&limit=10&${params}`);
+        if (resRep.ok) {
+            const repData = await resRep.json();
+            if (repData.success) {
+                renderReproTable(repData.data); // ✅ Llama a renderReproTable, no renderRiskTable
+            }
         }
         
-        // 3. Gráfico de Estados
+        // 4. Gráfico de Estados
         const resPie = await fetch('/api/kpis.php?action=chart_data&group_by=estado');
         if (resPie.ok) {
             const pieData = await resPie.json();
             if (pieData.success && pieData.data?.length > 0) {
                 renderPieChartEstados(pieData.data);
-            }
-        }
-        
-        // 4. Tabla de Reprogramadas
-        const resRep = await fetch('/api/kpis.php?action=reprogramadas&limit=10');
-        if (resRep.ok) {
-            const repData = await resRep.json();
-            if (repData.success) {
-                renderReproTable(repData.data);
             }
         }
         
@@ -3210,28 +3209,52 @@ function renderPieChart(data) {
     });
 }
 
-// === TABLA DE REPROGRAMADAS ===
+// === TABLA DE REPROGRAMADAS (Modo Estándar) ===
 function renderReproTable(data) {
-    // ✅ Usamos el ID que SÍ existe en tu HTML
-    const tbody = document.getElementById('tablaOtsRecentes');
-    if (!tbody) return; // Blindaje: si no existe, sale silenciosamente
+    const tbody = document.getElementById('tablaReprogramadas');
+    if (!tbody) return;
+    
+    // Restaurar título y encabezados estándar
+    const titleEl = document.getElementById('tablaComodinTitle');
+    if (titleEl) titleEl.textContent = '🔄 OTs Reprogramadas (Mayor Impacto)';
+    
+    const thCol4 = document.getElementById('thCol4');
+    const thCol6 = document.getElementById('thCol6');
+    if (thCol4) thCol4.textContent = 'Veces Reprog.';
+    if (thCol6) thCol6.textContent = 'Retraso';
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">No hay OTs recientes para mostrar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">✅ No hay OTs reprogramadas para mostrar</td></tr>';
         return;
     }
     
+    // ✅ Generar FILAS de datos (no encabezados)
     tbody.innerHTML = data.map(o => `
-        <thead id="tablaComodinHeader">
-            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
-                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
-                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
-                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
-                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH Plan</th>
-                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Fecha Programada</th>
-                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso/Veces</th>
-            </tr>
-        </thead>
+        <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" 
+            onmouseover="this.style.background='#f8fafc'" 
+            onmouseout="this.style.background='white'">
+            <td style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
+                ${o.codigo_ot || '-'}
+            </td>
+            <td style="padding:0.75rem; color:#64748b; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" 
+                title="${o.nombre_equipo || ''}">
+                ${o.nombre_equipo || '-'}
+            </td>
+            <td style="padding:0.75rem; text-align:center;">
+                <span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600;">
+                    ${(o.ultimo_estado || o.estado || 'pendiente').replace('_', ' ')}
+                </span>
+            </td>
+            <td style="padding:0.75rem; text-align:center; font-family:monospace;">
+                ${parseFloat(o.total_hh_planificadas || o.hh_plan || 0).toFixed(1)}
+            </td>
+            <td style="padding:0.75rem; text-align:center; color:#64748b;">
+                ${o.ultima_fecha_programada ? new Date(o.ultima_fecha_programada).toLocaleDateString('es-CL') : '-'}
+            </td>
+            <td style="padding:0.75rem; text-align:center; color:${(o.veces_reprogramadas || 0) > 0 ? '#ef4444' : '#64748b'}; font-weight:${(o.veces_reprogramadas || 0) > 0 ? 'bold' : 'normal'}">
+                ${(o.veces_reprogramadas || 0) > 0 ? '+' + o.veces_reprogramadas : '0'}
+            </td>
+        </tr>
     `).join('');
 }
 
@@ -3803,23 +3826,34 @@ function clearRiskMode() {
     
     // 1. Restaurar estilos de la ficha
     const card = document.getElementById('kpi-risk-card');
-    card.style.background = 'white';
-    card.style.color = 'inherit';
-    const hint = card.querySelector('[id="kpi-risk-hint"]');
-    hint.style.color = '#ef4444';
-    hint.innerHTML = '⚠️ Click para ver detalle';
+    if (card) {
+        card.style.background = 'white';
+        card.style.color = 'inherit';
+        const hint = card.querySelector('[id="kpi-risk-hint"]');
+        if (hint) {
+            hint.style.color = '#ef4444';
+            hint.innerHTML = '⚠️ Click para ver detalle';
+        }
+    }
     
     // 2. Ocultar botón X
-    document.getElementById('kpi-risk-close').style.display = 'none';
+    const closeBtn = document.getElementById('kpi-risk-close');
+    if (closeBtn) closeBtn.style.display = 'none';
     
     // 3. Restaurar títulos
-    const rankingTitle = document.querySelector('#containerEspecialidades').closest('div[style*="background:white"]').querySelector('h3');
+    const rankingTitle = document.querySelector('#containerEspecialidades')?.closest('div[style*="background:white"]')?.querySelector('h3');
     if (rankingTitle) rankingTitle.innerHTML = dashboardMode.originalTitle;
     
-    const tableTitle = document.getElementById('tablaReprogramadas').closest('div[style*="background:white"]').querySelector('h3');
+    const tableTitle = document.getElementById('tablaComodinTitle');
     if (tableTitle) tableTitle.innerHTML = dashboardMode.originalTableTitle;
     
-    // 4. Recargar datos estándar
+    // 4. Restaurar encabezados de tabla
+    const thCol4 = document.getElementById('thCol4');
+    const thCol6 = document.getElementById('thCol6');
+    if (thCol4) thCol4.textContent = 'Veces Reprog.';
+    if (thCol6) thCol6.textContent = 'Retraso';
+    
+    // 5. ✅ Recargar datos estándar
     loadKpis();
     
     Toast.success('✅ Vista estándar restaurada', 'Filtro limpiado');
@@ -3917,31 +3951,60 @@ function renderRiskSpecialtyCards(data) {
 }
 
 // 📋 RENDER TABLA DE OTs EN RIESGO (Comodín reutilizable)
+// === TABLA DE OTs EN RIESGO (Modo Riesgo) ===
 function renderRiskTable(data) {
     const tbody = document.getElementById('tablaReprogramadas');
     if (!tbody) return;
+    
+    // Cambiar título y encabezados para modo riesgo
+    const titleEl = document.getElementById('tablaComodinTitle');
+    if (titleEl) titleEl.innerHTML = '⚠️ Detalle OTs en Riesgo (Mayor Retraso)';
+    
+    const thCol4 = document.getElementById('thCol4');
+    const thCol6 = document.getElementById('thCol6');
+    if (thCol4) thCol4.textContent = 'HH Plan';
+    if (thCol6) thCol6.textContent = 'Días Retraso';
     
     if (!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">✅ No hay OTs en riesgo para este periodo</td></tr>';
         return;
     }
     
+    // ✅ Generar FILAS de datos (no encabezados)
     tbody.innerHTML = data.map(o => {
         const diasRetraso = o.dias_retraso || 0;
         const riesgoColor = diasRetraso > 30 ? '#991b1b' : diasRetraso > 14 ? '#dc2626' : '#ef4444';
         const riesgoBg = diasRetraso > 30 ? '#fee2e2' : diasRetraso > 14 ? '#fef2f2' : 'white';
         
         return `
-            <thead id="tablaComodinHeader">
-                <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
-                    <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
-                    <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
-                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
-                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH Plan</th>
-                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Fecha Programada</th>
-                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso/Veces</th>
-                </tr>
-            </thead>
+            <tr style="border-bottom:1px solid #f1f5f9; background:${riesgoBg}; transition:background 0.2s;" 
+                onmouseover="this.style.background='#fef2f2'" 
+                onmouseout="this.style.background='${riesgoBg}'">
+                <td style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
+                    ${o.codigo_ot || '-'}
+                </td>
+                <td style="padding:0.75rem; color:#64748b;">
+                    ${o.nombre_equipo || '-'}
+                    <br>
+                    <small style="color:#94a3b8;">${o.especialidad_nombre || ''}</small>
+                </td>
+                <td style="padding:0.75rem; text-align:center;">
+                    <span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600;">
+                        ${(o.ultimo_estado || 'pendiente').replace('_', ' ')}
+                    </span>
+                </td>
+                <td style="padding:0.75rem; text-align:center; font-family:monospace;">
+                    ${parseFloat(o.total_hh_planificadas || 0).toFixed(1)}
+                </td>
+                <td style="padding:0.75rem; text-align:center; color:#64748b;">
+                    ${o.ultima_fecha_programada ? new Date(o.ultima_fecha_programada).toLocaleDateString('es-CL') : '-'}
+                </td>
+                <td style="padding:0.75rem; text-align:center;">
+                    <span style="background:${riesgoColor}; color:white; padding:4px 10px; border-radius:12px; font-weight:700; font-size:0.85rem;">
+                        ${diasRetraso}d
+                    </span>
+                </td>
+            </tr>
         `;
     }).join('');
 }
