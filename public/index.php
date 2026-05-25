@@ -708,7 +708,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                                     <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso</th>
                                 </tr>
                             </thead>
-                            <tbody id="tablaReprogramadas">
+                            <tbody id="tablaOtsRecentes">
                                 <!-- Se llena con JS -->
                             </tbody>
                         </table>
@@ -2937,92 +2937,54 @@ let chartEsp = null;
 let chartEstados = null;
 
 async function loadKpis() {
-    const btn = event?.target;
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '⏳ Cargando...';
-    }
-    
     try {
-        // 1. KPIs Globales
         const resGlobal = await fetch('/api/kpis.php?action=global');
         const dataGlobal = await resGlobal.json();
         
         if (dataGlobal.success && dataGlobal.data) {
             const d = dataGlobal.data;
             
-            // ✅ Helper seguro: solo actualiza si el elemento existe
-            const updateText = (id, value, suffix = '') => {
+            // ✅ Helper 100% seguro: nunca lanza error si el ID no existe
+            const updateEl = (id, value, suffix = '') => {
                 const el = document.getElementById(id);
                 if (el && value !== undefined && value !== null) {
                     el.textContent = (isFinite(value) ? value : 0) + suffix;
                 }
             };
             
-            const updatePercent = (id, value) => {
-                const el = document.getElementById(id);
-                if (el && value !== undefined && value !== null) {
-                    el.textContent = (isFinite(value) ? value : 0) + '%';
-                }
-            };
+            // Asignamos HHs Reales (calculadas) al único ID disponible
+            updateEl('kpi-sla', d.sla_percent, '%');
+            updateEl('kpi-hh-real', d.hh_real.toFixed(1), '');
+            updateEl('kpi-ots-closed', d.ots_closed, '');
+            updateEl('kpi-ots-risk', d.ots_riesgo, '');
             
-            const updateProgress = (id, percent) => {
-                const el = document.getElementById(id);
-                if (el && percent !== undefined && percent !== null) {
-                    el.style.width = Math.min(isFinite(percent) ? percent : 0, 100) + '%';
-                }
-            };
-            
-            // Actualizar KPIs existentes en tu HTML
-            updatePercent('kpi-sla', d.sla_percent);
-            
-            // Ficha 2: Solo hay kpi-hh-real → mostramos HHs Planificadas ahí
-            updateText('kpi-hh-real', (d.hh_plan ?? 0).toFixed(1), '');
-            
-            updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
-            updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
-            
-            // Barra de progreso (100% porque mostramos planificadas)
-            updateProgress('kpi-hh-progress', 100);
+            // Barra de progreso (segura)
+            const progressEl = document.getElementById('kpi-hh-progress');
+            if (progressEl) progressEl.style.width = '100%';
         }
         
-        // 2. Gráfico de Barras: HHs Planificadas por Especialidad
+        // Gráficos y Tabla (carga condicional segura)
         const resBar = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
         if (resBar.ok) {
             const barData = await resBar.json();
-            if (barData.success && barData.data?.length > 0) {
-                renderSimpleBarChart(barData.data);
-            }
+            if (barData.success && barData.data?.length) renderBarChart(barData.data);
         }
-        
-        // 3. Gráfico Circular: Estados
+
         const resPie = await fetch('/api/kpis.php?action=chart_data&group_by=estado');
         if (resPie.ok) {
             const pieData = await resPie.json();
-            if (pieData.success && pieData.data?.length > 0) {
-                renderPieChart(pieData.data);
-            }
+            if (pieData.success && pieData.data?.length) renderPieChart(pieData.data);
         }
 
-        // 4. Tabla Reprogramadas
         const resRep = await fetch('/api/kpis.php?action=reprogramadas&limit=10');
         if (resRep.ok) {
             const repData = await resRep.json();
-            if (repData.success) {
-                renderReproTable(repData.data);
-            }
+            if (repData.success) renderReproTable(repData.data);
         }
-        
-        Toast.success('📊 Datos actualizados', 'KPIs');
         
     } catch (err) {
         console.error('Error KPIs:', err);
         Toast.error('Error al cargar indicadores', 'Atención');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '🔄 Actualizar Datos';
-        }
     }
 }
 

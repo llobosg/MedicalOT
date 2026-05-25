@@ -18,69 +18,47 @@ try {
 
     switch ($action) {
         case 'global':
-            // Obtener filtros del query string
-            $year = $_GET['year'] ?? date('Y');
-            $month = $_GET['month'] ?? null;
-            $week = $_GET['week'] ?? null;
-            
-            // Construir WHERE dinámico
-            $where = ["YEAR(ultima_fecha_programada) = ?"];
-            $params = [$year];
-            
-            if ($month && $month !== '') {
-                $where[] = "mes_carga = ?";
-                $params[] = $month;
-            }
-            if ($week && $week !== '') {
-                $where[] = "semana_carga = ?";
-                $params[] = $week;
-            }
-            
-            $whereClause = implode(" AND ", $where);
-            
-            // Consulta con filtros
-            $stats = $pdo->prepare("
+            // 1. HHs Plan (desde planilla) + HHs Reales (calculadas por tiempo en sistema)
+            $stats = $pdo->query("
                 SELECT 
                     COUNT(*) as total_ots,
                     COALESCE(SUM(total_hh_planificadas), 0) as hh_plan,
-                    COALESCE(SUM(total_hh_reales_acumuladas), 0) as hh_real
+                    COALESCE(SUM(
+                        CASE 
+                            WHEN ultimo_estado IN ('completada', 'cerrada') 
+                            THEN TIMESTAMPDIFF(HOUR, primera_carga, ultima_carga) 
+                            ELSE 0 
+                        END
+                    ), 0) as hh_real_calc
                 FROM ot_resumen_actual
-                WHERE $whereClause
-            ");
-            $stats->execute($params);
-            $stats = $stats->fetch(PDO::FETCH_ASSOC);
+            ")->fetch(PDO::FETCH_ASSOC);
 
-            // SLA con mismos filtros
-            $slaWhere = str_replace("YEAR(ultima_fecha_programada)", "YEAR(ultima_fecha_programada)", $whereClause);
-            $sla = $pdo->prepare("
+            // 2. SLA (mismo filtro de estados finales)
+            $sla = $pdo->query("
                 SELECT 
                     COUNT(*) as total_cerradas,
                     SUM(CASE WHEN dias_retraso <= 3 THEN 1 ELSE 0 END) as dentro_sla
                 FROM ot_resumen_actual 
-                WHERE ultimo_estado IN ('completada', 'cerrada') AND $slaWhere
-            ");
-            $sla->execute($params);
-            $sla = $sla->fetch(PDO::FETCH_ASSOC);
+                WHERE ultimo_estado IN ('completada', 'cerrada')
+            ")->fetch(PDO::FETCH_ASSOC);
             
             $total_cerradas = (int)($sla['total_cerradas'] ?? 0);
             $dentro_sla = (int)($sla['dentro_sla'] ?? 0);
             $slaPercent = $total_cerradas > 0 ? round(($dentro_sla / $total_cerradas) * 100, 1) : 0;
 
-            // OTs en Riesgo con filtros
-            $riesgoStmt = $pdo->prepare("
+            // 3. OTs en Riesgo
+            $riesgo = $pdo->query("
                 SELECT COUNT(*) FROM ot_resumen_actual 
                 WHERE ultimo_estado IN ('pendiente', 'asignada', 'en_ejecucion') 
-                AND dias_retraso > 7 AND $whereClause
-            ");
-            $riesgoStmt->execute($params);
-            $riesgo = $riesgoStmt->fetchColumn();
+                AND dias_retraso > 7
+            ")->fetchColumn();
 
             echo json_encode([
                 'success' => true,
                 'data' => [
                     'total_ots'   => (int)($stats['total_ots'] ?? 0),
                     'hh_plan'     => floatval($stats['hh_plan'] ?? 0),
-                    'hh_real'     => floatval($stats['hh_real'] ?? 0),
+                    'hh_real'     => floatval($stats['hh_real_calc'] ?? 0), // ✅ Calculado automáticamente
                     'sla_percent' => floatval($slaPercent),
                     'ots_closed'  => $total_cerradas,
                     'ots_riesgo'  => (int)($riesgo ?? 0)
