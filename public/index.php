@@ -3269,7 +3269,7 @@ function renderReproTable(data) {
         <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" 
             onmouseover="this.style.background='#f8fafc'" 
             onmouseout="this.style.background='white'">
-            <tbody style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
+            <td style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
                 ${o.id_prevision_sic || '-'}
             </td>
             <td style="padding:0.75rem; color:#64748b; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" 
@@ -4060,7 +4060,7 @@ function renderRiskTable(data) {
             <tr style="border-bottom:1px solid #f1f5f9; background:${riesgoBg}; transition:background 0.2s;" 
                 onmouseover="this.style.background='#fef2f2'" 
                 onmouseout="this.style.background='${riesgoBg}'">
-                <tbody style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
+                <td style="padding:0.75rem; font-weight:600; font-family:monospace; color:#1e293b;">
                     ${o.id_prevision_sic || '-'}
                 </td>
                 <td style="padding:0.75rem; color:#64748b;">
