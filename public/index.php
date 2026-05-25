@@ -666,13 +666,25 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 </div>
 
                 <!-- Ficha 4: OTs en Riesgo -->
-                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #ef4444;">
+                <!-- Ficha 4: OTs en Riesgo (CLICKEABLE) -->
+                <div id="kpi-risk-card" 
+                    onclick="toggleRiskMode()" 
+                    style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #ef4444; cursor:pointer; position:relative; transition:all 0.3s;">
+                    
+                    <!-- Botón X para limpiar filtro (solo visible en modo riesgo) -->
+                    <button id="kpi-risk-close" 
+                            onclick="event.stopPropagation(); clearRiskMode();" 
+                            style="position:absolute; top:0.5rem; right:0.5rem; background:#fee2e2; color:#ef4444; border:none; width:24px; height:24px; border-radius:50%; cursor:pointer; font-weight:bold; display:none; align-items:center; justify-content:center; font-size:0.85rem;"
+                            title="Limpiar filtro">
+                        ✕
+                    </button>
+                    
                     <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs en Riesgo</div>
                     <div style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">
                         <span id="kpi-ots-risk">--</span>
                     </div>
-                    <div style="font-size:0.75rem; color:#ef4444; margin-top:0.25rem;">
-                        ⚠️ Retrasadas &gt; 7 días
+                    <div id="kpi-risk-hint" style="font-size:0.75rem; color:#ef4444; margin-top:0.25rem;">
+                        ⚠️ Click para ver detalle
                     </div>
                 </div>
             </div>
@@ -1239,6 +1251,13 @@ $isAdmin = ($user['role'] === 'admin_hosp');
     </footer>
 
     <script>
+        // 🎯 ESTADO DEL DASHBOARD: Estándar o Filtrado por Riesgo
+        let dashboardMode = {
+            mode: 'standard', // 'standard' | 'risk'
+            originalTitle: '🏆 Ranking de Especialidades',
+            originalTableTitle: '🔄 OTs Reprogramadas (Mayor Impacto)'
+        };
+
         // ✅ ÚNICA DECLARACIÓN GLOBAL DE FILTROS
         let currentFilters = { 
             page: 1, search: '', esp: '', estado: '', mes: '', 
@@ -3203,30 +3222,16 @@ function renderReproTable(data) {
     }
     
     tbody.innerHTML = data.map(o => `
-        <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" 
-            onmouseover="this.style.background='#f8fafc'" 
-            onmouseout="this.style.background='white'">
-            <td style="padding:0.75rem; font-weight:600; color:#1e293b; font-family:monospace;">
-                ${o.codigo_ot || '-'}
-            </td>
-            <td style="padding:0.75rem; color:#64748b; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${o.nombre_equipo || ''}">
-                ${o.nombre_equipo || '-'}
-            </td>
-            <td style="padding:0.75rem; text-align:center;">
-                <span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:0.75rem;">
-                    ${(o.ultimo_estado || o.estado || 'pendiente').replace('_', ' ')}
-                </span>
-            </td>
-            <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">
-                ${parseFloat(o.total_hh_planificadas || o.hh_plan || 0).toFixed(1)}
-            </td>
-            <td style="padding:0.75rem; text-align:center; color:#64748b; font-family:monospace;">
-                ${parseFloat(o.total_hh_reales_acumuladas || o.hh_real || 0).toFixed(1)}
-            </td>
-            <td style="padding:0.75rem; text-align:center; color:${(o.dias_retraso || 0) > 7 ? '#ef4444' : '#64748b'}; font-weight:${(o.dias_retraso || 0) > 7 ? 'bold' : 'normal'}">
-                ${(o.dias_retraso || 0) > 0 ? '+' + o.dias_retraso + 'd' : '0d'}
-            </td>
-        </tr>
+        <thead id="tablaComodinHeader">
+            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
+                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
+                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
+                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH Plan</th>
+                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Fecha Programada</th>
+                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso/Veces</th>
+            </tr>
+        </thead>
     `).join('');
 }
 
@@ -3752,6 +3757,204 @@ function renderSpecialtyCards(data) {
             </div>
         `;
     }).join('');
+}
+// 🎯 ACTIVAR/DESACTIVAR MODO RIESGO
+async function toggleRiskMode() {
+    if (dashboardMode.mode === 'standard') {
+        await activateRiskMode();
+    } else {
+        clearRiskMode();
+    }
+}
+
+async function activateRiskMode() {
+    dashboardMode.mode = 'risk';
+    
+    // 1. Resaltar la ficha
+    const card = document.getElementById('kpi-risk-card');
+    card.style.background = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
+    card.style.color = 'white';
+    card.querySelector('[id="kpi-risk-hint"]').style.color = '#fecaca';
+    card.querySelector('[id="kpi-risk-hint"]').innerHTML = '🔍 Filtro activo · Click para desactivar';
+    
+    // 2. Mostrar botón X
+    document.getElementById('kpi-risk-close').style.display = 'flex';
+    
+    // 3. Actualizar título del Ranking
+    const rankingTitle = document.querySelector('#containerEspecialidades').closest('div[style*="background:white"]').querySelector('h3');
+    if (rankingTitle) {
+        rankingTitle.innerHTML = '⚠️ OTs en Riesgo por Especialidad';
+    }
+    
+    // 4. Actualizar título de la tabla
+    const tableTitle = document.getElementById('tablaReprogramadas').closest('div[style*="background:white"]').querySelector('h3');
+    if (tableTitle) {
+        tableTitle.innerHTML = '⚠️ Detalle OTs en Riesgo (Mayor Retraso)';
+    }
+    
+    // 5. Cargar datos filtrados
+    await loadRiskData();
+    
+    Toast.info('🔍 Mostrando OTs en Riesgo', 'Filtro activo');
+}
+
+function clearRiskMode() {
+    dashboardMode.mode = 'standard';
+    
+    // 1. Restaurar estilos de la ficha
+    const card = document.getElementById('kpi-risk-card');
+    card.style.background = 'white';
+    card.style.color = 'inherit';
+    const hint = card.querySelector('[id="kpi-risk-hint"]');
+    hint.style.color = '#ef4444';
+    hint.innerHTML = '⚠️ Click para ver detalle';
+    
+    // 2. Ocultar botón X
+    document.getElementById('kpi-risk-close').style.display = 'none';
+    
+    // 3. Restaurar títulos
+    const rankingTitle = document.querySelector('#containerEspecialidades').closest('div[style*="background:white"]').querySelector('h3');
+    if (rankingTitle) rankingTitle.innerHTML = dashboardMode.originalTitle;
+    
+    const tableTitle = document.getElementById('tablaReprogramadas').closest('div[style*="background:white"]').querySelector('h3');
+    if (tableTitle) tableTitle.innerHTML = dashboardMode.originalTableTitle;
+    
+    // 4. Recargar datos estándar
+    loadKpis();
+    
+    Toast.success('✅ Vista estándar restaurada', 'Filtro limpiado');
+}
+
+// 📊 CARGAR DATOS FILTRADOS POR RIESGO
+async function loadRiskData() {
+    const params = new URLSearchParams({
+        year: currentFilters.year || new Date().getFullYear(),
+        month: currentFilters.month || '',
+        limit: 20
+    });
+    
+    try {
+        // 1. Ranking de especialidades SOLO en riesgo
+        const resEsp = await fetch(`/api/kpis.php?action=risk_by_especialidad&${params}`);
+        const espData = await resEsp.json();
+        if (espData.success) {
+            renderRiskSpecialtyCards(espData.data);
+        }
+        
+        // 2. Detalle de OTs en riesgo
+        const resOts = await fetch(`/api/kpis.php?action=risk_ots&${params}`);
+        const otsData = await resOts.json();
+        if (otsData.success) {
+            renderRiskTable(otsData.data);
+        }
+    } catch (err) {
+        console.error('Error cargando datos de riesgo:', err);
+    }
+}
+
+// 🏆 RENDER RANKING EN MODO RIESGO (muestra OTs en lugar de HH)
+function renderRiskSpecialtyCards(data) {
+    const container = document.getElementById('containerEspecialidades');
+    const totalEl = document.getElementById('kpi-total-hh-esp');
+    
+    if (!container) return;
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:2rem;">✅ No hay OTs en riesgo para este periodo</p>';
+        if (totalEl) totalEl.textContent = '0';
+        return;
+    }
+    
+    const totalOts = data.reduce((sum, d) => sum + (d.value || 0), 0);
+    const maxOts = Math.max(...data.map(d => d.value || 0));
+    
+    // Cambiar etiqueta a "OTs" en lugar de "HH"
+    if (totalEl) {
+        totalEl.textContent = totalOts.toLocaleString('es-CL');
+        totalEl.nextElementSibling && (totalEl.nextElementSibling.textContent = 'OTs');
+    }
+    
+    const colors = {
+        'M-POLIVALENTE': { bg: '#fee2e2', bar: '#ef4444', text: '#991b1b' },
+        'M-ELECTRICIDAD': { bg: '#fef3c7', bar: '#f59e0b', text: '#92400e' },
+        'M-GASFITERÍA': { bg: '#fed7aa', bar: '#f97316', text: '#9a3412' },
+        'M-GASFITERIA': { bg: '#fed7aa', bar: '#f97316', text: '#9a3412' },
+        'M-ELECTRÓNICA': { bg: '#ede9fe', bar: '#8b5cf6', text: '#5b21b6' },
+        'M-ELECTRONICA': { bg: '#ede9fe', bar: '#8b5cf6', text: '#5b21b6' },
+        'M-ELECTROMECÁNICA': { bg: '#fecaca', bar: '#dc2626', text: '#7f1d1d' },
+        'M-CLIMATIZACIÓN': { bg: '#cffafe', bar: '#06b6d4', text: '#155e75' }
+    };
+    const defaultColor = { bg: '#fef2f2', bar: '#ef4444', text: '#991b1b' };
+    
+    container.innerHTML = data.map((d, idx) => {
+        const ots = d.value || 0;
+        const pct = totalOts > 0 ? ((ots / totalOts) * 100) : 0;
+        const barWidth = maxOts > 0 ? ((ots / maxOts) * 100) : 0;
+        const color = colors[d.label] || defaultColor;
+        const rankIcon = idx === 0 ? '🚨' : idx === 1 ? '⚠️' : idx === 2 ? '⚡' : `#${idx + 1}`;
+        
+        return `
+            <div style="background:${color.bg}; border-radius:0.75rem; padding:0.85rem 1rem; border-left:3px solid ${color.bar};">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-size:1rem;">${rankIcon}</span>
+                        <span style="font-weight:700; color:${color.text}; font-size:0.95rem;">${d.label}</span>
+                    </div>
+                    <div style="display:flex; align-items:baseline; gap:0.4rem;">
+                        <span style="font-weight:700; color:${color.text}; font-size:1.05rem; font-family:monospace;">${ots}</span>
+                        <span style="font-size:0.75rem; color:${color.text}; opacity:0.8;">OTs</span>
+                        <span style="background:white; color:#dc2626; padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600;">
+                            máx ${d.max_retraso}d
+                        </span>
+                    </div>
+                </div>
+                <div style="height:8px; background:rgba(255,255,255,0.6); border-radius:4px; overflow:hidden;">
+                    <div style="height:100%; background:${color.bar}; width:${barWidth}%; border-radius:4px;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 📋 RENDER TABLA DE OTs EN RIESGO (Comodín reutilizable)
+function renderRiskTable(data) {
+    const tbody = document.getElementById('tablaReprogramadas');
+    if (!tbody) return;
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">✅ No hay OTs en riesgo para este periodo</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.map(o => {
+        const diasRetraso = o.dias_retraso || 0;
+        const riesgoColor = diasRetraso > 30 ? '#991b1b' : diasRetraso > 14 ? '#dc2626' : '#ef4444';
+        const riesgoBg = diasRetraso > 30 ? '#fee2e2' : diasRetraso > 14 ? '#fef2f2' : 'white';
+        
+        return `
+            <thead id="tablaComodinHeader">
+                <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                    <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
+                    <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
+                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
+                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">HH Plan</th>
+                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Fecha Programada</th>
+                    <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso/Veces</th>
+                </tr>
+            </thead>
+        `;
+    }).join('');
+}
+function updateTableHeaders(mode) {
+    const thead = document.getElementById('tablaComodinHeader');
+    if (!thead) return;
+    
+    const ths = thead.querySelectorAll('th');
+    if (mode === 'risk') {
+        ths[5].textContent = 'Días Retraso'; // Última columna
+    } else {
+        ths[5].textContent = 'Veces Reprog.';
+    }
 }
 </script>
     <!-- MODAL ESPECIALIDADES -->

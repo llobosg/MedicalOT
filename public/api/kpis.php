@@ -183,6 +183,106 @@ try {
             $stmt->execute();
             echo json_encode(['success'=>true, 'data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
             break;
+        
+        case 'risk_ots':
+            // Detalle de OTs en riesgo (para la tabla comodín)
+            $year = $_GET['year'] ?? date('Y');
+            $month = $_GET['month'] ?? null;
+            $limit = min((int)($_GET['limit'] ?? 20), 50);
+            
+            $where = ["YEAR(ultima_fecha_programada) = ?"];
+            $params = [$year];
+            
+            if ($month && $month !== '') {
+                $where[] = "mes_carga = ?";
+                $params[] = $month;
+            }
+            
+            $where[] = "ultimo_estado IN ('pendiente', 'asignada', 'en_ejecucion')";
+            $where[] = "dias_retraso > 7";
+            
+            $whereClause = implode(" AND ", $where);
+            
+            $stmt = $pdo->prepare("
+                SELECT 
+                    codigo_ot,
+                    nombre_equipo,
+                    COALESCE(id_especialidad, 0) as id_especialidad,
+                    ultimo_estado,
+                    dias_retraso,
+                    ultima_fecha_programada,
+                    total_hh_planificadas
+                FROM ot_resumen_actual
+                WHERE $whereClause
+                ORDER BY dias_retraso DESC, total_hh_planificadas DESC
+                LIMIT ?
+            ");
+            $params[] = $limit;
+            $stmt->execute($params);
+            
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Mapear especialidad
+            $espMap = [
+                50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA',
+                53=>'M-ELECTRÓNICA', 54=>'M-CARPINTERÍA', 55=>'M-ELECTROMECÁNICA',
+                57=>'M-POLIVALENTE'
+            ];
+            foreach ($rows as &$r) {
+                $r['especialidad_nombre'] = $espMap[$r['id_especialidad']] ?? "Esp. {$r['id_especialidad']}";
+            }
+            
+            echo json_encode(['success' => true, 'data' => $rows, 'total_count' => count($rows)]);
+            break;
+
+        case 'risk_by_especialidad':
+            // Ranking de especialidades SOLO con OTs en riesgo
+            $year = $_GET['year'] ?? date('Y');
+            $month = $_GET['month'] ?? null;
+            
+            $where = ["YEAR(ultima_fecha_programada) = ?"];
+            $params = [$year];
+            
+            if ($month && $month !== '') {
+                $where[] = "mes_carga = ?";
+                $params[] = $month;
+            }
+            
+            $where[] = "ultimo_estado IN ('pendiente', 'asignada', 'en_ejecucion')";
+            $where[] = "dias_retraso > 7";
+            $where[] = "id_especialidad IS NOT NULL";
+            
+            $whereClause = implode(" AND ", $where);
+            
+            $stmt = $pdo->prepare("
+                SELECT 
+                    id_especialidad as code,
+                    COUNT(*) as count_ots,
+                    ROUND(SUM(total_hh_planificadas), 1) as hh_total,
+                    MAX(dias_retraso) as max_retraso
+                FROM ot_resumen_actual
+                WHERE $whereClause
+                GROUP BY id_especialidad
+                ORDER BY count_ots DESC
+                LIMIT 10
+            ");
+            $stmt->execute($params);
+            
+            $espMap = [
+                50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA',
+                53=>'M-ELECTRÓNICA', 54=>'M-CARPINTERÍA', 55=>'M-ELECTROMECÁNICA',
+                57=>'M-POLIVALENTE'
+            ];
+            
+            $data = array_map(fn($r) => [
+                'label' => $espMap[$r['code']] ?? "Esp. {$r['code']}",
+                'value' => (int)$r['count_ots'],
+                'hh' => floatval($r['hh_total']),
+                'max_retraso' => (int)$r['max_retraso']
+            ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+            
+            echo json_encode(['success' => true, 'data' => $data]);
+            break;
 
         default: throw new Exception("Acción no válida");
     }
