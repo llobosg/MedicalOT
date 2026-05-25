@@ -590,149 +590,153 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         </section>
 
         <!-- MÓDULO 4: DASHBOARD KPIs (EMILY VERSION) -->
-        <section id="kpis" class="module-section">
-            <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
-                
-                <!-- Header -->
-                <div style="margin-bottom: 2rem; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <h2 style="margin:0; color:#1e293b;">Panel de Control Operativo</h2>
-                        <p style="color:#64748b; margin-top:0.5rem;">Análisis en tiempo real de la ejecución de mantenimientos.</p>
-                    </div>
-                    <button onclick="loadKpis()" style="background:#3b82f6; color:white; border:none; padding:0.5rem 1rem; border-radius:0.5rem; cursor:pointer;">
-                        🔄 Actualizar Datos
-                    </button>
+        <!-- MÓDULO 4: DASHBOARD KPIs -->
+        <section id="kpis" class="module-section" style="padding: 2rem; max-width: 1400px; margin: 0 auto; overflow-y: auto;">
+            
+            <!-- Header con título y botón actualizar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <h2 style="margin:0; color:#1e293b; font-size:1.5rem; font-weight:700;">📊 Panel de Control Operativo</h2>
+                    <p style="color:#64748b; margin:0.25rem 0 0 0; font-size:0.9rem;">Análisis en tiempo real de mantenimientos programados</p>
                 </div>
-
-                <!-- Filtros Temporales -->
-                <div style="display:flex; gap:0.75rem; align-items:center; margin-bottom:1rem; flex-wrap:wrap;">
-                    <label style="font-size:0.85rem; color:#64748b; font-weight:500;">📅 Filtrar por:</label>
-                    
-                    <select id="filterYear" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff;">
+                
+                <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+                    <select id="filterYear" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff; font-size:0.85rem;">
                         <option value="2026">2026</option>
                         <option value="2025">2025</option>
                     </select>
-                    
-                    <select id="filterMonth" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff;">
+                    <select id="filterMonth" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff; font-size:0.85rem;">
                         <option value="">Todo el año</option>
-                        <option value="enero">Enero</option>
-                        <option value="febrero">Febrero</option>
-                        <option value="marzo">Marzo</option>
-                        <option value="abril">Abril</option>
-                        <option value="mayo">Mayo</option>
-                        <option value="junio">Junio</option>
-                        <option value="julio">Julio</option>
-                        <option value="agosto">Agosto</option>
-                        <option value="septiembre">Septiembre</option>
-                        <option value="octubre">Octubre</option>
-                        <option value="noviembre">Noviembre</option>
-                        <option value="diciembre">Diciembre</option>
+                        <option value="enero">Enero</option><option value="febrero">Febrero</option>
+                        <option value="marzo">Marzo</option><option value="abril">Abril</option>
+                        <option value="mayo">Mayo</option><option value="junio">Junio</option>
+                        <option value="julio">Julio</option><option value="agosto">Agosto</option>
+                        <option value="septiembre">Septiembre</option><option value="octubre">Octubre</option>
+                        <option value="noviembre">Noviembre</option><option value="diciembre">Diciembre</option>
                     </select>
-                    
-                    <select id="filterWeek" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff;">
+                    <select id="filterWeek" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff; font-size:0.85rem;">
                         <option value="">Todo el mes</option>
-                        <!-- Se llena dinámicamente -->
                     </select>
-                    
-                    <button onclick="resetFilters()" style="padding:0.5rem 1rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer; color:#64748b;">
-                        🔄 Limpiar
+                    <button onclick="loadKpis()" style="background:#10b981; color:white; border:none; padding:0.5rem 1rem; border-radius:0.5rem; cursor:pointer; font-weight:600; font-size:0.85rem;">
+                        🔄 Actualizar
                     </button>
                 </div>
-
-                <!-- Fichas Superiores (KPIs Globales) -->
-                <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:1rem; margin-bottom: 1.5rem; overflow-x:auto;">
-                    
-                    <!-- Ficha 1: SLA Cumplido -->
-                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #10b981;">
-                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">SLA Cumplido</div>
-                        <div id="kpi-sla" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--%</div>
-                        <div style="font-size:0.8rem; color:#10b981; margin-top:0.25rem;">✅ De OTs completadas a tiempo</div>
-                    </div>
-
-                    <!-- Ficha 2: HHs Planificadas (etapa de carga) -->
-                    <!-- Gráfico 1: HHs por Especialidad (Versión Cards Rápidas) -->
-                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                            <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">🏆 Ranking de Especialidades (HH Plan)</h3>
-                            <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <span id="kpi-total-hh-esp" style="font-size:1.1rem; font-weight:700; color:#3b82f6;">--</span>
-                                <span style="font-size:0.8rem; color:#64748b;">HH totales</span>
-                            </div>
-                        </div>
-                        <div id="containerEspecialidades" style="display:flex; flex-direction:column; gap:0.75rem; max-height:350px; overflow-y:auto;">
-                            <!-- Se llena con JS -->
-                        </div>
-                    </div>
-
-                    <!-- Ficha 3: OTs Cerradas -->
-                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #8b5cf6;">
-                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs Cerradas</div>
-                        <div id="kpi-ots-closed" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--</div>
-                        <div style="font-size:0.8rem; color:#8b5cf6; margin-top:0.25rem;">📦 Completadas en el periodo</div>
-                    </div>
-
-                    <!-- Ficha 4: OTs en Riesgo -->
-                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #ef4444;">
-                        <div style="font-size:0.85rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs en Riesgo</div>
-                        <div id="kpi-ots-risk" style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">--</div>
-                        <div style="font-size:0.8rem; color:#ef4444; margin-top:0.25rem;">⚠️ Retrasadas > 7 días</div>
-                        <div style="font-size:0.8rem; color:#ef4444; margin-top:0.25rem;">⚠️ Oportunidades de gestión (>7 días)</div>
-                    </div>
-
-                    <!-- 🆕 Ficha 5: Total HHs Planificadas (Destacada) -->
-                    <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(59,130,246,0.3); color:white; position:relative; overflow:hidden;">
-                        <div style="position:absolute; top:-10px; right:-10px; font-size:4rem; opacity:0.15;">⚡</div>
-                        <div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; opacity:0.9; letter-spacing:0.5px;">
-                            Total HHs Planificadas
-                        </div>
-                        <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.5rem;">
-                            <span id="kpi-total-hh" style="font-size:2.2rem; font-weight:800; font-family:monospace; letter-spacing:-1px;">--</span>
-                            <span style="font-size:1rem; opacity:0.85; font-weight:500;">HH</span>
-                        </div>
-                        <div style="font-size:0.75rem; opacity:0.85; margin-top:0.25rem; display:flex; align-items:center; gap:0.25rem;">
-                            <span>📊</span> Carga anual acumulada
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gráficos -->
-                <!-- FILA 2: Gráficos Reorganizados -->
-                <div style="display:grid; grid-template-columns: 7fr 3fr; gap:1.5rem; margin-bottom:2rem;">
-                    
-                    <!-- 🏆 RANKING DE ESPECIALIDADES (AHORA EN ESPACIO PRINCIPAL) -->
-                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-top:4px solid #3b82f6;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:2px solid #f1f5f9;">
-                            <div>
-                                <h3 style="margin:0; font-size:1.2rem; color:#1e293b; font-weight:700;">
-                                    🏆 Ranking de Especialidades
-                                </h3>
-                                <p style="margin:0.25rem 0 0 0; font-size:0.8rem; color:#64748b;">
-                                    Distribución de Horas Hombre Planificadas por especialidad
-                                </p>
-                            </div>
-                            <div style="text-align:right;">
-                                <div style="font-size:0.75rem; color:#64748b; text-transform:uppercase; font-weight:600;">Total</div>
-                                <div id="kpi-total-hh-esp" style="font-size:1.4rem; font-weight:800; color:#3b82f6; font-family:monospace;">--</div>
-                                <div style="font-size:0.7rem; color:#94a3b8;">HH</div>
-                            </div>
-                        </div>
-                        <div id="containerEspecialidades" style="display:flex; flex-direction:column; gap:0.6rem; max-height:400px; overflow-y:auto; padding-right:0.5rem;">
-                            <!-- Se llena con JS -->
-                        </div>
-                    </div>
-
-                    <!-- 🥧 DISTRIBUCIÓN POR ESTADO (se mantiene a la derecha) -->
-                    <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
-                        <h3 style="margin:0 0 1rem 0; font-size:1rem; color:#1e293b; font-weight:700;">
-                            🥧 Distribución por Estado
-                        </h3>
-                        <div style="position:relative; height:280px;">
-                            <canvas id="chartEstados"></canvas>
-                        </div>
-                    </div>
-                </div>
-
             </div>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- FILA 1: FICHAS KPI (4 columnas)                            -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1rem; margin-bottom:1.5rem;">
+                
+                <!-- 🥇 Ficha 1: TOTAL HHs PLANIFICADAS (Hero - Destacada) -->
+                <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); padding:1.5rem; border-radius:1rem; box-shadow:0 4px 12px rgba(59,130,246,0.3); color:white; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-15px; right:-15px; font-size:5rem; opacity:0.12;">⚡</div>
+                    <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; opacity:0.9; letter-spacing:0.5px;">
+                        Total HHs Planificadas
+                    </div>
+                    <div style="display:flex; align-items:baseline; gap:0.4rem; margin-top:0.5rem;">
+                        <span id="kpi-total-hh" style="font-size:2rem; font-weight:800; font-family:monospace; letter-spacing:-1px;">--</span>
+                        <span style="font-size:0.9rem; opacity:0.85; font-weight:500;">HH</span>
+                    </div>
+                    <div style="font-size:0.7rem; opacity:0.85; margin-top:0.25rem; display:flex; align-items:center; gap:0.25rem;">
+                        <span>📊</span> Carga acumulada del periodo
+                    </div>
+                </div>
+
+                <!-- Ficha 2: SLA Cumplido -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #10b981;">
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">SLA Cumplido</div>
+                    <div style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">
+                        <span id="kpi-sla">--</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">
+                        ✅ De OTs completadas a tiempo
+                    </div>
+                </div>
+
+                <!-- Ficha 3: OTs Cerradas -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #8b5cf6;">
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs Cerradas</div>
+                    <div style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">
+                        <span id="kpi-ots-closed">--</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">
+                        📦 Completadas en el periodo
+                    </div>
+                </div>
+
+                <!-- Ficha 4: OTs en Riesgo -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #ef4444;">
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs en Riesgo</div>
+                    <div style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">
+                        <span id="kpi-ots-risk">--</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:#ef4444; margin-top:0.25rem;">
+                        ⚠️ Retrasadas &gt; 7 días
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- FILA 2: GRÁFICOS (70% Ranking + 30% Torta)                 -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <div style="display:grid; grid-template-columns: 7fr 3fr; gap:1.5rem; margin-bottom:2rem;">
+                
+                <!-- 🏆 RANKING DE ESPECIALIDADES (70% del espacio) -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-top:4px solid #3b82f6;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:2px solid #f1f5f9;">
+                        <div>
+                            <h3 style="margin:0; font-size:1.15rem; color:#1e293b; font-weight:700;">
+                                🏆 Ranking de Especialidades
+                            </h3>
+                            <p style="margin:0.25rem 0 0 0; font-size:0.78rem; color:#64748b;">
+                                Distribución de Horas Hombre Planificadas
+                            </p>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.7rem; color:#64748b; text-transform:uppercase; font-weight:600;">Total</div>
+                            <div id="kpi-total-hh-esp" style="font-size:1.3rem; font-weight:800; color:#3b82f6; font-family:monospace;">--</div>
+                            <div style="font-size:0.7rem; color:#94a3b8;">HH</div>
+                        </div>
+                    </div>
+                    <div id="containerEspecialidades" style="display:flex; flex-direction:column; gap:0.6rem; max-height:400px; overflow-y:auto; padding-right:0.5rem;">
+                        <!-- Se llena con JS -->
+                    </div>
+                </div>
+
+                <!-- 🥧 DISTRIBUCIÓN POR ESTADO (30% del espacio) -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <h3 style="margin:0 0 1rem 0; font-size:1rem; color:#1e293b; font-weight:700;">
+                        🥧 Distribución por Estado
+                    </h3>
+                    <div style="position:relative; height:280px;">
+                        <canvas id="chartEstados"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- FILA 3: TABLA DE OTs REPROGRAMADAS                         -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                <h3 style="margin-top:0; font-size:1.1rem; color:#1e293b;">🔄 OTs Reprogramadas (Mayor Impacto)</h3>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Código OT</th>
+                                <th style="padding:0.75rem; text-align:left; font-size:0.85rem; color:#64748b;">Equipo</th>
+                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Estado</th>
+                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Veces Reprog.</th>
+                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Fecha Programada</th>
+                                <th style="padding:0.75rem; text-align:center; font-size:0.85rem; color:#64748b;">Retraso</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaReprogramadas"></tbody>
+                    </table>
+                </div>
+            </div>
+
         </section>
 
         <!-- MÓDULO 7: VERTICALES 
@@ -2961,17 +2965,8 @@ async function loadKpis() {
         
         if (dataGlobal.success && dataGlobal.data) {
             const d = dataGlobal.data;
-
-            // Mostrar debug en consola para diagnóstico
-            if (d.debug) {
-                console.log('🔍 KPIs Debug:', d.debug);
-            }
             
-            // Si no hay datos, mostrar mensaje informativo
-            if (d.total_ots === 0) {
-                console.warn('⚠️ No se encontraron OTs con los filtros aplicados:', d.debug?.filters_applied);
-            }
-            
+            // Helper seguro
             const updateText = (id, value, suffix = '') => {
                 const el = document.getElementById(id);
                 if (el && value !== undefined && value !== null) {
@@ -2981,28 +2976,24 @@ async function loadKpis() {
             
             // KPIs existentes
             updateText('kpi-sla', d.sla_percent, '%');
-            updateText('kpi-hh-real', (d.hh_plan ?? 0).toFixed(1), '');
             updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
             updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
-
-            // 🆕 KPI NUEVO con animación de conteo
+            
+            // 🆕 KPI NUEVO: Total HHs Planificadas (con formato de miles + animación)
             const totalHHEl = document.getElementById('kpi-total-hh');
             if (totalHHEl && d.hh_plan !== undefined) {
                 const targetValue = d.hh_plan || 0;
-                const duration = 1500; // 1.5 segundos
+                const duration = 1200;
                 const startTime = performance.now();
-                const startValue = 0;
                 
                 function animateCounter(now) {
                     const progress = Math.min((now - startTime) / duration, 1);
-                    const ease = 1 - Math.pow(1 - progress, 3); // ease-out
-                    const current = startValue + (targetValue - startValue) * ease;
-                    
+                    const ease = 1 - Math.pow(1 - progress, 3);
+                    const current = targetValue * ease;
                     totalHHEl.textContent = current.toLocaleString('es-CL', {
                         minimumFractionDigits: 1,
                         maximumFractionDigits: 1
                     });
-                    
                     if (progress < 1) requestAnimationFrame(animateCounter);
                 }
                 requestAnimationFrame(animateCounter);
