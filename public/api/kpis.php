@@ -23,7 +23,16 @@ try {
             $riesgo = $pdo->query("SELECT COUNT(*) FROM ot_resumen_actual WHERE ultimo_estado IN ('pendiente','asignada','en_ejecucion') AND dias_retraso > 7")->fetchColumn();
             
             $slaPct = ($stats['total'] > 0 && $sla['cerradas'] > 0) ? round(($sla['ok'] / $sla['cerradas']) * 100, 1) : 0;
-            echo json_encode(['success'=>true, 'data'=>['total_ots'=>(int)$stats['total'], 'hh_plan'=>floatval($stats['hh_plan']), 'hh_real'=>floatval($stats['hh_real']), 'sla_percent'=>floatval($slaPct), 'ots_riesgo'=>(int)$riesgo]]);
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'sla_percent' => floatval($slaPercent ?? 0),
+                    'hh_plan' => floatval($stats['hh_plan'] ?? 0),
+                    'hh_real' => floatval($stats['hh_real'] ?? 0),
+                    'ots_closed' => (int)($sla['total_cerradas'] ?? 0),
+                    'ots_riesgo' => (int)($riesgo ?? 0)
+                ]
+            ]);
             break;
 
         case 'chart_data':
@@ -50,7 +59,10 @@ try {
                     ];
                 }, $stmt->fetchAll(PDO::FETCH_ASSOC));
             }
-            echo json_encode(['success'=>true, 'data'=>$data]);
+            echo json_encode([
+                'success' => true,
+                'data' => $data ?: [] // Nunca null, siempre array vacío si no hay datos
+            ]);
             break;
 
         case 'reprogramadas':

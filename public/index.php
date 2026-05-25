@@ -2909,42 +2909,70 @@ async function loadKpis() {
         const resGlobal = await fetch('/api/kpis.php?action=global');
         const dataGlobal = await resGlobal.json();
         
-        if (dataGlobal.success) {
+        if (dataGlobal.success && dataGlobal.data) {
             const d = dataGlobal.data;
             
-            // ✅ Animar todos los valores numéricos
-            animateValue('kpi-sla', isFinite(d.sla_percent) ? d.sla_percent : 0, '%', 1000);
+            // ✅ Helper seguro: solo actualiza si el elemento existe
+            const updateText = (id, value, suffix = '') => {
+                const el = document.getElementById(id);
+                if (el && value !== undefined && value !== null) {
+                    el.textContent = (isFinite(value) ? value : 0) + suffix;
+                }
+            };
             
-            // HHs: Mostramos PLANIFICADAS (etapa de carga)
-            const hhPlan = isFinite(d.hh_plan) ? d.hh_plan : 0;
-            animateValue('kpi-hh-plan', hhPlan, '', 1000);
-            document.getElementById('kpi-hh-real').textContent = hhPlan.toFixed(1); // Mismo valor para esta etapa
+            const updatePercent = (id, value) => {
+                const el = document.getElementById(id);
+                if (el && value !== undefined && value !== null) {
+                    el.textContent = (isFinite(value) ? value : 0) + '%';
+                }
+            };
             
-            // Barra de progreso: 100% porque mostramos planificadas vs planificadas
-            document.getElementById('kpi-hh-progress').style.width = '100%';
+            const updateProgress = (id, percent) => {
+                const el = document.getElementById(id);
+                if (el && percent !== undefined && percent !== null) {
+                    el.style.width = Math.min(isFinite(percent) ? percent : 0, 100) + '%';
+                }
+            };
             
-            // OTs Cerradas (validar null/NaN)
-            const closed = isFinite(d.ots_closed) ? d.ots_closed : 0;
-            animateValue('kpi-ots-closed', closed, '', 1000);
+            // Actualizar KPIs existentes en tu HTML
+            updatePercent('kpi-sla', d.sla_percent);
             
-            // OTs en Riesgo
-            animateValue('kpi-ots-risk', isFinite(d.ots_riesgo) ? d.ots_riesgo : 0, '', 1000);
+            // Ficha 2: Solo hay kpi-hh-real → mostramos HHs Planificadas ahí
+            updateText('kpi-hh-real', (d.hh_plan ?? 0).toFixed(1), '');
+            
+            updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
+            updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
+            
+            // Barra de progreso (100% porque mostramos planificadas)
+            updateProgress('kpi-hh-progress', 100);
         }
         
-        // 2. Gráfico de Barras: HHs PLANIFICADAS por Especialidad (una sola serie)
+        // 2. Gráfico de Barras: HHs Planificadas por Especialidad
         const resBar = await fetch('/api/kpis.php?action=chart_data&group_by=especialidad');
         if (resBar.ok) {
-            const chartData = (await resBar.json()).data;
-            renderSimpleBarChart(chartData); // Nueva función de una sola barra
+            const barData = await resBar.json();
+            if (barData.success && barData.data?.length > 0) {
+                renderSimpleBarChart(barData.data);
+            }
         }
         
-        // 3. Gráfico Circular: Estados (se mantiene igual)
+        // 3. Gráfico Circular: Estados
         const resPie = await fetch('/api/kpis.php?action=chart_data&group_by=estado');
-        if (resPie.ok) renderPieChart((await resPie.json()).data);
+        if (resPie.ok) {
+            const pieData = await resPie.json();
+            if (pieData.success && pieData.data?.length > 0) {
+                renderPieChart(pieData.data);
+            }
+        }
 
         // 4. Tabla Reprogramadas
         const resRep = await fetch('/api/kpis.php?action=reprogramadas&limit=10');
-        if (resRep.ok) renderReproTable((await resRep.json()).data);
+        if (resRep.ok) {
+            const repData = await resRep.json();
+            if (repData.success) {
+                renderReproTable(repData.data);
+            }
+        }
         
         Toast.success('📊 Datos actualizados', 'KPIs');
         
@@ -2968,18 +2996,19 @@ function renderBarChart(data) {
     });
 }
 
-// === GRÁFICO DE BARRAS SIMPLIFICADO: Solo HHs Planificadas ===
+// === GRÁFICO DE BARRAS SIMPLIFICADO ===
 function renderSimpleBarChart(data) {
-    const ctx = document.getElementById('chartEspecialidad').getContext('2d');
+    const canvas = document.getElementById('chartEspecialidad');
+    if (!canvas) return;
     
-    // Destruir gráfico anterior si existe
+    const ctx = canvas.getContext('2d');
     if (window.simpleBarChart) window.simpleBarChart.destroy();
     
     const labels = data.map(d => {
         const label = d.label || 'Sin Espec.';
         return label.length > 20 ? label.substring(0, 17) + '...' : label;
     });
-    const hhPlan = data.map(d => parseFloat(d.value || d.hh_plan) || 0);
+    const values = data.map(d => parseFloat(d.value || d.hh_plan) || 0);
     
     window.simpleBarChart = new Chart(ctx, {
         type: 'bar',
@@ -2987,10 +3016,8 @@ function renderSimpleBarChart(data) {
             labels: labels,
             datasets: [{
                 label: 'HH Planificadas',
-                data: hhPlan,
-                backgroundColor: 'rgba(59, 130, 246, 0.8)', // Azul primario
-                borderColor: '#2563eb',
-                borderWidth: 1,
+                data: values,
+                backgroundColor: 'rgba(59, 130, 246, 0.8)',
                 borderRadius: 4,
                 barPercentage: 0.8
             }]
@@ -2999,39 +3026,92 @@ function renderSimpleBarChart(data) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false }, // Ocultar leyenda (solo una serie)
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => `HH Plan: ${ctx.parsed.y.toFixed(1)}` } }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+                x: { ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 } }
+            }
+        }
+    });
+}
+
+// === GRÁFICO CIRCULAR DE ESTADOS ===
+function renderPieChart(data) {
+    const canvas = document.getElementById('chartEstados');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (window.simplePieChart) window.simplePieChart.destroy();
+    
+    const colors = {
+        'completada': '#10b981', 'cerrada': '#10b981',
+        'en_ejecucion': '#3b82f6', 'pendiente': '#f59e0b',
+        'reprogramada': '#8b5cf6', 'no_realizada': '#ef4444'
+    };
+    
+    window.simplePieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => (d.label || 'Sin Estado').charAt(0).toUpperCase() + (d.label || '').slice(1)),
+            datasets: [{
+                data: data.map(d => parseInt(d.value || d.count) || 0),
+                backgroundColor: data.map(d => colors[d.label] || '#cbd5e1'),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 10 } } },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
-                            return `HH Planificadas: ${context.parsed.y.toFixed(1)}`;
+                        label: (ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return `${ctx.label}: ${ctx.parsed} OTs (${pct}%)`;
                         }
                     }
                 }
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { font: { size: 10 } },
-                    title: { 
-                        display: true, 
-                        text: 'Horas Hombre Planificadas', 
-                        font: { size: 11, weight: '600' } 
-                    }
-                },
-                x: {
-                    ticks: { 
-                        font: { size: 9 },
-                        maxRotation: 45,
-                        minRotation: 45,
-                        callback: function(val, idx) {
-                            const label = this.getLabelForValue(val);
-                            return label.length > 15 ? label.substring(0, 12) + '...' : label;
-                        }
-                    }
-                }
-            }
+            cutout: '65%'
         }
     });
+}
+
+// === TABLA DE REPROGRAMADAS ===
+function renderReproTable(data) {
+    const tbody = document.getElementById('tablaReprogramadas');
+    if (!tbody) return;
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">No hay OTs reprogramadas en el periodo</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.map(o => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:0.75rem; font-weight:600;">${o.codigo_ot || '-'}</td>
+            <td style="padding:0.75rem; color:#64748b;">${o.nombre_equipo || '-'}</td>
+            <td style="padding:0.75rem; text-align:center;">
+                <span class="badge" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:0.75rem;">
+                    ${o.ultimo_estado || 'pendiente'}
+                </span>
+            </td>
+            <td style="padding:0.75rem; text-align:center; font-weight:bold; color:#ef4444;">
+                ${o.veces_reprogramadas || 0}
+            </td>
+            <td style="padding:0.75rem; text-align:center;">
+                ${o.ultima_fecha_programada ? new Date(o.ultima_fecha_programada).toLocaleDateString('es-CL') : '-'}
+            </td>
+            <td style="padding:0.75rem; text-align:center; color:${(o.dias_retraso || 0) > 7 ? '#ef4444' : '#64748b'}">
+                ${(o.dias_retraso || 0) > 0 ? `+${o.dias_retraso}d` : '0d'}
+            </td>
+        </tr>
+    `).join('');
 }
 
 function renderPieChart(data) {
