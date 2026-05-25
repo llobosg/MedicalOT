@@ -199,6 +199,7 @@ class MantencionImportService
             }
         }
 
+        // 2. INSERT en ot_historico (bitácora)
         if (!empty($historico)) {
             $colsHist = "codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada, estado, hh_planificadas, hh_reales, observaciones, id_vertical, id_especialidad, id_equipo, nombre_equipo, nombre_protocolo";
             $valsHist = implode(', ', array_fill(0, 14, '?'));
@@ -206,9 +207,22 @@ class MantencionImportService
             $stmtHist = $this->db->prepare($sqlHist);
 
             foreach ($historico as $h) {
+                // $h = [0:idPrev, 1:codProt, 2:nombre, 3:fecha, 4:estado, 5:hhPlan, 6:hhReal, 7:tipo, 8:tipoRaw, 9:line]
                 $stmtHist->execute([
-                    $h[1], date('Y-m-d H:i:s'), 'MANTENCION',
-                    $h[3], $h[4], $h[5], $h[6], '', null, null, null, $h[2], $h[9] ?? ''
+                    $h[1],                    // 1. codigo_ot
+                    $h[0],                    // 2. id_prevision_sic ← ESTE FALTABA
+                    date('Y-m-d H:i:s'),      // 3. fecha_carga
+                    'MANTENCION',             // 4. fuente
+                    $h[3],                    // 5. fecha_programada
+                    $h[4],                    // 6. estado
+                    $h[5],                    // 7. hh_planificadas
+                    $h[6],                    // 8. hh_reales
+                    '',                       // 9. observaciones
+                    null,                     // 10. id_vertical
+                    null,                     // 11. id_especialidad
+                    null,                     // 12. id_equipo
+                    $h[2],                    // 13. nombre_equipo
+                    $h[1]                     // 14. nombre_protocolo
                 ]);
             }
         }
