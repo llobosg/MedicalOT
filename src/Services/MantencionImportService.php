@@ -42,7 +42,7 @@ class MantencionImportService
             $batchSize = 500;
 
             foreach ($rows as $idx => $row) {
-                // ✅ PHP 8 FIX: Pasar arrays normales (la función ya los recibe por referencia en su definición)
+                // ✅ PHP 8+ FIX: Sin '&' en la llamada
                 $this->processRow($row, $today, $historicoBatch, $resumenBatch, $idx + 2);
                 $this->stats['processed']++;
 
@@ -79,14 +79,13 @@ class MantencionImportService
             if (!$sheet) throw new Exception('Hoja "NEW BD" no encontrada en el Excel.');
             
             $data = $sheet->toArray(null, false, false);
-            array_shift($data); // Saltar encabezados
+            array_shift($data);
             return $data;
         }
 
-        // Fallback CSV
         $handle = fopen($path, 'r');
         if (!$handle) throw new Exception('No se pudo abrir el archivo');
-        fgetcsv($handle, 0, ';'); // Saltar encabezados CSV
+        fgetcsv($handle, 0, ';');
         $rows = [];
         while (($row = fgetcsv($handle, 0, ';')) !== false) $rows[] = $row;
         fclose($handle);
@@ -114,7 +113,6 @@ class MantencionImportService
             $estado  = $this->normalizeEstado($estadoRaw);
             $fecha   = $this->parseDate($fechaRaw);
 
-            // Verificar existencia en ot_resumen_actual
             $stmt = $this->db->prepare("SELECT id_prevision_sic, total_hh_planificadas, total_hh_reales_acumuladas, ultimo_estado FROM ot_resumen_actual WHERE id_prevision_sic = ?");
             $stmt->execute([$idPrev]);
             $current = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -129,7 +127,7 @@ class MantencionImportService
                 if ($dateObj < $today) $diasRetraso = $today->diff($dateObj)->days;
             }
 
-            // Armar batches (estructura fija para flushBatch)
+            // Estructura fija de 10 elementos para garantizar índices
             $historicoBatch[] = [$idPrev, $codigoProt, $nombre, $fecha, $estado, $hhPlan, 0.0, $tipo, $tipoRaw, $lineNum];
             
             $resumenBatch[] = [
@@ -145,67 +143,79 @@ class MantencionImportService
         }
     }
 
+    /**
+     * EJECUCIÓN MASIVA CORREGIDA
+     * Placeholders hardcodeados + mapeo explícito para evitar HY093
+     */
     private function flushBatch(array $historico, array $resumen): void
     {
-        if (empty($resumen)) return;
-
-        // 1. UPSERT en ot_resumen_actual
-        // Asegúrate de que id_prevision_sic sea PRIMARY KEY o UNIQUE para que ON DUPLICATE KEY funcione
-        $colsResumen = "codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga, ultima_fecha_programada, ultimo_estado, ultima_carga, total_hh_planificadas, total_hh_reales_acumuladas, veces_reprogramadas, dias_retraso, id_vertical, id_especialidad, nombre_equipo, tipo_mantenimiento";
-        $valsResumen = implode(', ', array_fill(0, 15, '?'));
-        
-        // Lógica inteligente: Si la nueva fecha es distinta a la guardada, suma +1 a veces_reprogramadas
-        $updateFields = "
-            ultima_fecha_programada = VALUES(ultima_fecha_programada),
-            ultimo_estado = VALUES(ultimo_estado),
-            ultima_carga = VALUES(ultima_carga),
-            total_hh_planificadas = VALUES(total_hh_planificadas),
-            total_hh_reales_acumuladas = VALUES(total_hh_reales_acumuladas),
-            dias_retraso = VALUES(dias_retraso),
-            nombre_equipo = VALUES(nombre_equipo),
-            tipo_mantenimiento = VALUES(tipo_mantenimiento),
-            veces_reprogramadas = IF(
-                VALUES(ultima_fecha_programada) IS NOT NULL 
-                AND VALUES(ultima_fecha_programada) != ultima_fecha_programada,
-                veces_reprogramadas + 1,
-                veces_reprogramadas
-            )";
-
-        $sqlResumen = "INSERT INTO ot_resumen_actual ($colsResumen) VALUES ($valsResumen) ON DUPLICATE KEY UPDATE $updateFields";
-        $stmtResumen = $this->db->prepare($sqlResumen);
-
-        foreach ($resumen as $r) {
-            // $r = [0:idPrev, 1:codigoProt, 2:nombre, 3:fecha, 4:estado, 5:hhPlan, 6:hhReal, 7:diasRetraso, 8:tipo, 9:origen]
-            $stmtResumen->execute([
-                $r[1],                 // 1. codigo_ot
-                $r[0],                 // 2. id_prevision_sic
-                $r[3],                 // 3. primera_fecha_programada
-                date('Y-m-d H:i:s'),   // 4. primera_carga
-                $r[3],                 // 5. ultima_fecha_programada
-                $r[4],                 // 6. ultimo_estado
-                date('Y-m-d H:i:s'),   // 7. ultima_carga
-                $r[5],                 // 8. total_hh_planificadas
-                $r[6],                 // 9. total_hh_reales_acumuladas
-                0,                     // 10. veces_reprogramadas (se maneja en UPDATE)
-                $r[7],                 // 11. dias_retraso
-                null,                  // 12. id_vertical
-                null,                  // 13. id_especialidad
-                $r[2],                 // 14. nombre_equipo
-                $r[8]                  // 15. tipo_mantenimiento
-            ]);
+        if (!empty($resumen)) {
+            // 11 placeholders exactos
+            $sqlResumen = "INSERT INTO ot_resumen_actual (
+                codigo_ot, id_prevision_sic, primera_fecha_programada, primera_carga, 
+                ultima_fecha_programada, ultimo_estado, ultima_carga, 
+                total_hh_planificadas, total_hh_reales_acumuladas, veces_reprogramadas, 
+                dias_retraso, id_vertical, id_especialidad, nombre_equipo, tipo_mantenimiento
+            ) VALUES (
+                ?, ?, ?, NOW(), ?, ?, NOW(), ?, 0, 0, ?, ?, ?, ?, ?
+            ) ON DUPLICATE KEY UPDATE
+                ultima_fecha_programada = VALUES(ultima_fecha_programada),
+                ultimo_estado = VALUES(ultimo_estado),
+                ultima_carga = NOW(),
+                total_hh_planificadas = VALUES(total_hh_planificadas),
+                total_hh_reales_acumuladas = VALUES(total_hh_reales_acumuladas),
+                dias_retraso = VALUES(dias_retraso),
+                nombre_equipo = VALUES(nombre_equipo),
+                tipo_mantenimiento = VALUES(tipo_mantenimiento),
+                veces_reprogramadas = IF(
+                    VALUES(ultima_fecha_programada) IS NOT NULL AND VALUES(ultima_fecha_programada) != ultima_fecha_programada,
+                    veces_reprogramadas + 1,
+                    veces_reprogramadas
+                )";
+            
+            $stmtResumen = $this->db->prepare($sqlResumen);
+            foreach ($resumen as $r) {
+                // $r = [0:idPrev, 1:codProt, 2:nombre, 3:fecha, 4:estado, 5:hhPlan, 6:hhReal, 7:diasRet, 8:tipo, 9:origen]
+                $stmtResumen->execute([
+                    $r[1],                 // 1. codigo_ot
+                    $r[0],                 // 2. id_prevision_sic
+                    $r[3],                 // 3. primera_fecha_programada
+                    $r[3],                 // 4. ultima_fecha_programada
+                    $r[4],                 // 5. ultimo_estado
+                    $r[5],                 // 6. total_hh_planificadas
+                    $r[7],                 // 7. dias_retraso
+                    null,                  // 8. id_vertical
+                    null,                  // 9. id_especialidad
+                    $r[2],                 // 10. nombre_equipo
+                    $r[8]                  // 11. tipo_mantenimiento
+                ]);
+            }
         }
 
-        // 2. INSERT en ot_historico (bitácora)
         if (!empty($historico)) {
-            $colsHist = "codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada, estado, hh_planificadas, hh_reales, observaciones, id_vertical, id_especialidad, id_equipo, nombre_equipo, nombre_protocolo";
-            $valsHist = implode(', ', array_fill(0, 14, '?'));
-            $sqlHist = "INSERT INTO ot_historico ($colsHist) VALUES ($valsHist)";
+            // 10 placeholders exactos
+            $sqlHist = "INSERT INTO ot_historico (
+                codigo_ot, id_prevision_sic, fecha_carga, fuente, fecha_programada, 
+                estado, hh_planificadas, hh_reales, observaciones, id_vertical, 
+                id_especialidad, id_equipo, nombre_equipo, nombre_protocolo
+            ) VALUES (
+                ?, ?, NOW(), 'MANTENCION', ?, ?, ?, 0, '', ?, ?, ?, ?, ?
+            )";
+            
             $stmtHist = $this->db->prepare($sqlHist);
-
             foreach ($historico as $h) {
+                // $h = [0:idPrev, 1:codProt, 2:nombre, 3:fecha, 4:estado, 5:hhPlan, 6:hhReal, 7:tipo, 8:tipoRaw, 9:line]
                 $stmtHist->execute([
-                    $h[1], date('Y-m-d H:i:s'), 'MANTENCION',
-                    $h[3], $h[4], $h[5], $h[6], '', null, null, null, $h[2], $h[9] ?? ''
+                    $h[1],                 // 1. codigo_ot
+                    $h[0],                 // 2. id_prevision_sic
+                    $h[3],                 // 3. fecha_programada
+                    $h[4],                 // 4. estado
+                    $h[5],                 // 5. hh_planificadas
+                    null,                  // 6. id_vertical
+                    null,                  // 7. id_especialidad
+                    null,                  // 8. id_equipo
+                    $h[2],                 // 9. nombre_equipo
+                    $h[1]                  // 10. nombre_protocolo
                 ]);
             }
         }
