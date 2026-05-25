@@ -3527,6 +3527,75 @@ function resetFilters() {
     loadKpis();
 }
 
+// === GRÁFICO CIRCULAR DE ESTADOS ===
+function renderPieChartEstados(data) {
+    const canvas = document.getElementById('chartEstados');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Destruir gráfico anterior si existe
+    if (chartEstados) chartEstados.destroy();
+    
+    // Mapeo de colores por estado
+    const colors = {
+        'completada': '#10b981',
+        'cerrada': '#10b981',
+        'en_ejecucion': '#3b82f6',
+        'en_proceso': '#3b82f6',
+        'pendiente': '#f59e0b',
+        'asignada': '#5fb8d4',
+        'reprogramada': '#8b5cf6',
+        'cancelada': '#ef4444',
+        'no_realizada': '#ef4444'
+    };
+    
+    // Formatear labels (primera letra mayúscula)
+    const labels = data.map(d => {
+        const label = d.label || 'Sin Estado';
+        return label.charAt(0).toUpperCase() + label.slice(1).replace('_', ' ');
+    });
+    
+    const values = data.map(d => parseInt(d.count || d.value) || 0);
+    const bgColors = data.map(d => colors[d.label] || '#cbd5e1');
+    
+    chartEstados = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: bgColors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: { 
+                        font: { size: 11 },
+                        padding: 12,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return `${ctx.label}: ${ctx.parsed} OTs (${pct}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+}
 </script>
     <!-- MODAL ESPECIALIDADES -->
     <div id="modalEspecialidades" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
