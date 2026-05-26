@@ -1,8 +1,10 @@
 <?php
 /**
  * API Endpoint - Importar Planificación HH
- * Recibe archivo Excel y procesa la planificación mensual
  */
+
+// Capturar CUALQUIER output inesperado (warnings, notices, echos)
+ob_start();
 
 // Headers CORS
 header('Content-Type: application/json; charset=utf-8');
@@ -11,22 +13,27 @@ header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    ob_end_clean();
     http_response_code(200);
     exit;
 }
 
-// Permitir acceso desde navegador (no solo CLI)
+// Permitir acceso desde navegador
 define('APP_ENTRY_POINT', true);
 
-// Cargar configuración (esto establece $pdo globalmente)
+// Cargar configuración
 $configPath = __DIR__ . '/../../config.php';
 if (!file_exists($configPath)) {
+    ob_end_clean();
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Archivo de configuración no encontrado']);
     exit;
 }
 
 require_once $configPath;
+
+// Limpiar cualquier output generado por config.php
+ob_end_clean();
 
 // Cargar autoloader de Composer
 $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
@@ -179,9 +186,14 @@ try {
         ]
     ]);
 } catch (Error $e) {
+    // Limpiar cualquier output acumulado
+    if (ob_get_level() > 0) ob_end_clean();
+    
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => 'Error interno: ' . $e->getMessage()
+        'error' => 'Error interno: ' . $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine()
     ]);
 }
