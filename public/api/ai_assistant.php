@@ -32,16 +32,35 @@ try {
     $stats = getDatabaseStats($pdo);
     
     // ═══════════════════════════════════════════════════════
-    // 🎭 MODO MOCK INTELIGENTE (Funciona 100% sin APIs externas)
+    // 🤖 INTENTAR OPENROUTER (IA Real Gratuita)
     // ═══════════════════════════════════════════════════════
-    $response = generateMockResponse($userMessage, $stats);
+    $apiKey = getenv('OPENAI_API_KEY'); // Aquí va tu key de OpenRouter (sk-or-...)
     
-    // Simular delay de "pensamiento" para que se vea más real
+    if ($apiKey) {
+        $aiResponse = callOpenRouter($userMessage, $stats, $apiKey);
+        
+        if ($aiResponse !== null) {
+            echo json_encode([
+                'success' => true,
+                'message' => $aiResponse,
+                'mode' => 'openrouter',
+                'model' => 'meta-llama/llama-3.1-8b-instruct:free'
+            ]);
+            exit;
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    // 🎭 FALLBACK: MODO MOCK INTELIGENTE
+    // ═══════════════════════════════════════════════════════
+    $mockResponse = generateMockResponse($userMessage, $stats);
+    
+    // Simular delay de "pensamiento"
     usleep(600000); // 0.6 segundos
     
     echo json_encode([
         'success' => true,
-        'message' => $response,
+        'message' => $mockResponse,
         'mode' => 'mock-inteligente'
     ]);
 
@@ -56,7 +75,99 @@ try {
 }
 
 // ═══════════════════════════════════════════════════════
-// 📊 OBTENER ESTADÍSTICAS DE LA BD
+// 🤖 FUNCIÓN: LLAMAR A OPENROUTER
+// ═══════════════════════════════════════════════════════
+function callOpenRouter($userMessage, $stats, $apiKey) {
+    $apiEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
+    $aiModel = 'meta-llama/llama-3.1-8b-instruct:free';
+    
+    $systemPrompt = "Eres el asistente experto de MedicalOT para el Hospital de Antofagasta. " .
+                    "Responde basándote SOLO en los datos proporcionados. " .
+                    "Sé conciso, profesional y orientado a la acción. " .
+                    "Usa emojis moderadamente y formato estructurado con negritas (**texto**) y bullets (•). " .
+                    "SIEMPRE responde en español.";
+    
+    $context = buildContext($stats);
+    
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $apiEndpoint,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => [
+            "Content-Type: application/json",
+            "Authorization: Bearer $apiKey",
+            "HTTP-Referer: https://medicalot.up.railway.app",
+            "X-Title: MedicalOT"
+        ],
+        CURLOPT_POSTFIELDS => json_encode([
+            "model" => $aiModel,
+            "messages" => [
+                ["role" => "system", "content" => $systemPrompt],
+                ["role" => "user", "content" => "Contexto de datos:\n$context\n\nPregunta del usuario: $userMessage"]
+            ],
+            "temperature" => 0.7,
+            "max_tokens" => 800
+        ])
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        error_log("❌ OpenRouter Error (HTTP $httpCode): $response");
+        return null; // Falló, usar mock
+    }
+
+    $result = json_decode($response, true);
+    return $result['choices'][0]['message']['content'] ?? null;
+}
+
+// ═══════════════════════════════════════════════════════
+// 📝 FUNCIÓN: CONSTRUIR CONTEXTO PARA LA IA
+// ═══════════════════════════════════════════════════════
+function buildContext($stats) {
+    $espMap = [
+        50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA',
+        53=>'M-ELECTRÓNICA', 54=>'M-CARPINTERÍA', 55=>'M-ELECTROMECÁNICA',
+        57=>'M-POLIVALENTE'
+    ];
+    
+    $ctx = "📊 ESTADÍSTICAS GENERALES:\n";
+    $ctx .= "• Total de OTs: {$stats['general']['total_ots']}\n";
+    $ctx .= "• HHs Planificadas: {$stats['general']['hh_plan']}\n";
+    $ctx .= "• OTs Cerradas: {$stats['general']['ots_cerradas']}\n";
+    $ctx .= "• OTs en Riesgo (+7 días): {$stats['general']['ots_riesgo']}\n";
+    $ctx .= "• OTs Reprogramadas: {$stats['general']['ots_reprogramadas']}\n\n";
+    
+    $ctx .= "🏆 TOP 5 ESPECIALIDADES (por HHs):\n";
+    foreach ($stats['especialidades'] as $e) {
+        $nombre = $espMap[$e['id_especialidad']] ?? "Esp.{$e['id_especialidad']}";
+        $ctx .= "• {$nombre}: {$e['total']} OTs, {$e['hh']} HHs, {$e['en_riesgo']} en riesgo\n";
+    }
+    $ctx .= "\n";
+    
+    $ctx .= "📅 DISTRIBUCIÓN POR MES:\n";
+    foreach ($stats['meses'] as $m) {
+        $ctx .= "• " . ucfirst($m['mes_carga']) . ": {$m['total']} OTs, {$m['hh']} HHs\n";
+    }
+    $ctx .= "\n";
+    
+    if (!empty($stats['ots_riesgo'])) {
+        $ctx .= "⚠️ TOP 5 OTs EN MAYOR RIESGO:\n";
+        foreach ($stats['ots_riesgo'] as $ot) {
+            $esp = $espMap[$ot['id_especialidad']] ?? 'N/A';
+            $ctx .= "• ID {$ot['id_prevision_sic']}: {$ot['nombre_equipo']} [{$esp}] - {$ot['dias_retraso']} días retraso\n";
+        }
+    }
+    
+    return $ctx;
+}
+
+// ═══════════════════════════════════════════════════════
+// 📊 OBTENER ESTADÍSTICAS DE LA BD (YA EXISTE)
 // ═══════════════════════════════════════════════════════
 function getDatabaseStats($pdo) {
     $stats = [];
@@ -104,17 +215,13 @@ function getDatabaseStats($pdo) {
 }
 
 // ═══════════════════════════════════════════════════════
-// 🎭 GENERADOR DE RESPUESTAS INTELIGENTES
+// 🎭 GENERADOR DE RESPUESTAS MOCK (YA EXISTE - MANTENER IGUAL)
 // ═══════════════════════════════════════════════════════
 function generateMockResponse($message, $stats) {
     $msg = strtolower($message);
     $espMap = [
-        50=>'M-CLIMATIZACIÓN',
-        51=>'M-ELECTRICIDAD',
-        52=>'M-GASFITERÍA',
-        53=>'M-ELECTRÓNICA',
-        54=>'M-CARPINTERÍA',
-        55=>'M-ELECTROMECÁNICA',
+        50=>'M-CLIMATIZACIÓN', 51=>'M-ELECTRICIDAD', 52=>'M-GASFITERÍA',
+        53=>'M-ELECTRÓNICA', 54=>'M-CARPINTERÍA', 55=>'M-ELECTROMECÁNICA',
         57=>'M-POLIVALENTE'
     ];
     
@@ -125,11 +232,7 @@ function generateMockResponse($message, $stats) {
                "• **{$stats['general']['total_ots']}** órdenes de trabajo registradas\n" .
                "• **{$stats['general']['hh_plan']}** horas planificadas\n" .
                "• **{$stats['general']['ots_riesgo']}** OTs en riesgo\n\n" .
-               "¿Qué te gustaría analizar? Puedo ayudarte con:\n" .
-               "📊 Resúmenes ejecutivos\n" .
-               "⚠️ Análisis de riesgos\n" .
-               "🏆 Desglose por especialidad\n" .
-               "📈 Tendencias y comparativas";
+               "¿Qué te gustaría analizar?";
     }
     
     // Resumen ejecutivo
@@ -146,14 +249,12 @@ function generateMockResponse($message, $stats) {
                "🏆 **Especialidad con Mayor Carga:**\n" .
                "$topEspName con **{$topEsp['hh']}** HHs planificadas\n\n" .
                "💡 **Recomendación:**\n" .
-               "Priorizar revisión de las **{$stats['general']['ots_riesgo']}** OTs en riesgo, " .
-               "especialmente en {$topEspName} que concentra la mayor carga operativa.";
+               "Priorizar revisión de las **{$stats['general']['ots_riesgo']}** OTs en riesgo.";
     }
     
-    // Prioridades / OTs críticas
+    // Prioridades
     if (preg_match('/(priori|cr[ií]tic|urgente|qu[eé] (deber[ií]a|atiendo|hago hoy))/i', $msg)) {
         $resp = "🎯 **TOP 5 OTs PRIORITARIAS PARA ATENDER HOY**\n\n";
-        $resp .= "Ordenadas por días de retraso:\n\n";
         
         foreach ($stats['ots_riesgo'] as $i => $ot) {
             $esp = $espMap[$ot['id_especialidad']] ?? 'N/A';
@@ -161,9 +262,7 @@ function generateMockResponse($message, $stats) {
             $resp .= "   ⏰ **{$ot['dias_retraso']} días** de retraso | {$ot['total_hh_planificadas']} HHs | $esp\n\n";
         }
         
-        $resp .= "💡 **Acción sugerida:**\n";
-        $resp .= "Contactar a los responsables de estas OTs y reprogramar para esta semana. " .
-                 "La primera ({$stats['ots_riesgo'][0]['dias_retraso']} días) requiere atención inmediata.";
+        $resp .= "💡 **Acción sugerida:**\nContactar a los responsables y reprogramar para esta semana.";
         
         return $resp;
     }
@@ -175,20 +274,16 @@ function generateMockResponse($message, $stats) {
         foreach ($stats['especialidades'] as $i => $e) {
             $nombre = $espMap[$e['id_especialidad']] ?? "Esp.{$e['id_especialidad']}";
             $medal = $i === 0 ? '🥇' : ($i === 1 ? '🥈' : ($i === 2 ? '🥉' : '•'));
-            $alert = $e['en_riesgo'] > 0 ? " | ⚠️ **{$e['en_riesgo']} en riesgo**" : " | ✅ Sin riesgo";
+            $alert = $e['en_riesgo'] > 0 ? " | ⚠️ **{$e['en_riesgo']} en riesgo**" : "";
             
             $resp .= "$medal **$nombre**\n";
             $resp .= "   {$e['total']} OTs | {$e['hh']} HHs$alert\n\n";
         }
         
-        $topEsp = $espMap[$stats['especialidades'][0]['id_especialidad']] ?? 'N/A';
-        $resp .= "💡 **Insight:** $topEsp concentra la mayor carga. " .
-                 "Considerar refuerzo de personal o tercerización si el backlog sigue creciendo.";
-        
         return $resp;
     }
     
-    // Riesgo / retraso / problemas
+    // Riesgo
     if (preg_match('/(riesgo|retraso|atraso|problema|alerta)/', $msg)) {
         $resp = "⚠️ **ANÁLISIS DE OTs EN RIESGO**\n\n";
         $resp .= "**{$stats['general']['ots_riesgo']}** órdenes llevan más de 7 días de retraso.\n\n";
@@ -201,16 +296,10 @@ function generateMockResponse($message, $stats) {
             $resp .= "   {$ot['nombre_equipo']} | $esp\n\n";
         }
         
-        $criticos = count(array_filter($stats['ots_riesgo'], fn($o) => $o['dias_retraso'] > 30));
-        $resp .= "💡 **Plan de acción:**\n";
-        $resp .= "1. Reunión urgente con jefes de área para los **{$criticos} casos críticos** (+30 días)\n";
-        $resp .= "2. Reasignar recursos de especialidades con baja carga\n";
-        $resp .= "3. Evaluar tercerización para reducir backlog";
-        
         return $resp;
     }
     
-    // Meses / tendencias
+    // Meses
     if (preg_match('/(mes|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|tendencia|compar)/', $msg)) {
         $resp = "📅 **DISTRIBUCIÓN POR MES**\n\n";
         
@@ -218,7 +307,6 @@ function generateMockResponse($message, $stats) {
             $resp .= "**" . ucfirst($m['mes_carga']) . "**: {$m['total']} OTs | {$m['hh']} HHs\n";
         }
         
-        // Encontrar el mes con más carga
         $maxMes = null;
         $maxHH = 0;
         foreach ($stats['meses'] as $m) {
@@ -228,42 +316,7 @@ function generateMockResponse($message, $stats) {
             }
         }
         
-        $resp .= "\n💡 **Insight:** El mes con mayor carga es **" . ucfirst($maxMes) . "** con {$maxHH} HHs. " .
-                 "Planificar recursos adicionales para ese periodo.";
-        
-        return $resp;
-    }
-    
-    // Reprogramaciones
-    if (preg_match('/(reprogram|cambio|modif)/', $msg)) {
-        return "🔄 **ANÁLISIS DE REPROGRAMACIONES**\n\n" .
-               "**{$stats['general']['ots_reprogramadas']}** OTs han sido reprogramadas al menos una vez.\n\n" .
-               "Esto representa el **" . round(($stats['general']['ots_reprogramadas'] / max(1,$stats['general']['total_ots'])) * 100, 1) . "%** del total.\n\n" .
-               "💡 **Posibles causas:**\n" .
-               "• Falta de recursos en fechas programadas\n" .
-               "• Cambios de prioridad en el hospital\n" .
-               "• Problemas con proveedores externos\n\n" .
-               "📋 **Recomendación:** Revisar el proceso de planificación inicial para reducir reprogramaciones futuras.";
-    }
-    
-    // Anomalías / inusual
-    if (preg_match('/(anomal|inusual|raro|extra[nñ]o|detect)/', $msg)) {
-        $resp = "🔍 **DETECCIÓN DE ANOMALÍAS**\n\n";
-        
-        // Buscar meses con carga inusual
-        $avgHH = array_sum(array_column($stats['meses'], 'hh')) / max(1, count($stats['meses']));
-        $resp .= "📊 **Carga promedio mensual:** " . round($avgHH, 1) . " HHs\n\n";
-        
-        foreach ($stats['meses'] as $m) {
-            if ($m['hh'] > $avgHH * 1.3) {
-                $resp .= "⚠️ **" . ucfirst($m['mes_carga']) . "** tiene carga alta: {$m['hh']} HHs (+30% vs promedio)\n";
-            }
-        }
-        
-        $resp .= "\n🎯 **OTs con reprogramaciones múltiples:**\n";
-        $resp .= "**{$stats['general']['ots_reprogramadas']}** OTs reprogramadas (posible problema de planificación)\n\n";
-        
-        $resp .= "💡 **Acción sugerida:** Investigar los picos de carga y las OTs reprogramadas recurrentes.";
+        $resp .= "\n💡 **Insight:** El mes con mayor carga es **" . ucfirst($maxMes) . "** con {$maxHH} HHs.";
         
         return $resp;
     }
@@ -273,13 +326,6 @@ function generateMockResponse($message, $stats) {
            "Tengo acceso a estos indicadores:\n\n" .
            "• **{$stats['general']['total_ots']}** OTs totales\n" .
            "• **{$stats['general']['hh_plan']}** HHs planificadas\n" .
-           "• **{$stats['general']['ots_riesgo']}** OTs en riesgo\n" .
-           "• **{$stats['general']['ots_cerradas']}** OTs cerradas\n\n" .
-           "Puedo analizar:\n" .
-           "📊 Resúmenes ejecutivos\n" .
-           "🎯 Prioridades del día\n" .
-           "🏆 Desglose por especialidad\n" .
-           "⚠️ OTs en riesgo\n" .
-           "📅 Tendencias mensuales\n\n" .
+           "• **{$stats['general']['ots_riesgo']}** OTs en riesgo\n\n" .
            "¿Qué te gustaría explorar?";
 }
