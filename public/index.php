@@ -444,154 +444,470 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
         <?php if($isAdmin): ?>
         <section id="carga-sic" class="module-section">
-            <div style="max-width:800px; margin:0 auto;">
-                <h3 style="margin-bottom:1rem;">Carga y Validación SIC</h3>
-                <div class="upload-zone" id="dropZone"><input type="file" id="sicFile" accept=".csv" style="display:none"><p style="font-weight:600;">Arrastra tu archivo SIC o haz clic aquí</p><p style="font-size:0.8rem; color:var(--gray-600);">Solo archivos .csv | Máx 50MB</p></div>
-                <div id="sicSummary" class="summary-box"><h4>📋 Resumen de Validación</h4><div id="sicLog" style="font-size:0.9rem; margin:0.5rem 0;"></div><button class="btn-volver" style="background:var(--primary); margin-top:0.5rem;" onclick="confirmLoad()">✅ Confirmar Carga</button></div>
-                <table style="width:100%; margin-top:1.5rem; border-collapse:collapse; background:#fff; border-radius:0.75rem; overflow:hidden;"><thead><tr style="background:#f1f5f9;"><th style="padding:0.75rem; text-align:center;">Fecha</th><th style="text-align:center;">Hora</th><th style="text-align:center;">Nuevas</th><th style="text-align:center;">Omitidas</th></tr></thead><tbody id="loadHistory"></tbody></table>
-                <!-- ZONA DE CARGA PLANILLA MANTENCIÓN -->
-                <div style="margin-top:3rem; padding-top:2rem; border-top:2px solid #e2e8f0;">
-                    <h3 style="margin-bottom:0.5rem; color:#1e293b;">📥 Cargar Planilla de Mantención (NEW BD)</h3>
-                    <p style="font-size:0.9rem; color:#64748b; margin-bottom:1rem;">
-                        Sube el archivo CSV exportado de la hoja "NEW BD". Este paso actualiza las HHs planificadas, especialidades y estados técnicos de las OTs ya cargadas desde el SIC.
-                    </p>
-                    
-                    <div class="upload-zone" id="dropZoneMantencion" onclick="document.getElementById('mantencionFile').click()" style="border:2px dashed #cbd5e1; background:#fff; cursor:pointer; transition:all 0.2s;">
-                        <input type="file" id="mantencionFile" accept=".csv" style="display:none">
-                        <div style="text-align:center; padding:2rem;">
-                            <div style="font-size:2rem; margin-bottom:0.5rem;">📄</div>
-                            <p style="font-weight:600; color:#334155; margin:0;">Arrastra tu archivo Mantenimiento aquí o haz clic para seleccionar</p>
-                            <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.5rem;">Solo archivos .xlsx | Leerá automáticamente la hoja "NEW BD"</p>
-                        </div>
+            <style>
+                /* === CENTRO DE IMPORTACIONES === */
+                .ci-container { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; max-width:1400px; margin:0 auto; padding:0 1rem; }
+                .ci-card { background:#fff; border-radius:1rem; padding:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.07); border-top:4px solid #ccc; display:flex; flex-direction:column; height:100%; transition:transform 0.2s, box-shadow 0.2s; }
+                .ci-card:hover { transform:translateY(-2px); box-shadow:0 8px 15px -3px rgba(0,0,0,0.1); }
+                .ci-card.hh { border-top-color:#8b5cf6; }
+                .ci-card.mant { border-top-color:#f59e0b; }
+                .ci-card.sic { border-top-color:#3b82f6; }
+                .ci-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; }
+                .ci-title { font-size:1.1rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.5rem; margin:0; }
+                .ci-help-btn { width:28px; height:28px; border-radius:50%; border:2px solid #e2e8f0; background:#fff; color:#64748b; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.85rem; transition:all 0.2s; flex-shrink:0; }
+                .ci-help-btn:hover { border-color:#8b5cf6; color:#8b5cf6; background:#f5f3ff; }
+                .ci-desc { font-size:0.8rem; color:#64748b; margin-bottom:1rem; line-height:1.4; }
+                .ci-dropzone { border:2px dashed #cbd5e1; border-radius:0.75rem; padding:1.5rem 1rem; text-align:center; cursor:pointer; transition:all 0.3s; background:#fafbfc; min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; flex:0 0 auto; }
+                .ci-dropzone:hover, .ci-dropzone.dragover { border-color:#8b5cf6; background:#f5f3ff; }
+                .ci-dropzone.mant:hover, .ci-dropzone.mant.dragover { border-color:#f59e0b; background:#fffbeb; }
+                .ci-dropzone.sic:hover, .ci-dropzone.sic.dragover { border-color:#3b82f6; background:#eff6ff; }
+                .ci-dropzone i { font-size:2rem; margin-bottom:0.5rem; }
+                .ci-dropzone.hh i { color:#8b5cf6; }
+                .ci-dropzone.mant i { color:#f59e0b; }
+                .ci-dropzone.sic i { color:#3b82f6; }
+                .ci-dropzone p { margin:0; font-size:0.85rem; color:#475569; font-weight:600; }
+                .ci-dropzone small { font-size:0.7rem; color:#94a3b8; margin-top:0.3rem; }
+                .ci-progress { display:none; margin-top:0.75rem; animation:fadeIn 0.3s ease; }
+                .ci-bar-bg { height:6px; border-radius:6px; overflow:hidden; background:#e9ecef; }
+                .ci-bar-fill { height:100%; border-radius:6px; transition:width 0.5s ease; }
+                .ci-bar-fill.hh { background:linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%); }
+                .ci-bar-fill.mant { background:linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
+                .ci-bar-fill.sic { background:linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); }
+                .ci-result { display:none; margin-top:0.75rem; padding:1rem; border-radius:0.5rem; font-size:0.8rem; line-height:1.6; animation:fadeIn 0.3s ease; }
+                .ci-result.success { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+                .ci-result.error { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+                .ci-result-line { display:flex; align-items:center; gap:0.4rem; margin-bottom:0.2rem; }
+                .ci-close-btn { margin-top:0.75rem; width:100%; padding:0.5rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; color:#475569; font-size:0.8rem; cursor:pointer; transition:all 0.2s; font-weight:500; }
+                .ci-close-btn:hover { background:#f8fafc; border-color:#cbd5e1; }
+                .ci-bitacora { margin-top:auto; padding-top:1rem; border-top:1px solid #f1f5f9; flex:1; min-height:0; overflow-y:auto; }
+                .ci-bitacora-title { font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.5rem; }
+                .ci-log-item { display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid #f8fafc; font-size:0.72rem; }
+                .ci-log-item:last-child { border-bottom:none; }
+                .ci-log-name { color:#334155; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:55%; }
+                .ci-log-meta { color:#94a3b8; text-align:right; white-space:nowrap; display:flex; align-items:center; gap:0.3rem; }
+                .ci-log-badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:0.65rem; font-weight:700; }
+                .ci-log-badge.ok { background:#dcfce7; color:#166534; }
+                .ci-log-badge.err { background:#fee2e2; color:#991b1b; }
+                /* Modal Ayuda */
+                .ci-modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; animation:fadeIn 0.2s ease; }
+                .ci-modal-overlay.active { display:flex; }
+                .ci-modal { background:#fff; border-radius:1rem; max-width:550px; width:90%; max-height:80vh; overflow-y:auto; padding:2rem; box-shadow:0 20px 60px rgba(0,0,0,0.2); position:relative; }
+                .ci-modal-close { position:absolute; top:1rem; right:1rem; width:32px; height:32px; border-radius:50%; border:none; background:#f1f5f9; color:#64748b; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; }
+                .ci-modal-close:hover { background:#e2e8f0; }
+                .ci-modal h3 { margin:0 0 0.5rem; font-size:1.15rem; }
+                .ci-modal.hh h3 { color:#7c3aed; }
+                .ci-modal.mant h3 { color:#d97706; }
+                .ci-modal.sic h3 { color:#2563eb; }
+                .ci-modal p, .ci-modal li { font-size:0.85rem; color:#475569; line-height:1.6; }
+                .ci-modal ul { padding-left:1.2rem; margin:0.5rem 0; }
+                .ci-modal table { width:100%; border-collapse:collapse; margin:0.75rem 0; font-size:0.8rem; }
+                .ci-modal th { background:#f8fafc; padding:0.5rem; text-align:left; border-bottom:2px solid #e2e8f0; color:#334155; }
+                .ci-modal td { padding:0.5rem; border-bottom:1px solid #f1f5f9; color:#475569; }
+                .ci-modal .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700; }
+                .ci-modal.hh .tag { background:#ede9fe; color:#7c3aed; }
+                .ci-modal.mant .tag { background:#fef3c7; color:#d97706; }
+                .ci-modal.sic .tag { background:#dbeafe; color:#2563eb; }
+                @media(max-width:1000px) { .ci-container { grid-template-columns:1fr; } }
+            </style>
+
+            <!-- Header -->
+            <div style="max-width:1400px; margin:0 auto; padding:0 1rem 1rem;">
+                <h2 style="font-size:1.5rem; font-weight:700; color:#1e293b; margin-bottom:0.25rem;">📦 Centro de Importaciones</h2>
+                <p style="font-size:0.85rem; color:#64748b; margin:0;">Gestiona las cargas de datos del sistema. Cada archivo alimenta una capa diferente del análisis.</p>
+            </div>
+
+            <!-- Grid 3 Columnas -->
+            <div class="ci-container">
+
+                <!-- ====== COLUMNA 1: PLANIFICACIÓN HH (Violeta) ====== -->
+                <div class="ci-card hh">
+                    <div class="ci-header">
+                        <h3 class="ci-title"><i class="bi bi-calendar-week"></i> Planificación HH</h3>
+                        <button class="ci-help-btn" onclick="openCIHelp('hh')" title="Ayuda">?</button>
                     </div>
+                    <div class="ci-desc">Dotación mensual de técnicos con turnos y horas planificadas. Se carga <strong>mensual o semanalmente</strong>.</div>
                     
-                    <!-- Resumen de Carga -->
-                    <div id="mantencionSummary" class="summary-box" style="display:none; margin-top:1rem; background:#f8fafc; padding:1rem; border-radius:0.5rem; border:1px solid #e2e8f0;">
-                        <h4 style="margin-top:0; font-size:1rem; color:#1e293b;">📋 Resultado de Procesamiento</h4>
-                        <div id="mantencionLog" style="font-size:0.9rem; margin:0.5rem 0; white-space:pre-wrap;"></div>
-                        <button onclick="location.reload()" class="btn-primary" style="margin-top:1rem; width:100%;">🔄 Ver Dashboard Actualizado</button>
-                    </div>
-                </div>
-                                <!-- ZONA DE CARGA PLANIFICACIÓN HH -->
-                <div style="margin-top:3rem; padding-top:2rem; border-top:2px solid #e2e8f0;">
-                    <h3 style="margin-bottom:0.5rem; color:#1e293b;">📅 Cargar Planificación de Horas-Hombre</h3>
-                    <p style="font-size:0.9rem; color:#64748b; margin-bottom:1rem;">
-                        Sube el archivo Excel de dotación mensual. El sistema detectará automáticamente el mes y año desde la hoja "Dotación (2)". Solo se procesan técnicos con HH="SI" y Estatus="Activo".
-                    </p>
-                    
-                    <div class="upload-zone" id="dropZoneHH" onclick="document.getElementById('hhFile').click()" style="border:2px dashed #cbd5e1; background:#fff; cursor:pointer; transition:all 0.2s;">
+                    <div class="ci-dropzone hh" id="dropZoneHH" onclick="document.getElementById('hhFile').click()">
                         <input type="file" id="hhFile" accept=".xlsx,.xls" style="display:none">
-                        <div style="text-align:center; padding:2rem;">
-                            <div style="font-size:2rem; margin-bottom:0.5rem;">📊</div>
-                            <p style="font-weight:600; color:#334155; margin:0;">Arrastra tu archivo de Dotación aquí o haz clic para seleccionar</p>
-                            <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.5rem;">Solo archivos .xlsx / .xls | Hoja "Dotación (2)"</p>
-                        </div>
+                        <i class="bi bi-file-earmark-spreadsheet"></i>
+                        <p>Arrastra archivo Excel aquí</p>
+                        <small>.xlsx / .xls — Hoja "Dotación (2)"</small>
                     </div>
                     
-                    <!-- Barra de Progreso -->
-                    <div id="hhProgressContainer" style="display:none; margin-top:1rem;">
-                        <div style="height:8px; border-radius:10px; overflow:hidden; background:#e9ecef;">
-                            <div id="hhProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg, #667eea 0%, #764ba2 100%); border-radius:10px; transition:width 0.5s ease;"></div>
-                        </div>
-                        <p id="hhProgressText" style="font-size:0.8rem; color:#64748b; margin-top:0.5rem; text-align:center;"></p>
+                    <div class="ci-progress" id="hhProgressContainer">
+                        <div class="ci-bar-bg"><div class="ci-bar-fill hh" id="hhProgressBar" style="width:0%"></div></div>
+                        <p id="hhProgressText" style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-align:center;"></p>
                     </div>
                     
-                    <!-- Resumen de Carga -->
-                    <div id="hhSummary" class="summary-box" style="display:none; margin-top:1rem; background:#f8fafc; padding:1rem; border-radius:0.5rem; border:1px solid #e2e8f0;">
-                        <h4 style="margin-top:0; font-size:1rem; color:#1e293b;">📋 Resultado de Procesamiento</h4>
-                        <div id="hhLog" style="font-size:0.9rem; margin:0.5rem 0; white-space:pre-wrap;"></div>
-                        <div id="hhStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.75rem; margin-top:1rem;"></div>
-                        <button onclick="location.reload()" class="btn-primary" style="margin-top:1rem; width:100%;">🔄 Ver Dashboard Actualizado</button>
+                    <div class="ci-result" id="hhResult"></div>
+                    
+                    <div class="ci-bitacora">
+                        <div class="ci-bitacora-title">📋 Últimas cargas</div>
+                        <div id="bitacoraHH"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
                     </div>
                 </div>
 
-                <script>
-                // === IMPORTADOR PLANIFICACIÓN HH ===
-                (function() {
-                    const dropZone = document.getElementById('dropZoneHH');
-                    const fileInput = document.getElementById('hhFile');
-                    const progressContainer = document.getElementById('hhProgressContainer');
-                    const progressBar = document.getElementById('hhProgressBar');
-                    const progressText = document.getElementById('hhProgressText');
-                    const summary = document.getElementById('hhSummary');
-                    const logDiv = document.getElementById('hhLog');
-                    const statsDiv = document.getElementById('hhStats');
+                <!-- ====== COLUMNA 2: MANTENCIÓN NEW BD (Ámbar) ====== -->
+                <div class="ci-card mant">
+                    <div class="ci-header">
+                        <h3 class="ci-title"><i class="bi bi-tools"></i> Mantención (NEW BD)</h3>
+                        <button class="ci-help-btn" onclick="openCIHelp('mant')" title="Ayuda">?</button>
+                    </div>
+                    <div class="ci-desc">Planificaciones y ejecuciones del sistema de mantenimiento. Actualiza HHs, especialidades y estados de OTs.</div>
+                    
+                    <div class="ci-dropzone mant" id="dropZoneMantencion" onclick="document.getElementById('mantencionFile').click()">
+                        <input type="file" id="mantencionFile" accept=".xlsx,.xls,.csv" style="display:none">
+                        <i class="bi bi-gear-wide-connected"></i>
+                        <p>Arrastra archivo aquí</p>
+                        <small>.xlsx / .csv — Hoja "NEW BD"</small>
+                    </div>
+                    
+                    <div class="ci-progress" id="mantProgressContainer">
+                        <div class="ci-bar-bg"><div class="ci-bar-fill mant" id="mantProgressBar" style="width:0%"></div></div>
+                        <p id="mantProgressText" style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-align:center;"></p>
+                    </div>
+                    
+                    <div class="ci-result" id="mantResult"></div>
+                    
+                    <div class="ci-bitacora">
+                        <div class="ci-bitacora-title">📋 Últimas cargas</div>
+                        <div id="bitacoraMant"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
+                    </div>
+                </div>
 
-                    // Drag & Drop
-                    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#667eea'; dropZone.style.background = '#f0f0ff'; });
-                    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#cbd5e1'; dropZone.style.background = '#fff'; });
-                    dropZone.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        dropZone.style.borderColor = '#cbd5e1';
-                        dropZone.style.background = '#fff';
-                        if (e.dataTransfer.files.length > 0) {
-                            fileInput.files = e.dataTransfer.files;
-                            procesarArchivoHH(e.dataTransfer.files[0]);
-                        }
-                    });
-                    fileInput.addEventListener('change', () => { if (fileInput.files.length > 0) procesarArchivoHH(fileInput.files[0]); });
+                <!-- ====== COLUMNA 3: CARGA SIC (Azul) ====== -->
+                <div class="ci-card sic">
+                    <div class="ci-header">
+                        <h3 class="ci-title"><i class="bi bi-database"></i> Carga SIC</h3>
+                        <button class="ci-help-btn" onclick="openCIHelp('sic')" title="Ayuda">?</button>
+                    </div>
+                    <div class="ci-desc">Órdenes de trabajo y planificación anual del sistema SIC. Se carga <strong>una vez al año</strong> como base inicial.</div>
+                    
+                    <div class="ci-dropzone sic" id="dropZone" onclick="document.getElementById('sicFile').click()">
+                        <input type="file" id="sicFile" accept=".csv" style="display:none">
+                        <i class="bi bi-server"></i>
+                        <p>Arrastra archivo CSV aquí</p>
+                        <small>.csv — Exportación SIC | Máx 50MB</small>
+                    </div>
+                    
+                    <div class="ci-progress" id="sicProgressContainer">
+                        <div class="ci-bar-bg"><div class="ci-bar-fill sic" id="sicProgressBar" style="width:0%"></div></div>
+                        <p id="sicProgressText" style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-align:center;"></p>
+                    </div>
+                    
+                    <div class="ci-result" id="sicResult"></div>
+                    
+                    <div class="ci-bitacora">
+                        <div class="ci-bitacora-title">📋 Últimas cargas</div>
+                        <div id="bitacoraSIC"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
+                    </div>
+                </div>
+            </div>
 
-                    async function procesarArchivoHH(file) {
-                        progressContainer.style.display = 'block';
-                        summary.style.display = 'none';
-                        progressBar.style.width = '20%';
-                        progressText.textContent = '📤 Enviando archivo...';
-
-                        const formData = new FormData();
-                        formData.append('archivo', file);
-
-                        try {
-                            progressBar.style.width = '50%';
-                            progressText.textContent = '⚙️ Procesando planificación...';
-
-                            const response = await fetch('api/importar_planificacion.php', { method: 'POST', body: formData });
-                            const result = await response.json();
-
-                            progressBar.style.width = '100%';
-                            progressText.textContent = '✅ Completado';
-
-                            setTimeout(() => {
-                                progressContainer.style.display = 'none';
-                                summary.style.display = 'block';
-
-                                // Mostrar logs
-                                if (result.log && Array.isArray(result.log)) {
-                                    logDiv.textContent = result.log.join('\n');
-                                }
-
-                                // Mostrar estadísticas
-                                const stats = result.stats || {};
-                                const periodo = result.periodo || {};
-                                statsDiv.innerHTML = `
-                                    <div style="background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; padding:1rem; border-radius:0.5rem; text-align:center;">
-                                        <div style="font-size:1.5rem; font-weight:700;">${stats.total_tecnicos || 0}</div>
-                                        <div style="font-size:0.75rem; opacity:0.9;">Técnicos Procesados</div>
-                                    </div>
-                                    <div style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; padding:1rem; border-radius:0.5rem; text-align:center;">
-                                        <div style="font-size:1.5rem; font-weight:700;">${stats.tecnicos_creados || 0}</div>
-                                        <div style="font-size:0.75rem; opacity:0.9;">Técnicos Creados</div>
-                                    </div>
-                                    <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; padding:1rem; border-radius:0.5rem; text-align:center;">
-                                        <div style="font-size:1.5rem; font-weight:700;">${stats.planificaciones_creadas || 0}</div>
-                                        <div style="font-size:0.75rem; opacity:0.9;">Planificaciones</div>
-                                    </div>
-                                    <div style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; padding:1rem; border-radius:0.5rem; text-align:center;">
-                                        <div style="font-size:1.5rem; font-weight:700;">${periodo.mes_nombre || '-'} ${periodo.año || ''}</div>
-                                        <div style="font-size:0.75rem; opacity:0.9;">Período Detectado</div>
-                                    </div>
-                                `;
-                            }, 500);
-
-                        } catch (error) {
-                            progressBar.style.width = '100%';
-                            progressBar.style.background = '#ef4444';
-                            progressText.textContent = '❌ Error: ' + error.message;
-                        }
-                    }
-                })();
-                </script>
+            <!-- Botón Volver -->
+            <div style="text-align:center; margin-top:1.5rem;">
                 <button class="btn-volver" onclick="showModule('home')">🏠 Volver a Home</button>
             </div>
+
+            <!-- ====== MODALES DE AYUDA ====== -->
+            <div class="ci-modal-overlay" id="ciModalOverlay" onclick="if(event.target===this)closeCIHelp()">
+                <div class="ci-modal" id="ciModalContent">
+                    <button class="ci-modal-close" onclick="closeCIHelp()">✕</button>
+                    <div id="ciModalBody"></div>
+                </div>
+            </div>
+
+            <script>
+            // ═══════════════════════════════════════════════════════
+            // CENTRO DE IMPORTACIONES - LÓGICA UNIFICADA
+            // ═══════════════════════════════════════════════════════
+
+            // === CONTENIDO DE MODALES DE AYUDA ===
+            const ciHelpContent = {
+                hh: {
+                    cls: 'hh',
+                    title: '📅 Planificación de Horas-Hombre',
+                    body: `
+                        <p>Este archivo contiene la <strong>dotación mensual de técnicos</strong> con sus turnos asignados día a día.</p>
+                        <h4>📁 Formato del archivo</h4>
+                        <ul>
+                            <li><strong>Tipo:</strong> Excel (.xlsx / .xls)</li>
+                            <li><strong>Hoja requerida:</strong> "Dotación (2)" o "Dotación"</li>
+                            <li><strong>Frecuencia:</strong> Mensual o semanal</li>
+                        </ul>
+                        <h4>📊 Columnas requeridas</h4>
+                        <table>
+                            <tr><th>Columna</th><th>Descripción</th><th>Ejemplo</th></tr>
+                            <tr><td>#</td><td>Número de fila</td><td>1, 2, 3...</td></tr>
+                            <tr><td>AREA</td><td>Área/departamento</td><td>Clima, Eléctrico</td></tr>
+                            <tr><td>RUT</td><td>RUT del técnico</td><td>12345678-9</td></tr>
+                            <tr><td>CARGO</td><td>Cargo del técnico</td><td>Técnico Climatización</td></tr>
+                            <tr><td>Componente</td><td>Componente asignado</td><td>Climatización</td></tr>
+                            <tr><td>Apellidos y Nombres</td><td>Nombre completo</td><td>Juan Pérez</td></tr>
+                            <tr><td>HH</td><td>Aporta horas hombre</td><td>SI / NO</td></tr>
+                            <tr><td>Estatus</td><td>Estado del técnico</td><td>Activo / Vacante</td></tr>
+                            <tr><td>4/1/26 ... 4/30/26</td><td>Código de turno por día</td><td>7, 9, -1, 6</td></tr>
+                        </table>
+                        <h4>🔗 Vinculación con otras cargas</h4>
+                        <p><span class="tag">SIC</span> Proporciona las OTs y HH demandadas.<br>
+                        <span class="tag">Mantención</span> Actualiza estados y ejecuciones reales.<br>
+                        <span class="tag">Planificación HH</span> Proporciona la oferta de HH disponibles para cubrir la demanda.</p>
+                    `
+                },
+                mant: {
+                    cls: 'mant',
+                    title: '🔧 Mantención (NEW BD)',
+                    body: `
+                        <p>Archivo exportado del sistema de mantenimiento con las <strong>planificaciones y ejecuciones</strong> de órdenes de trabajo.</p>
+                        <h4>📁 Formato del archivo</h4>
+                        <ul>
+                            <li><strong>Tipo:</strong> Excel (.xlsx) o CSV (.csv)</li>
+                            <li><strong>Hoja requerida:</strong> "NEW BD"</li>
+                            <li><strong>Frecuencia:</strong> Semanal o quincenal</li>
+                        </ul>
+                        <h4>📊 Contenido principal</h4>
+                        <table>
+                            <tr><th>Campo</th><th>Descripción</th></tr>
+                            <tr><td>Código OT</td><td>Identificador único de la orden</td></tr>
+                            <tr><td>Equipo</td><td>Equipo asociado a la OT</td></tr>
+                            <tr><td>Especialidad</td><td>Área técnica responsable</td></tr>
+                            <tr><td>HH Planificadas</td><td>Horas hombre estimadas</td></tr>
+                            <tr><td>Fecha Programada</td><td>Fecha de ejecución planificada</td></tr>
+                            <tr><td>Estado</td><td>Pendiente, En Ejecución, Completada</td></tr>
+                        </table>
+                        <h4>🔗 Vinculación con otras cargas</h4>
+                        <p><span class="tag">SIC</span> Las OTs se originan en la carga SIC.<br>
+                        <span class="tag">Mantención</span> Enriquece con datos de ejecución real.<br>
+                        <span class="tag">Planificación HH</span> Permite comparar HH planificadas vs HH disponibles.</p>
+                    `
+                },
+                sic: {
+                    cls: 'sic',
+                    title: '🗄️ Carga y Validación SIC',
+                    body: `
+                        <p>Exportación del <strong>sistema SIC</strong> con todas las órdenes de trabajo del año. Es la <strong>base fundacional</strong> del sistema.</p>
+                        <h4>📁 Formato del archivo</h4>
+                        <ul>
+                            <li><strong>Tipo:</strong> CSV (.csv)</li>
+                            <li><strong>Origen:</strong> Exportación directa del sistema SIC</li>
+                            <li><strong>Frecuencia:</strong> Una vez al año (al inicio)</li>
+                        </ul>
+                        <h4>📊 Contenido principal</h4>
+                        <table>
+                            <tr><th>Campo</th><th>Descripción</th></tr>
+                            <tr><td>Código OT</td><td>Identificador único SIC</td></tr>
+                            <tr><td>Equipo</td><td>Nombre del equipo</td></tr>
+                            <tr><td>Especialidad</td><td>Disciplina técnica</td></tr>
+                            <tr><td>HH Planificadas</td><td>Horas hombre anuales</td></tr>
+                            <tr><td>Periodicidad</td><td>Mensual, Semestral, Anual</td></tr>
+                            <tr><td>Estado</td><td>Estado actual de la OT</td></tr>
+                        </table>
+                        <h4>🔗 Vinculación con otras cargas</h4>
+                        <p><span class="tag">SIC</span> Define la demanda anual de mantenimiento.<br>
+                        <span class="tag">Mantención</span> Actualiza el estado y progreso de cada OT.<br>
+                        <span class="tag">Planificación HH</span> Permite verificar si hay capacidad para cubrir la demanda SIC.</p>
+                    `
+                }
+            };
+
+            // === FUNCIONES DE MODAL ===
+            function openCIHelp(type) {
+                const data = ciHelpContent[type];
+                const modal = document.getElementById('ciModalContent');
+                modal.className = 'ci-modal ' + data.cls;
+                document.getElementById('ciModalBody').innerHTML = '<h3>' + data.title + '</h3>' + data.body;
+                document.getElementById('ciModalOverlay').classList.add('active');
+            }
+            function closeCIHelp() {
+                document.getElementById('ciModalOverlay').classList.remove('active');
+            }
+
+            // === BITÁCORA PERSISTENTE (localStorage) ===
+            function addToBitacora(type, fileName, stats, success) {
+                const key = 'ci_bitacora_' + type;
+                const history = JSON.parse(localStorage.getItem(key) || '[]');
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
+                const dateStr = now.toLocaleDateString('es-CL', {day:'2-digit', month:'2-digit'});
+                
+                let count = 0;
+                if (type === 'hh') count = stats.total_tecnicos || stats.planificaciones_creadas || 0;
+                else if (type === 'mant') count = stats.updated || stats.processed || 0;
+                else if (type === 'sic') count = stats.inserted || stats.total || 0;
+                
+                history.unshift({ name: fileName, time: timeStr, date: dateStr, count: count, ok: success });
+                localStorage.setItem(key, JSON.stringify(history.slice(0, 10)));
+                renderBitacora(type);
+            }
+
+            function renderBitacora(type) {
+                const key = 'ci_bitacora_' + type;
+                const containerId = type === 'hh' ? 'bitacoraHH' : type === 'mant' ? 'bitacoraMant' : 'bitacoraSIC';
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                
+                const history = JSON.parse(localStorage.getItem(key) || '[]');
+                if (history.length === 0) {
+                    container.innerHTML = '<p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p>';
+                    return;
+                }
+                
+                container.innerHTML = history.map(h => `
+                    <div class="ci-log-item">
+                        <div class="ci-log-name" title="${h.name}">${h.name}</div>
+                        <div class="ci-log-meta">
+                            <span class="ci-log-badge ${h.ok ? 'ok' : 'err'}">${h.ok ? 'OK' : 'ERR'}</span>
+                            ${h.date} ${h.time} · ${h.count} reg.
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // === MOSTRAR RESULTADO SIMPLIFICADO ===
+            function showCIResult(type, success, stats, periodo) {
+                const resultId = type === 'hh' ? 'hhResult' : type === 'mant' ? 'mantResult' : 'sicResult';
+                const el = document.getElementById(resultId);
+                if (!el) return;
+                
+                el.style.display = 'block';
+                el.className = 'ci-result ' + (success ? 'success' : 'error');
+                
+                if (!success) {
+                    el.innerHTML = `<div class="ci-result-line">❌ <strong>Error:</strong> ${stats.error || 'Desconocido'}</div>
+                        <button class="ci-close-btn" onclick="this.parentElement.style.display='none'">Cerrar</button>`;
+                    return;
+                }
+                
+                let lines = '';
+                if (type === 'hh') {
+                    const p = periodo || {};
+                    lines = `<div class="ci-result-line">✅ <strong>Carga Exitosa</strong></div>
+                        <div class="ci-result-line">📊 Técnicos procesados: ${stats.total_tecnicos || 0}</div>
+                        <div class="ci-result-line">🆕 Técnicos creados: ${stats.tecnicos_creados || 0}</div>
+                        <div class="ci-result-line">📅 Planificaciones: ${stats.planificaciones_creadas || 0}</div>
+                        <div class="ci-result-line">🗓️ Período: ${p.mes_nombre || '-'} ${p.año || ''}</div>`;
+                } else if (type === 'mant') {
+                    lines = `<div class="ci-result-line">✅ <strong>Carga Exitosa</strong></div>
+                        <div class="ci-result-line">📊 Filas procesadas: ${stats.processed || 0}</div>
+                        <div class="ci-result-line">✅ Registros actualizados: ${stats.updated || 0}</div>
+                        <div class="ci-result-line">❌ Errores: ${stats.errors || 0}</div>`;
+                } else if (type === 'sic') {
+                    lines = `<div class="ci-result-line">✅ <strong>Carga Exitosa</strong></div>
+                        <div class="ci-result-line">📊 Registros leídos: ${stats.total || 0}</div>
+                        <div class="ci-result-line">✅ OTs nuevas importadas: ${stats.inserted || 0}</div>
+                        <div class="ci-result-line">⚠️ OTs duplicadas omitidas: ${stats.skipped || 0}</div>`;
+                }
+                
+                lines += `<button class="ci-close-btn" onclick="this.parentElement.style.display='none'">Cerrar</button>`;
+                el.innerHTML = lines;
+            }
+
+            // === DRAG & DROP GENÉRICO ===
+            function setupCIDropZone(dropId, fileInputId, barId, textId, progressId, type) {
+                const drop = document.getElementById(dropId);
+                const input = document.getElementById(fileInputId);
+                if (!drop || !input) return;
+                
+                drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+                drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+                drop.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    drop.classList.remove('dragover');
+                    if (e.dataTransfer.files.length > 0) {
+                        input.files = e.dataTransfer.files;
+                        handleCIUpload(e.dataTransfer.files[0], barId, textId, progressId, type);
+                    }
+                });
+                input.addEventListener('change', () => {
+                    if (input.files.length > 0) handleCIUpload(input.files[0], barId, textId, progressId, type);
+                });
+            }
+
+            // === UPLOAD UNIFICADO ===
+            async function handleCIUpload(file, barId, textId, progressId, type) {
+                const bar = document.getElementById(barId);
+                const text = document.getElementById(textId);
+                const progress = document.getElementById(progressId);
+                
+                // Ocultar resultado anterior
+                const resultId = type === 'hh' ? 'hhResult' : type === 'mant' ? 'mantResult' : 'sicResult';
+                const resultEl = document.getElementById(resultId);
+                if (resultEl) resultEl.style.display = 'none';
+                
+                progress.style.display = 'block';
+                bar.style.width = '20%';
+                bar.style.background = ''; // Reset color
+                text.textContent = '📤 Enviando ' + file.name + '...';
+                
+                const formData = new FormData();
+                
+                // Endpoint y campo según tipo
+                let endpoint, fieldName;
+                if (type === 'hh') {
+                    endpoint = 'api/importar_planificacion.php';
+                    fieldName = 'archivo';
+                } else if (type === 'mant') {
+                    endpoint = 'api/carga_mantencion.php';
+                    fieldName = 'mantencion_file';
+                } else {
+                    endpoint = 'api/import_sic.php';
+                    fieldName = 'sicFile';
+                }
+                
+                formData.append(fieldName, file);
+                
+                try {
+                    bar.style.width = '50%';
+                    text.textContent = '⚙️ Procesando...';
+                    
+                    const response = await fetch(endpoint, { method: 'POST', body: formData, credentials: 'include' });
+                    const rawText = await response.text();
+                    
+                    let result;
+                    try { result = JSON.parse(rawText); } catch { throw new Error('Respuesta no válida del servidor'); }
+                    
+                    bar.style.width = '100%';
+                    
+                    setTimeout(() => {
+                        progress.style.display = 'none';
+                        
+                        const success = result.success !== false;
+                        const stats = result.stats || result.data || result;
+                        const periodo = result.periodo || null;
+                        
+                        showCIResult(type, success, success ? stats : { error: result.error || rawText.substring(0, 200) }, periodo);
+                        addToBitacora(type, file.name, stats, success);
+                        
+                        // Limpiar input
+                        const inputId = type === 'hh' ? 'hhFile' : type === 'mant' ? 'mantencionFile' : 'sicFile';
+                        const inputEl = document.getElementById(inputId);
+                        if (inputEl) inputEl.value = '';
+                    }, 500);
+                    
+                } catch (error) {
+                    bar.style.width = '100%';
+                    bar.style.background = '#ef4444';
+                    text.textContent = '❌ Error: ' + error.message;
+                    setTimeout(() => {
+                        progress.style.display = 'none';
+                        showCIResult(type, false, { error: error.message });
+                        addToBitacora(type, file.name, { error: error.message }, false);
+                    }, 500);
+                }
+            }
+
+            // === INICIALIZAR ZONAS DE CARGA ===
+            (function initCI() {
+                setupCIDropZone('dropZoneHH', 'hhFile', 'hhProgressBar', 'hhProgressText', 'hhProgressContainer', 'hh');
+                setupCIDropZone('dropZoneMantencion', 'mantencionFile', 'mantProgressBar', 'mantProgressText', 'mantProgressContainer', 'mant');
+                setupCIDropZone('dropZone', 'sicFile', 'sicProgressBar', 'sicProgressText', 'sicProgressContainer', 'sic');
+                
+                // Renderizar bitácoras al cargar
+                renderBitacora('hh');
+                renderBitacora('mant');
+                renderBitacora('sic');
+            })();
+            </script>
         </section>
         <?php endif; ?>
 
