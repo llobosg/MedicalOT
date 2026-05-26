@@ -118,6 +118,9 @@ try {
     }
     $usuarioId = $_SESSION['user_id'] ?? null;
     
+    // ✅ CONVERTIR A INT O NULL (fix para el error de tipo)
+    $usuarioIdInt = is_numeric($usuarioId) ? (int)$usuarioId : null;
+    
     // Usar la conexión PDO global del config.php
     global $pdo;
     
@@ -127,7 +130,7 @@ try {
     
     // Procesar archivo
     $importador = new ImportarPlanificacionHH($pdo);
-    $resultado = $importador->procesarArchivo($rutaTemporal, $año, $mes, $usuarioId);
+    $resultado = $importador->procesarArchivo($rutaTemporal, $año, $mes, $usuarioIdInt);
     
     // Limpiar archivo temporal
     if (file_exists($rutaTemporal)) {
