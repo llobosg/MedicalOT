@@ -67,7 +67,9 @@ class ImportarPlanificacionHH
             $this->log("Iniciando importación: " . basename($rutaArchivo));
             
             // Cargar archivo Excel
-            $spreadsheet = IOFactory::load($rutaArchivo);
+            $reader = IOFactory::createReaderForFile($rutaArchivo);
+            $reader->setReadDataOnly(true); // ← Lee valores calculados, no fórmulas
+            $spreadsheet = $reader->load($rutaArchivo); 
             
             // Buscar la hoja correcta
             $hoja = $this->buscarHojaDotacion($spreadsheet);
@@ -366,6 +368,19 @@ class ImportarPlanificacionHH
             return;
         }
         
+        $esFormula = stripos($aportaHH, 'XLOOKUP') !== false || stripos($aportaHH, '=') === 0;
+        if ($esFormula) {
+            // La celda tiene fórmula no resuelta → intentar leer valor calculado
+            try {
+                $cellValue = $hoja->getCell([$mapaColumnas['aporta_hh'], $fila])->getCalculatedValue();
+                $aportaHH = strtoupper(trim((string)$cellValue));
+            } catch (\Exception $e) {
+                // Si falla el cálculo, asumir SI (el técnico tiene datos de turno)
+                $aportaHH = 'SI';
+                $this->log("Fila $fila: Fórmula no resuelta en HH, asumido SI: $nombre");
+            }
+        }
+
         if ($aportaHH !== 'SI') {
             $this->log("Fila $fila: Técnico sin HH (HH=$aportaHH): $nombre");
             return;
