@@ -77,16 +77,16 @@ class ImportarPlanificacionHH
             
             $this->log("Hoja encontrada: " . $hoja->getTitle());
             
-            // 🔥 AUTO-DETECTAR AÑO Y MES DESDE EL EXCEL
+            // 🔥 AUTO-DETECTAR AÑO Y MES DESDE EL EXCEL (tiene prioridad)
             $mesesInfo = $this->detectarMesDesdeExcel($hoja);
             
-            // Si no se proporcionaron año/mes, usar los detectados
-            if ($mes === null && isset($mesesInfo['mes'])) {
+            // La auto-detección SIEMPRE tiene prioridad sobre el formulario
+            if (isset($mesesInfo['mes']) && $mesesInfo['mes'] > 0) {
                 $mes = $mesesInfo['mes'];
                 $this->log("✅ Mes detectado automáticamente desde Excel: " . $this->obtenerNombreMes($mes));
             }
             
-            if ($año === null && isset($mesesInfo['año'])) {
+            if (isset($mesesInfo['año']) && $mesesInfo['año'] > 2000) {
                 $año = $mesesInfo['año'];
                 $this->log("✅ Año detectado automáticamente desde Excel: $año");
             }

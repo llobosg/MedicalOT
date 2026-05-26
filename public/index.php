@@ -472,6 +472,124 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <button onclick="location.reload()" class="btn-primary" style="margin-top:1rem; width:100%;">🔄 Ver Dashboard Actualizado</button>
                     </div>
                 </div>
+                                <!-- ZONA DE CARGA PLANIFICACIÓN HH -->
+                <div style="margin-top:3rem; padding-top:2rem; border-top:2px solid #e2e8f0;">
+                    <h3 style="margin-bottom:0.5rem; color:#1e293b;">📅 Cargar Planificación de Horas-Hombre</h3>
+                    <p style="font-size:0.9rem; color:#64748b; margin-bottom:1rem;">
+                        Sube el archivo Excel de dotación mensual. El sistema detectará automáticamente el mes y año desde la hoja "Dotación (2)". Solo se procesan técnicos con HH="SI" y Estatus="Activo".
+                    </p>
+                    
+                    <div class="upload-zone" id="dropZoneHH" onclick="document.getElementById('hhFile').click()" style="border:2px dashed #cbd5e1; background:#fff; cursor:pointer; transition:all 0.2s;">
+                        <input type="file" id="hhFile" accept=".xlsx,.xls" style="display:none">
+                        <div style="text-align:center; padding:2rem;">
+                            <div style="font-size:2rem; margin-bottom:0.5rem;">📊</div>
+                            <p style="font-weight:600; color:#334155; margin:0;">Arrastra tu archivo de Dotación aquí o haz clic para seleccionar</p>
+                            <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.5rem;">Solo archivos .xlsx / .xls | Hoja "Dotación (2)"</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Barra de Progreso -->
+                    <div id="hhProgressContainer" style="display:none; margin-top:1rem;">
+                        <div style="height:8px; border-radius:10px; overflow:hidden; background:#e9ecef;">
+                            <div id="hhProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg, #667eea 0%, #764ba2 100%); border-radius:10px; transition:width 0.5s ease;"></div>
+                        </div>
+                        <p id="hhProgressText" style="font-size:0.8rem; color:#64748b; margin-top:0.5rem; text-align:center;"></p>
+                    </div>
+                    
+                    <!-- Resumen de Carga -->
+                    <div id="hhSummary" class="summary-box" style="display:none; margin-top:1rem; background:#f8fafc; padding:1rem; border-radius:0.5rem; border:1px solid #e2e8f0;">
+                        <h4 style="margin-top:0; font-size:1rem; color:#1e293b;">📋 Resultado de Procesamiento</h4>
+                        <div id="hhLog" style="font-size:0.9rem; margin:0.5rem 0; white-space:pre-wrap;"></div>
+                        <div id="hhStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.75rem; margin-top:1rem;"></div>
+                        <button onclick="location.reload()" class="btn-primary" style="margin-top:1rem; width:100%;">🔄 Ver Dashboard Actualizado</button>
+                    </div>
+                </div>
+
+                <script>
+                // === IMPORTADOR PLANIFICACIÓN HH ===
+                (function() {
+                    const dropZone = document.getElementById('dropZoneHH');
+                    const fileInput = document.getElementById('hhFile');
+                    const progressContainer = document.getElementById('hhProgressContainer');
+                    const progressBar = document.getElementById('hhProgressBar');
+                    const progressText = document.getElementById('hhProgressText');
+                    const summary = document.getElementById('hhSummary');
+                    const logDiv = document.getElementById('hhLog');
+                    const statsDiv = document.getElementById('hhStats');
+
+                    // Drag & Drop
+                    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#667eea'; dropZone.style.background = '#f0f0ff'; });
+                    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#cbd5e1'; dropZone.style.background = '#fff'; });
+                    dropZone.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        dropZone.style.borderColor = '#cbd5e1';
+                        dropZone.style.background = '#fff';
+                        if (e.dataTransfer.files.length > 0) {
+                            fileInput.files = e.dataTransfer.files;
+                            procesarArchivoHH(e.dataTransfer.files[0]);
+                        }
+                    });
+                    fileInput.addEventListener('change', () => { if (fileInput.files.length > 0) procesarArchivoHH(fileInput.files[0]); });
+
+                    async function procesarArchivoHH(file) {
+                        progressContainer.style.display = 'block';
+                        summary.style.display = 'none';
+                        progressBar.style.width = '20%';
+                        progressText.textContent = '📤 Enviando archivo...';
+
+                        const formData = new FormData();
+                        formData.append('archivo', file);
+
+                        try {
+                            progressBar.style.width = '50%';
+                            progressText.textContent = '⚙️ Procesando planificación...';
+
+                            const response = await fetch('api/importar_planificacion.php', { method: 'POST', body: formData });
+                            const result = await response.json();
+
+                            progressBar.style.width = '100%';
+                            progressText.textContent = '✅ Completado';
+
+                            setTimeout(() => {
+                                progressContainer.style.display = 'none';
+                                summary.style.display = 'block';
+
+                                // Mostrar logs
+                                if (result.log && Array.isArray(result.log)) {
+                                    logDiv.textContent = result.log.join('\n');
+                                }
+
+                                // Mostrar estadísticas
+                                const stats = result.stats || {};
+                                const periodo = result.periodo || {};
+                                statsDiv.innerHTML = `
+                                    <div style="background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; padding:1rem; border-radius:0.5rem; text-align:center;">
+                                        <div style="font-size:1.5rem; font-weight:700;">${stats.total_tecnicos || 0}</div>
+                                        <div style="font-size:0.75rem; opacity:0.9;">Técnicos Procesados</div>
+                                    </div>
+                                    <div style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; padding:1rem; border-radius:0.5rem; text-align:center;">
+                                        <div style="font-size:1.5rem; font-weight:700;">${stats.tecnicos_creados || 0}</div>
+                                        <div style="font-size:0.75rem; opacity:0.9;">Técnicos Creados</div>
+                                    </div>
+                                    <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; padding:1rem; border-radius:0.5rem; text-align:center;">
+                                        <div style="font-size:1.5rem; font-weight:700;">${stats.planificaciones_creadas || 0}</div>
+                                        <div style="font-size:0.75rem; opacity:0.9;">Planificaciones</div>
+                                    </div>
+                                    <div style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; padding:1rem; border-radius:0.5rem; text-align:center;">
+                                        <div style="font-size:1.5rem; font-weight:700;">${periodo.mes_nombre || '-'} ${periodo.año || ''}</div>
+                                        <div style="font-size:0.75rem; opacity:0.9;">Período Detectado</div>
+                                    </div>
+                                `;
+                            }, 500);
+
+                        } catch (error) {
+                            progressBar.style.width = '100%';
+                            progressBar.style.background = '#ef4444';
+                            progressText.textContent = '❌ Error: ' + error.message;
+                        }
+                    }
+                })();
+                </script>
                 <button class="btn-volver" onclick="showModule('home')">🏠 Volver a Home</button>
             </div>
         </section>
