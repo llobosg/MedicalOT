@@ -36,31 +36,26 @@ class ImportarPlanificacionHH
      */
     private function cargarMapas(): void
     {
-        try {
-            // Cargar tipos de turno
-            $stmt = $this->pdo->query("SELECT codigo, id, hh_diarias, tipo FROM tipos_turno WHERE activo = 1");
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $this->mapaTurnos[(string)$row['codigo']] = $row;
-            }
-            
-            // Agregar descanso explícitamente
-            $this->mapaTurnos['-1'] = ['id' => null, 'hh_diarias' => 0, 'tipo' => 'descanso'];
-            $this->mapaTurnos['0'] = ['id' => null, 'hh_diarias' => 0, 'tipo' => 'descanso'];
-            
-            // Cargar componentes
-            $stmt = $this->pdo->query("SELECT codigo, id, nombre, nombre_corto FROM componentes WHERE activo = 1");
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $this->mapaComponentes[$row['codigo']] = $row;
-                if (!empty($row['nombre_corto'])) {
-                    $this->mapaComponentes[strtoupper($row['nombre_corto'])] = $row;
-                }
-            }
-            
-            $this->log("Mapas cargados: " . count($this->mapaTurnos) . " turnos, " . count($this->mapaComponentes) . " componentes");
-            
-        } catch (Exception $e) {
-            $this->log("Error cargando mapas: " . $e->getMessage());
+        // Cargar tipos de turno
+        $stmt = $this->pdo->query("SELECT codigo, id, hh_diarias, tipo FROM tipos_turno WHERE activo = 1");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $this->mapaTurnos[(string)$row['codigo']] = $row;
         }
+        
+        // Agregar descanso explícitamente
+        $this->mapaTurnos['-1'] = ['id' => null, 'hh_diarias' => 0, 'tipo' => 'descanso'];
+        $this->mapaTurnos['0'] = ['id' => null, 'hh_diarias' => 0, 'tipo' => 'descanso'];
+        
+        // Cargar componentes
+        $stmt = $this->pdo->query("SELECT codigo, id, nombre, nombre_corto FROM componentes WHERE activo = 1");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $this->mapaComponentes[$row['codigo']] = $row;
+            if (!empty($row['nombre_corto'])) {
+                $this->mapaComponentes[strtoupper($row['nombre_corto'])] = $row;
+            }
+        }
+        
+        $this->log("Mapas cargados: " . count($this->mapaTurnos) . " turnos, " . count($this->mapaComponentes) . " componentes");
     }
     
     /**
@@ -146,7 +141,6 @@ class ImportarPlanificacionHH
      */
     private function buscarHojaDotacion($spreadsheet): ?Worksheet
     {
-        // Intentar en orden de prioridad
         $nombresPosibles = ['Dotación (2)', 'Dotación', 'Dotacion', 'Dotacion (2)'];
         
         foreach ($nombresPosibles as $nombre) {
@@ -171,6 +165,7 @@ class ImportarPlanificacionHH
     
     /**
      * Identifica la fila que contiene los encabezados
+     * ✅ CORREGIDO: usa getCell([$col, $fila]) en lugar de getCellByColumnAndRow
      */
     private function identificarFilaEncabezados(Worksheet $hoja): ?int
     {
@@ -180,7 +175,7 @@ class ImportarPlanificacionHH
             $coincidencias = 0;
             
             for ($col = 1; $col <= 15; $col++) {
-                $valor = $hoja->getCellByColumnAndRow($col, $fila)->getValue();
+                $valor = $hoja->getCell([$col, $fila])->getValue();
                 if ($valor) {
                     $valorUpper = strtoupper(trim((string)$valor));
                     foreach ($indicadores as $indicador) {
@@ -202,6 +197,7 @@ class ImportarPlanificacionHH
     
     /**
      * Mapea las columnas del Excel a nombres de campos
+     * ✅ CORREGIDO: usa getCell([$col, $fila]) en lugar de getCellByColumnAndRow
      */
     private function mapearColumnas(Worksheet $hoja, int $filaEncabezados): array
     {
@@ -211,7 +207,7 @@ class ImportarPlanificacionHH
         $totalCols = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($totalCols);
         
         for ($col = 1; $col <= $totalCols; $col++) {
-            $valor = $hoja->getCellByColumnAndRow($col, $filaEncabezados)->getValue();
+            $valor = $hoja->getCell([$col, $filaEncabezados])->getValue();
             if (!$valor) continue;
             
             $valorLimpio = strtoupper(trim((string)$valor));
@@ -326,13 +322,14 @@ class ImportarPlanificacionHH
     
     /**
      * Obtiene el valor de una celda de forma segura
+     * ✅ CORREGIDO: usa getCell([$col, $fila]) en lugar de getCellByColumnAndRow
      */
     private function obtenerValorCelda(Worksheet $hoja, int $fila, ?int $col): ?string
     {
         if (!$col) return null;
         
         try {
-            $valor = $hoja->getCellByColumnAndRow($col, $fila)->getValue();
+            $valor = $hoja->getCell([$col, $fila])->getValue();
             if ($valor === null || $valor === '') return null;
             
             $valorStr = trim((string)$valor);
