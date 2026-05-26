@@ -1,11 +1,4 @@
 <?php
-/**
- * Servicio de Importación de Planificación HH
- * Procesa archivos Excel de dotación mensual y genera planificaciones
- * 
- * @author MedicalOT
- * @version 1.0
- */
 
 namespace App\Services;
 
@@ -16,21 +9,20 @@ use Exception;
 
 class ImportarPlanificacionHH
 {
-    private PDO $pdo;
-    private array $log = [];
-    private array $stats = [
+    private $pdo;
+    private $log = [];
+    private $stats = [
         'total_tecnicos' => 0,
         'tecnicos_creados' => 0,
         'tecnicos_actualizados' => 0,
-        'planificaciones_mensuales' => 0,
-        'planificaciones_diarias' => 0,
+        'planificaciones_creadas' => 0,
         'errores' => 0
     ];
     
-    private array $mapaTurnos = [];
-    private array $mapaComponentes = [];
-    private int $año;
-    private int $mes;
+    private $mapaTurnos = [];
+    private $mapaComponentes = [];
+    private $año;
+    private $mes;
     
     public function __construct(PDO $pdo)
     {
@@ -45,13 +37,13 @@ class ImportarPlanificacionHH
     {
         // Cargar tipos de turno
         $stmt = $this->pdo->query("SELECT codigo, id, hh_diarias, tipo FROM tipos_turno WHERE activo = 1");
-        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $this->mapaTurnos[(string)$row['codigo']] = $row;
         }
         
         // Cargar componentes
         $stmt = $this->pdo->query("SELECT codigo, id, nombre FROM componentes WHERE activo = 1");
-        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $this->mapaComponentes[$row['nombre']] = $row;
         }
     }
@@ -299,7 +291,7 @@ class ImportarPlanificacionHH
         if ($rut) {
             $stmt = $this->pdo->prepare("SELECT id FROM tecnicos WHERE rut = ? LIMIT 1");
             $stmt->execute([$rut]);
-            $tecnico = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $tecnico = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($tecnico) {
                 $this->stats['tecnicos_actualizados']++;
@@ -310,7 +302,7 @@ class ImportarPlanificacionHH
         // Buscar por nombre
         $stmt = $this->pdo->prepare("SELECT id FROM tecnicos WHERE nombre = ? LIMIT 1");
         $stmt->execute([$nombre]);
-        $tecnico = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $tecnico = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($tecnico) {
             $this->stats['tecnicos_actualizados']++;
@@ -440,7 +432,7 @@ class ImportarPlanificacionHH
             $turnosDia, $turnosNoche
         ]);
         
-        $this->stats['planificaciones_mensuales']++;
+        $this->stats['planificaciones_creadas']++;
         return (int)$this->pdo->lastInsertId();
     }
     
@@ -480,8 +472,6 @@ class ImportarPlanificacionHH
                 $plan['id_turno'], $plan['horas'],
                 $tipoDia, $turnoTipo, $plan['codigo_turno']
             ]);
-            
-            $this->stats['planificaciones_diarias']++;
         }
     }
     
@@ -561,7 +551,7 @@ class ImportarPlanificacionHH
             $this->stats['total_tecnicos'],
             $this->stats['tecnicos_creados'],
             $this->stats['tecnicos_actualizados'],
-            $this->stats['planificaciones_mensuales'],
+            $this->stats['planificaciones_creadas'],
             $this->stats['errores'],
             json_encode($this->log),
             $id
