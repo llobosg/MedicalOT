@@ -25,6 +25,14 @@ try {
     if (empty($userMessage)) {
         throw new Exception("Mensaje vacío");
     }
+    // ═══════════════════════════════════════════════════════
+    // 📊 CONSTANTES DE CAPACIDAD OPERATIVA
+    // ═══════════════════════════════════════════════════════
+    define('HORAS_POR_TECNICO_MES', 160); // 20 días × 8 horas (sin contar vacaciones, capacitaciones)
+    define('HORAS_POR_TECNICO_SEMANA', 40); // 5 días × 8 horas
+    define('DIAS_LABORABLES_MES', 20); // Promedio de días laborables
+    define('FACTOR_EFICIENCIA', 0.85); // 85% eficiencia real (15% en imprevistos, reuniones, etc.)
+    define('HORAS_EFECTIVAS_MES', HORAS_POR_TECNICO_MES * FACTOR_EFICIENCIA); // ~136 HHs efectivas
 
     // ═══════════════════════════════════════════════════════
     // 📊 OBTENER DATOS REALES DE LA BD
@@ -85,7 +93,20 @@ function callOpenRouter($userMessage, $stats, $apiKey) {
                     "Responde basándote SOLO en los datos proporcionados. " .
                     "Sé conciso, profesional y orientado a la acción. " .
                     "Usa emojis moderadamente y formato estructurado con negritas (**texto**) y bullets (•). " .
-                    "SIEMPRE responde en español.";
+                    "SIEMPRE responde en español.\n\n" .
+                    "CAPACIDADES ADICIONALES:\n" .
+                    "• Puedes hacer cálculos matemáticos (divisiones, porcentajes, proyecciones)\n" .
+                    "• Puedes estimar recursos necesarios basándote en datos históricos\n" .
+                    "• Puedes comparar periodos y detectar tendencias\n" .
+                    "• Puedes responder preguntas de 'qué pasaría si...' (scenarios)\n\n" .
+                    "CONSTANTES DE CAPACIDAD:\n" .
+                    "• Horas por técnico al mes: " . HORAS_POR_TECNICO_MES . " HHs (20 días × 8 horas)\n" .
+                    "• Horas efectivas por técnico: " . HORAS_EFECTIVAS_MES . " HHs (considerando 85% eficiencia)\n" .
+                    "• Días laborables por mes: " . DIAS_LABORABLES_MES . "\n\n" .
+                    "EJEMPLOS DE CÁLCULOS:\n" .
+                    "• '¿Cuántos técnicos necesito para 8,767 HHs?' → 8767 ÷ " . HORAS_EFECTIVAS_MES . " = X técnicos\n" .
+                    "• '¿Cuántas HHs puede cubrir un equipo de 10 técnicos?' → 10 × " . HORAS_EFECTIVAS_MES . " = X HHs\n" .
+                    "• '¿Cuál es la carga promedio por técnico?' → HHs totales ÷ número de técnicos";
     
     $context = buildContext($stats);
     
@@ -108,7 +129,7 @@ function callOpenRouter($userMessage, $stats, $apiKey) {
                 ["role" => "user", "content" => "Contexto de datos:\n$context\n\nPregunta del usuario: $userMessage"]
             ],
             "temperature" => 0.7,
-            "max_tokens" => 800
+            "max_tokens" => 1000 // Aumentado para permitir respuestas más detalladas
         ])
     ]);
 
@@ -118,7 +139,7 @@ function callOpenRouter($userMessage, $stats, $apiKey) {
 
     if ($httpCode !== 200) {
         error_log("❌ OpenRouter Error (HTTP $httpCode): $response");
-        return null; // Falló, usar mock
+        return null;
     }
 
     $result = json_decode($response, true);
@@ -142,16 +163,29 @@ function buildContext($stats) {
     $ctx .= "• OTs en Riesgo (+7 días): {$stats['general']['ots_riesgo']}\n";
     $ctx .= "• OTs Reprogramadas: {$stats['general']['ots_reprogramadas']}\n\n";
     
+    // Agregar métricas de capacidad
+    $hhPorOT = $stats['general']['total_ots'] > 0 
+        ? round($stats['general']['hh_plan'] / $stats['general']['total_ots'], 1) 
+        : 0;
+    $tecnicosNecesarios = ceil($stats['general']['hh_plan'] / HORAS_EFECTIVAS_MES);
+    
+    $ctx .= "👥 CAPACIDAD OPERATIVA:\n";
+    $ctx .= "• HHs promedio por OT: {$hhPorOT}\n";
+    $ctx .= "• Técnicos necesarios para carga total: ~{$tecnicosNecesarios}\n";
+    $ctx .= "• Horas efectivas por técnico: " . HORAS_EFECTIVAS_MES . " HHs/mes\n\n";
+    
     $ctx .= "🏆 TOP 5 ESPECIALIDADES (por HHs):\n";
     foreach ($stats['especialidades'] as $e) {
         $nombre = $espMap[$e['id_especialidad']] ?? "Esp.{$e['id_especialidad']}";
-        $ctx .= "• {$nombre}: {$e['total']} OTs, {$e['hh']} HHs, {$e['en_riesgo']} en riesgo\n";
+        $tecnicosEsp = ceil($e['hh'] / HORAS_EFECTIVAS_MES);
+        $ctx .= "• {$nombre}: {$e['total']} OTs, {$e['hh']} HHs (~{$tecnicosEsp} técnicos), {$e['en_riesgo']} en riesgo\n";
     }
     $ctx .= "\n";
     
     $ctx .= "📅 DISTRIBUCIÓN POR MES:\n";
     foreach ($stats['meses'] as $m) {
-        $ctx .= "• " . ucfirst($m['mes_carga']) . ": {$m['total']} OTs, {$m['hh']} HHs\n";
+        $tecnicosMes = ceil($m['hh'] / HORAS_EFECTIVAS_MES);
+        $ctx .= "• " . ucfirst($m['mes_carga']) . ": {$m['total']} OTs, {$m['hh']} HHs (~{$tecnicosMes} técnicos)\n";
     }
     $ctx .= "\n";
     
@@ -212,6 +246,57 @@ function getDatabaseStats($pdo) {
     $stats['meses'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     return $stats;
+}
+
+// ═══════════════════════════════════════════════════════
+// 🧮 FUNCIONES DE CÁLCULO
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Calcula cuántos técnicos se necesitan para cubrir X horas
+ */
+function calcularTecnicosNecesarios($horas) {
+    $tecnicos = ceil($horas / HORAS_EFECTIVAS_MES);
+    return [
+        'tecnicos' => $tecnicos,
+        'horas_por_tecnico' => HORAS_EFECTIVAS_MES,
+        'horas_totales' => $horas,
+        'formula' => "$horas ÷ " . HORAS_EFECTIVAS_MES . " = $tecnicos"
+    ];
+}
+
+/**
+ * Calcula cuántas horas puede cubrir un equipo de X técnicos
+ */
+function calcularCapacidadEquipo($numTecnicos) {
+    $horas = $numTecnicos * HORAS_EFECTIVAS_MES;
+    return [
+        'horas' => $horas,
+        'tecnicos' => $numTecnicos,
+        'horas_por_tecnico' => HORAS_EFECTIVAS_MES,
+        'formula' => "$numTecnicos × " . HORAS_EFECTIVAS_MES . " = $horas"
+    ];
+}
+
+/**
+ * Calcula carga promedio por técnico
+ */
+function calcularCargaPromedio($horasTotales, $numTecnicos) {
+    if ($numTecnicos === 0) return 0;
+    return round($horasTotales / $numTecnicos, 1);
+}
+
+/**
+ * Proyecta necesidad de técnicos para un mes específico
+ */
+function proyectarNecesidadMes($mes, $stats) {
+    $mesLower = strtolower($mes);
+    foreach ($stats['meses'] as $m) {
+        if (strtolower($m['mes_carga']) === $mesLower) {
+            return calcularTecnicosNecesarios($m['hh']);
+        }
+    }
+    return null;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -319,6 +404,95 @@ function generateMockResponse($message, $stats) {
         $resp .= "\n💡 **Insight:** El mes con mayor carga es **" . ucfirst($maxMes) . "** con {$maxHH} HHs.";
         
         return $resp;
+    }
+
+        // Preguntas de capacidad y personal
+    if (preg_match('/(cu[aá]ntos? (t[eé]cnicos?|personal|gente|equipo)|necesito|requiero|cubrir|capacidad)/i', $msg)) {
+        // Extraer número de horas si está en la pregunta
+        if (preg_match('/(\d+[\.,]?\d*)\s*(hh|hora|horas)/i', $msg, $matches)) {
+            $horas = (float)str_replace(',', '.', $matches[1]);
+            $calc = calcularTecnicosNecesarios($horas);
+            
+            return "👥 **CÁLCULO DE PERSONAL NECESARIO**\n\n" .
+                   "Para cubrir **{$horas} HHs** necesitas:\n\n" .
+                   "🎯 **{$calc['tecnicos']} técnicos** de tiempo completo\n\n" .
+                   "📊 **Detalle del cálculo:**\n" .
+                   "• Horas a cubrir: **{$calc['horas_totales']} HHs**\n" .
+                   "• Horas efectivas por técnico: **{$calc['horas_por_tecnico']} HHs/mes**\n" .
+                   "• Fórmula: {$calc['formula']}\n\n" .
+                   "💡 **Consideraciones:**\n" .
+                   "• Este cálculo asume **85% de eficiencia** (descuenta reuniones, capacitaciones, imprevistos)\n" .
+                   "• Si necesitas cubrir picos de demanda, considera **+20% de buffer** → **" . ceil($calc['tecnicos'] * 1.2) . " técnicos**\n" .
+                   "• Para emergencias 24/7, necesitas **3 turnos** → multiplica × 3";
+        }
+        
+        // Si menciona un mes específico
+        if (preg_match('/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i', $msg, $matches)) {
+            $proyeccion = proyectarNecesidadMes($matches[1], $stats);
+            if ($proyeccion) {
+                return "👥 **PROYECCIÓN DE PERSONAL PARA " . strtoupper($matches[1]) . "**\n\n" .
+                       "Basado en datos históricos:\n\n" .
+                       "🎯 Necesitas **{$proyeccion['tecnicos']} técnicos** de tiempo completo\n\n" .
+                       "📊 **Detalle:**\n" .
+                       "• HHs esperadas en {$matches[1]}: **{$proyeccion['horas_totales']} HHs**\n" .
+                       "• Horas efectivas por técnico: **{$proyeccion['horas_por_tecnico']} HHs/mes**\n" .
+                       "• Fórmula: {$proyeccion['formula']}\n\n" .
+                       "💡 **Recomendación:**\n" .
+                       "Planifica con anticipación la contratación o tercerización para absorber esta carga.";
+            }
+        }
+        
+        // Respuesta genérica sobre capacidad
+        return "👥 **CAPACIDAD OPERATIVA**\n\n" .
+               "Parámetros actuales:\n" .
+               "• **Horas por técnico al mes:** " . HORAS_POR_TECNICO_MES . " HHs\n" .
+               "• **Horas efectivas (85% eficiencia):** " . HORAS_EFECTIVAS_MES . " HHs\n" .
+               "• **Días laborables:** " . DIAS_LABORABLES_MES . " días/mes\n\n" .
+               "¿Cuántas horas necesitas cubrir? Puedo calcular el personal necesario.";
+    }
+    
+    // Preguntas de "qué pasaría si" (escenarios)
+    if (preg_match('/(qu[eé] pasar[ií]a|si (tengo|contrato|agrego|sumo)|escenario|simulaci)/i', $msg)) {
+        // Extraer número de técnicos
+        if (preg_match('/(\d+)\s*(t[eé]cnicos?|personas?)/i', $msg, $matches)) {
+            $numTecnicos = (int)$matches[1];
+            $calc = calcularCapacidadEquipo($numTecnicos);
+            
+            return "🔮 **ESCENARIO: EQUIPO DE {$numTecnicos} TÉCNICOS**\n\n" .
+                   "Con **{$numTecnicos} técnicos** puedes cubrir:\n\n" .
+                   "🎯 **{$calc['horas']} HHs mensuales**\n\n" .
+                   "📊 **Detalle:**\n" .
+                   "• Técnicos: **{$calc['tecnicos']}**\n" .
+                   "• Horas efectivas por técnico: **{$calc['horas_por_tecnico']} HHs/mes**\n" .
+                   "• Fórmula: {$calc['formula']}\n\n" .
+                   "📈 **Comparación con carga actual:**\n";
+        }
+        
+        return "🔮 **ANÁLISIS DE ESCENARIOS**\n\n" .
+               "Puedo simular escenarios como:\n" .
+               "• '¿Qué pasaría si contrato 5 técnicos más?'\n" .
+               "• '¿Cuántos técnicos necesito para cubrir 10,000 HHs?'\n" .
+               "• '¿Qué pasa si la carga aumenta 20%?'\n\n" .
+               "¿Qué escenario te gustaría analizar?";
+    }
+    
+    // Preguntas de eficiencia y productividad
+    if (preg_match('/(eficiencia|productividad|rendimiento|carga promedio|promedio por)/i', $msg)) {
+        $totalHH = $stats['general']['hh_plan'];
+        $totalOTs = $stats['general']['total_ots'];
+        $hhPorOT = $totalOTs > 0 ? round($totalHH / $totalOTs, 1) : 0;
+        
+        return "📈 **MÉTRICAS DE EFICIENCIA**\n\n" .
+               "Indicadores actuales:\n\n" .
+               "• **HHs promedio por OT:** {$hhPorOT} HHs\n" .
+               "• **Total de OTs:** {$totalOTs}\n" .
+               "• **Total de HHs:** {$totalHH}\n\n" .
+               "💡 **Benchmarks de la industria:**\n" .
+               "• Mantenimiento hospitalario: 3-6 HHs por OT\n" .
+               "• Tu promedio ({$hhPorOT} HHs) está " . ($hhPorOT <= 6 ? "✅ dentro del rango" : "⚠️ por encima del promedio") . "\n\n" .
+               "🎯 **Recomendación:**\n" .
+               ($hhPorOT > 6 ? "Revisar si hay OTs que podrían dividirse en tareas más pequeñas para mejorar seguimiento." 
+                             : "Tu eficiencia está en línea con estándares de la industria.");
     }
     
     // Respuesta genérica
