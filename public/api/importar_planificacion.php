@@ -14,7 +14,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once __DIR__ . '/../../config/database.php';
+define('APP_ENTRY_POINT', true);
+    
+$docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+$projectRoot = dirname($docRoot);
+$configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
+    
+if (!$configPath) {
+    throw new Exception("Archivo de configuración no encontrado");
+}
+
+require_once $configPath;
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Services\ImportarPlanificacionHH;
