@@ -1,12 +1,17 @@
 <?php
 /**
  * API Endpoint - Importar Planificación HH
+ * CON TRAZAS DE DEPURACIÓN
  */
 
-// Capturar CUALQUIER output inesperado (warnings, notices, echos)
+// ✅ LOG 1: Inicio del script
+error_log("🔵 [IMPORT] === INICIO importacion_planificacion.php ===");
+error_log("🔵 [IMPORT] REQUEST_METHOD: " . ($_SERVER['REQUEST_METHOD'] ?? 'N/A'));
+error_log("🔵 [IMPORT] PHP Version: " . phpversion());
+
+// Capturar CUALQUIER output inesperado
 ob_start();
 
-// Headers CORS
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -18,182 +23,172 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Permitir acceso desde navegador
 define('APP_ENTRY_POINT', true);
 
-// Cargar configuración
+// ✅ LOG 2: Carga de config
+error_log("🔵 [IMPORT] Cargando config.php...");
 $configPath = __DIR__ . '/../../config.php';
 if (!file_exists($configPath)) {
     ob_end_clean();
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Archivo de configuración no encontrado']);
+    echo json_encode(['success' => false, 'error' => 'Config no encontrado']);
     exit;
 }
-
 require_once $configPath;
+error_log("🟢 [IMPORT] config.php cargado OK");
 
-// Limpiar cualquier output generado por config.php
-ob_end_clean();
+// Verificar conexión PDO
+global $pdo;
+if (!isset($pdo) || !($pdo instanceof PDO)) {
+    ob_end_clean();
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'PDO no disponible']);
+    exit;
+}
+error_log("🟢 [IMPORT] Conexión PDO activa");
 
-// Cargar autoloader de Composer
+// ✅ LOG 3: Carga de autoloader
+error_log("🔵 [IMPORT] Cargando vendor/autoload.php...");
 $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
 if (!file_exists($autoloadPath)) {
+    ob_end_clean();
     http_response_code(500);
-    echo json_encode([
-        'success' => false, 
-        'error' => 'Composer autoload no encontrado. Ejecuta: composer require phpoffice/phpspreadsheet'
-    ]);
+    echo json_encode(['success' => false, 'error' => 'Composer autoload no encontrado']);
     exit;
 }
-
 require_once $autoloadPath;
+error_log("🟢 [IMPORT] Autoloader cargado OK");
 
-// Cargar el servicio
+// ✅ LOG 4: Verificar PhpSpreadsheet
+if (!class_exists('PhpOffice\PhpSpreadsheet\IOFactory')) {
+    ob_end_clean();
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'PhpSpreadsheet no instalado']);
+    exit;
+}
+error_log("🟢 [IMPORT] PhpSpreadsheet disponible");
+
+// ✅ LOG 5: Carga del servicio
+error_log("🔵 [IMPORT] Cargando ImportarPlanificacionHH.php...");
 $servicePath = __DIR__ . '/../../src/Services/ImportarPlanificacionHH.php';
 if (!file_exists($servicePath)) {
+    ob_end_clean();
     http_response_code(500);
-    echo json_encode([
-        'success' => false, 
-        'error' => 'Servicio ImportarPlanificacionHH no encontrado en: ' . $servicePath
-    ]);
+    echo json_encode(['success' => false, 'error' => 'Servicio no encontrado: ' . $servicePath]);
     exit;
 }
-
 require_once $servicePath;
+error_log("🟢 [IMPORT] Servicio cargado OK");
 
 use App\Services\ImportarPlanificacionHH;
 
 try {
-    // Validar método
+    // ✅ LOG 6: Validaciones
+    error_log("🔵 [IMPORT] Validando request...");
+    
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Método no permitido. Use POST.', 405);
+        throw new Exception('Método no permitido', 405);
     }
-    
-    // Validar archivo
+
     if (!isset($_FILES['archivo']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
-        $errorMessages = [
-            UPLOAD_ERR_INI_SIZE => 'El archivo excede el tamaño máximo permitido por el servidor',
-            UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño máximo del formulario',
-            UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
-            UPLOAD_ERR_NO_FILE => 'No se subió ningún archivo',
-            UPLOAD_ERR_NO_TMP_DIR => 'Falta el directorio temporal',
-            UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir el archivo en disco',
-            UPLOAD_ERR_EXTENSION => 'Extensión de PHP detuvo la subida'
-        ];
-        
-        $errorCode = $_FILES['archivo']['error'] ?? -1;
-        $errorMessage = $errorMessages[$errorCode] ?? 'Error desconocido al subir archivo';
-        
-        throw new Exception("No se recibió archivo válido: $errorMessage", 400);
+        $errCode = $_FILES['archivo']['error'] ?? -1;
+        error_log("❌ [IMPORT] Error upload: código=$errCode");
+        throw new Exception("Error subida archivo (código: $errCode)", 400);
     }
-    
+
     $archivo = $_FILES['archivo'];
-    
-    // Validar extensión
+    error_log("🟢 [IMPORT] Archivo recibido: " . $archivo['name'] . " (" . round($archivo['size']/1024) . " KB)");
+
     $extension = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
     if (!in_array($extension, ['xlsx', 'xls'])) {
-        throw new Exception('Solo se permiten archivos Excel (.xlsx, .xls)', 400);
+        throw new Exception('Solo Excel (.xlsx, .xls)', 400);
     }
-    
-    // Validar tamaño (máximo 20MB)
+
     if ($archivo['size'] > 20 * 1024 * 1024) {
-        throw new Exception('El archivo excede el tamaño máximo de 20MB', 400);
+        throw new Exception('Archivo excede 20MB', 400);
     }
-    
-    // Obtener parámetros
+
+    // ✅ LOG 7: Parámetros
     $año = filter_input(INPUT_POST, 'año', FILTER_VALIDATE_INT);
     $mes = filter_input(INPUT_POST, 'mes', FILTER_VALIDATE_INT);
-    
-    if (!$año || $año < 2020 || $año > 2030) {
-        throw new Exception('Año inválido. Debe estar entre 2020 y 2030', 400);
-    }
-    
-    if (!$mes || $mes < 1 || $mes > 12) {
-        throw new Exception('Mes inválido. Debe estar entre 1 y 12', 400);
-    }
-    
-    // Mover archivo a ubicación temporal
+    error_log("🔵 [IMPORT] Params: año=$año, mes=$mes");
+
+    // Mover archivo temporal
     $rutaTemporal = sys_get_temp_dir() . '/' . uniqid('planificacion_') . '.' . $extension;
-    
     if (!move_uploaded_file($archivo['tmp_name'], $rutaTemporal)) {
-        throw new Exception('Error al procesar el archivo subido', 500);
+        throw new Exception('Error moviendo archivo temporal', 500);
     }
-    
-    // Obtener ID de usuario (si hay sesión)
+    error_log("🟢 [IMPORT] Archivo temporal: $rutaTemporal");
+
+    // Sesión
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    $usuarioId = $_SESSION['user_id'] ?? null;
-    
-    // ✅ CONVERTIR A INT O NULL (fix para el error de tipo)
-    $usuarioIdInt = is_numeric($usuarioId) ? (int)$usuarioId : null;
-    
-    // Usar la conexión PDO global del config.php
-    global $pdo;
-    
-    if (!isset($pdo) || !($pdo instanceof PDO)) {
-        throw new Exception('Conexión a base de datos no disponible', 500);
-    }
-    
-    // Procesar archivo
+    $usuarioId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+    error_log("🔵 [IMPORT] Usuario ID: " . ($usuarioId ?? 'null'));
+
+    // ✅ LOG 8: Procesamiento
+    error_log("🔵 [IMPORT] Creando instancia ImportarPlanificacionHH...");
     $importador = new ImportarPlanificacionHH($pdo);
-    $resultado = $importador->procesarArchivo($rutaTemporal, $año, $mes, $usuarioIdInt);
-    
-    // Limpiar archivo temporal
+    error_log("🟢 [IMPORT] Instancia creada OK");
+
+    error_log("🔵 [IMPORT] Iniciando procesarArchivo()...");
+    $resultado = $importador->procesarArchivo($rutaTemporal, $año, $mes, $usuarioId);
+    error_log("🟢 [IMPORT] procesarArchivo() completado. Success=" . ($resultado['success'] ? 'true' : 'false'));
+
+    // Limpiar temporal
     if (file_exists($rutaTemporal)) {
         @unlink($rutaTemporal);
     }
+
+    // ✅ LOG 9: Respuesta
+    $jsonResponse = json_encode($resultado, JSON_UNESCAPED_UNICODE);
+    error_log("🟢 [IMPORT] JSON generado (" . strlen($jsonResponse) . " bytes)");
     
-    // Responder
-    if ($resultado['success']) {
-        echo json_encode([
-            'success' => true,
-            'message' => 'Importación completada exitosamente',
-            'importacion_id' => $resultado['importacion_id'],
-            'stats' => $resultado['stats'],
-            'log' => $resultado['log']
-        ]);
-    } else {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $resultado['error'],
-            'stats' => $resultado['stats'],
-            'log' => $resultado['log']
-        ]);
+    // Limpiar buffer antes de enviar JSON limpio
+    ob_end_clean();
+    echo $jsonResponse;
+
+    error_log("🔵 [IMPORT] === FIN EXITOSO ===");
+
+} catch (Exception $e) {
+    // Limpiar buffer
+    if (ob_get_level() > 0) ob_end_clean();
+    
+    $code = $e->getCode();
+    if (!is_int($code) || $code < 100 || $code > 599) {
+        $code = 500;
     }
     
-} catch (Exception $e) {
-    $rawCode = $e->getCode();
+    error_log("❌ [IMPORT] EXCEPTION: " . $e->getMessage());
+    error_log("❌ [IMPORT] File: " . $e->getFile() . ":" . $e->getLine());
+    error_log("❌ [IMPORT] Trace: " . $e->getTraceAsString());
     
-    // Solo usar el código si es un entero HTTP válido (100-599)
-    // Los códigos SQLSTATE como '42S02' son strings y deben ignorarse
-    $httpCode = (is_int($rawCode) && $rawCode >= 100 && $rawCode <= 599) ? $rawCode : 500;
-    
-    http_response_code($httpCode);
-    
-    // Log detallado para debugging
-    error_log("❌ Import Error [{$rawCode}]: " . $e->getMessage());
-    error_log("📍 File: " . $e->getFile() . ":" . $e->getLine());
-    
+    http_response_code($code);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
         'debug' => [
-            'code' => $rawCode,
             'file' => basename($e->getFile()),
             'line' => $e->getLine()
         ]
     ]);
+
 } catch (Error $e) {
-    // Limpiar cualquier output acumulado
+    // Limpiar buffer
     if (ob_get_level() > 0) ob_end_clean();
+    
+    error_log("💥 [IMPORT] FATAL ERROR: " . $e->getMessage());
+    error_log("💥 [IMPORT] File: " . $e->getFile() . ":" . $e->getLine());
+    error_log("💥 [IMPORT] Trace: " . $e->getTraceAsString());
     
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => 'Error interno: ' . $e->getMessage(),
-        'file' => basename($e->getFile()),
-        'line' => $e->getLine()
+        'error' => 'Error fatal: ' . $e->getMessage(),
+        'debug' => [
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine()
+        ]
     ]);
 }
