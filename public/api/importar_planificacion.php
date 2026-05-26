@@ -157,14 +157,26 @@ try {
     }
     
 } catch (Exception $e) {
-    $code = $e->getCode() ?: 500;
-    if ($code < 100 || $code > 599) {
-        $code = 500;
-    }
-    http_response_code($code);
+    $rawCode = $e->getCode();
+    
+    // Solo usar el código si es un entero HTTP válido (100-599)
+    // Los códigos SQLSTATE como '42S02' son strings y deben ignorarse
+    $httpCode = (is_int($rawCode) && $rawCode >= 100 && $rawCode <= 599) ? $rawCode : 500;
+    
+    http_response_code($httpCode);
+    
+    // Log detallado para debugging
+    error_log("❌ Import Error [{$rawCode}]: " . $e->getMessage());
+    error_log("📍 File: " . $e->getFile() . ":" . $e->getLine());
+    
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => $e->getMessage(),
+        'debug' => [
+            'code' => $rawCode,
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine()
+        ]
     ]);
 } catch (Error $e) {
     http_response_code(500);

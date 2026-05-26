@@ -464,10 +464,17 @@ class ImportarPlanificacionHH
             $params[] = $rut;
         }
         
-        if (in_array('id_especialidad', $columnasExistentes) && $idEspecialidad) {
-            $sql .= ", id_especialidad";
-            $values .= ", ?";
-            $params[] = $idEspecialidad;
+        // Relacionar con vertical según el componente
+        if ($idEspecialidad) {
+            $stmt = $this->pdo->prepare("SELECT id_vertical FROM componentes WHERE id = ?");
+            $stmt->execute([$idEspecialidad]);
+            $idVertical = $stmt->fetchColumn();
+            
+            if ($idVertical && in_array('id_vertical', $columnasExistentes)) {
+                $sql .= ", id_vertical";
+                $values .= ", ?";
+                $params[] = $idVertical;
+            }
         }
         
         $sql .= ") $values)";
