@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PDO;
 use Exception;
 
@@ -15,7 +14,6 @@ class ImportarPlanificacionHH
         'total_tecnicos' => 0,
         'tecnicos_creados' => 0,
         'tecnicos_actualizados' => 0,
-        'tecnicos_omitidos' => 0,
         'planificaciones_creadas' => 0,
         'errores' => 0
     ];
@@ -61,22 +59,17 @@ class ImportarPlanificacionHH
     /**
      * Procesa un archivo Excel de planificación
      */
-    public function procesarArchivo(string $rutaArchivo, int $año, int $mes, ?int $usuarioId = null): array
+    public function procesarArchivo(string $rutaArchivo, ?int $año = null, ?int $mes = null, ?int $usuarioId = null): array
     {
-        $this->año = $año;
-        $this->mes = $mes;
-        
         $inicio = microtime(true);
-        $importacionId = $this->crearRegistroImportacion($rutaArchivo, $usuarioId);
         
         try {
             $this->log("Iniciando importación: " . basename($rutaArchivo));
-            $this->log("Período: $año-$mes");
             
             // Cargar archivo Excel
             $spreadsheet = IOFactory::load($rutaArchivo);
             
-            // Buscar la hoja "Dotación (2)" o "Dotación"
+            // Buscar la hoja correcta
             $hoja = $this->buscarHojaDotacion($spreadsheet);
             if (!$hoja) {
                 throw new Exception("No se encontró la hoja 'Dotación (2)' o 'Dotación' en el archivo");
@@ -84,7 +77,31 @@ class ImportarPlanificacionHH
             
             $this->log("Hoja encontrada: " . $hoja->getTitle());
             
-            // Identificar fila de encabezados (busca "#", "AREA", "RUT")
+            // 🔥 AUTO-DETECTAR AÑO Y MES DESDE EL EXCEL
+            $mesesInfo = $this->detectarMesDesdeExcel($hoja);
+            
+            // Si no se proporcionaron año/mes, usar los detectados
+            if ($mes === null && isset($mesesInfo['mes'])) {
+                $mes = $mesesInfo['mes'];
+                $this->log("✅ Mes detectado automáticamente desde Excel: " . $this->obtenerNombreMes($mes));
+            }
+            
+            if ($año === null && isset($mesesInfo['año'])) {
+                $año = $mesesInfo['año'];
+                $this->log("✅ Año detectado automáticamente desde Excel: $año");
+            }
+            
+            // Validar que tengamos año y mes
+            if (!$año || !$mes) {
+                throw new Exception("No se pudo detectar el año/mes del Excel. Por favor selecciónelos manualmente.");
+            }
+            
+            $this->año = $año;
+            $this->mes = $mes;
+            
+            $this->log("Período a procesar: " . $this->obtenerNombreMes($mes) . " $año");
+            
+            // Identificar fila de encabezados
             $filaEncabezados = $this->identificarFilaEncabezados($hoja);
             if (!$filaEncabezados) {
                 throw new Exception("No se pudo identificar la fila de encabezados (buscando #, AREA, RUT)");
@@ -113,19 +130,20 @@ class ImportarPlanificacionHH
             $this->log("✅ Importación completada en $duracion segundos");
             $this->log("Estadísticas finales: " . json_encode($this->stats));
             
-            $this->actualizarRegistroImportacion($importacionId, 'completado', null, $duracion);
-            
             return [
                 'success' => true,
-                'importacion_id' => $importacionId,
                 'stats' => $this->stats,
-                'log' => $this->log
+                'log' => $this->log,
+                'periodo' => [
+                    'año' => $this->año,
+                    'mes' => $this->mes,
+                    'mes_nombre' => $this->obtenerNombreMes($this->mes)
+                ]
             ];
             
         } catch (Exception $e) {
             $duracion = round(microtime(true) - $inicio, 2);
             $this->log("❌ ERROR FATAL: " . $e->getMessage());
-            $this->actualizarRegistroImportacion($importacionId, 'error', $e->getMessage(), $duracion);
             
             return [
                 'success' => false,
@@ -137,9 +155,81 @@ class ImportarPlanificacionHH
     }
     
     /**
+     * 🔥 Detecta el mes y año desde el Excel
+     * Busca en las primeras filas: nombres de meses o fechas como 4/1/26
+     */
+    private function detectarMesDesdeExcel($hoja): array
+    {
+        $resultado = ['mes' => null, 'año' => null];
+        
+        // Mapa de nombres de meses en español
+        $mapaMeses = [
+            'enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4,
+            'mayo' => 5, 'junio' => 6, 'julio' => 7, 'agosto' => 8,
+            'septiembre' => 9, 'octubre' => 10, 'noviembre' => 11, 'diciembre' => 12
+        ];
+        
+        // Buscar en las primeras 15 filas y 35 columnas
+        for ($fila = 1; $fila <= 15; $fila++) {
+            for ($col = 1; $col <= 35; $col++) {
+                $valor = $hoja->getCell([$col, $fila])->getValue();
+                
+                if (!$valor) continue;
+                
+                $valorStr = trim((string)$valor);
+                $valorLower = strtolower($valorStr);
+                
+                // 1. Buscar nombre del mes (ej: "abril", "Abril")
+                foreach ($mapaMeses as $nombre => $numero) {
+                    if ($valorLower === $nombre || stripos($valorStr, $nombre) !== false) {
+                        $resultado['mes'] = $numero;
+                        
+                        // Intentar extraer año de celdas cercanas
+                        for ($col2 = max(1, $col - 5); $col2 <= min(35, $col + 5); $col2++) {
+                            $valorCercano = $hoja->getCell([$col2, $fila])->getValue();
+                            if ($valorCercano && preg_match('/(\d{4})/', (string)$valorCercano, $matches)) {
+                                $resultado['año'] = (int)$matches[1];
+                                break 2;
+                            }
+                        }
+                        
+                        // Si encontramos mes pero no año, usar año actual
+                        if (!$resultado['año']) {
+                            $resultado['año'] = (int)date('Y');
+                        }
+                        
+                        return $resultado;
+                    }
+                }
+                
+                // 2. Buscar formato de fecha (ej: "4/1/26", "01/04/2026")
+                if (preg_match('/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/', $valorStr, $matches)) {
+                    $dia = (int)$matches[1];
+                    $mesNum = (int)$matches[2];
+                    $añoNum = (int)$matches[3];
+                    
+                    // Si el año es de 2 dígitos, convertir a 4
+                    if ($añoNum < 100) {
+                        $añoNum += 2000;
+                    }
+                    
+                    // Validar que sea una fecha válida
+                    if ($mesNum >= 1 && $mesNum <= 12 && checkdate($mesNum, $dia, $añoNum)) {
+                        $resultado['mes'] = $mesNum;
+                        $resultado['año'] = $añoNum;
+                        return $resultado;
+                    }
+                }
+            }
+        }
+        
+        return $resultado;
+    }
+    
+    /**
      * Busca la hoja de dotación en el spreadsheet
      */
-    private function buscarHojaDotacion($spreadsheet): ?Worksheet
+    private function buscarHojaDotacion($spreadsheet)
     {
         $nombresPosibles = ['Dotación (2)', 'Dotación', 'Dotacion', 'Dotacion (2)'];
         
@@ -165,9 +255,8 @@ class ImportarPlanificacionHH
     
     /**
      * Identifica la fila que contiene los encabezados
-     * ✅ CORREGIDO: usa getCell([$col, $fila]) en lugar de getCellByColumnAndRow
      */
-    private function identificarFilaEncabezados(Worksheet $hoja): ?int
+    private function identificarFilaEncabezados($hoja): ?int
     {
         $indicadores = ['#', 'AREA', 'RUT', 'CARGO', 'COMPONENTE'];
         
@@ -197,9 +286,8 @@ class ImportarPlanificacionHH
     
     /**
      * Mapea las columnas del Excel a nombres de campos
-     * ✅ CORREGIDO: usa getCell([$col, $fila]) en lugar de getCellByColumnAndRow
      */
-    private function mapearColumnas(Worksheet $hoja, int $filaEncabezados): array
+    private function mapearColumnas($hoja, int $filaEncabezados): array
     {
         $mapa = [];
         
@@ -239,7 +327,7 @@ class ImportarPlanificacionHH
             
             // Detectar columnas de días (fechas como 4/1/26 o números 1-31)
             if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $valorLimpio, $matches)) {
-                $dia = (int)$matches[2]; // El día está en la segunda posición
+                $dia = (int)$matches[2];
                 if ($dia >= 1 && $dia <= 31) {
                     $mapa["dia_$dia"] = $col;
                 }
@@ -257,7 +345,7 @@ class ImportarPlanificacionHH
     /**
      * Procesa una fila de técnico
      */
-    private function procesarFilaTecnico(Worksheet $hoja, int $fila, array $mapaColumnas): void
+    private function procesarFilaTecnico($hoja, int $fila, array $mapaColumnas): void
     {
         // Extraer datos básicos
         $rut = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['rut'] ?? null);
@@ -275,20 +363,16 @@ class ImportarPlanificacionHH
         // Filtrar: solo activos y que aportan HH
         if (stripos($estatus, 'VACANTE') !== false) {
             $this->log("Fila $fila: Técnico vacante omitido: $nombre");
-            $this->stats['tecnicos_omitidos']++;
             return;
         }
         
         if ($aportaHH !== 'SI') {
             $this->log("Fila $fila: Técnico sin HH (HH=$aportaHH): $nombre");
-            $this->stats['tecnicos_omitidos']++;
             return;
         }
         
         $cargo = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['cargo'] ?? null);
         $componente = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['componente'] ?? null);
-        $area = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['area'] ?? null);
-        $turno = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['turno'] ?? null);
         
         // Normalizar RUT
         $rutNormalizado = $this->normalizarRut($rut);
@@ -306,25 +390,16 @@ class ImportarPlanificacionHH
         $planificacionesDiarias = $this->extraerPlanificacionesDiarias($hoja, $fila, $mapaColumnas);
         
         // Crear planificación mensual
-        $planificacionMensualId = $this->crearPlanificacionMensual(
-            $tecnicoId,
-            $turno,
-            $planificacionesDiarias
-        );
+        $planificacionMensualId = $this->crearPlanificacionMensual($tecnicoId, $planificacionesDiarias);
         
         // Crear planificaciones diarias
-        $this->crearPlanificacionesDiarias(
-            $tecnicoId,
-            $planificacionMensualId,
-            $planificacionesDiarias
-        );
+        $this->crearPlanificacionesDiarias($tecnicoId, $planificacionMensualId, $planificacionesDiarias);
     }
     
     /**
      * Obtiene el valor de una celda de forma segura
-     * ✅ CORREGIDO: usa getCell([$col, $fila]) en lugar de getCellByColumnAndRow
      */
-    private function obtenerValorCelda(Worksheet $hoja, int $fila, ?int $col): ?string
+    private function obtenerValorCelda($hoja, int $fila, ?int $col): ?string
     {
         if (!$col) return null;
         
@@ -354,8 +429,6 @@ class ImportarPlanificacionHH
     private function normalizarRut(?string $rut): ?string
     {
         if (!$rut) return null;
-        
-        // Limpiar caracteres no alfanuméricos excepto K/k
         $rut = preg_replace('/[^0-9kK]/', '', $rut);
         return strtoupper($rut);
     }
@@ -403,7 +476,6 @@ class ImportarPlanificacionHH
             'CORREO NEUMATICO' => 'CORRIENTES',
         ];
         
-        // Buscar por coincidencia de palabras clave
         foreach ($mapeoPalabras as $palabra => $codigo) {
             if (stripos($componenteUpper, $palabra) !== false) {
                 if (isset($this->mapaComponentes[$codigo])) {
@@ -426,7 +498,7 @@ class ImportarPlanificacionHH
         $stmt = $this->pdo->query("SHOW COLUMNS FROM tecnicos");
         $columnasExistentes = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'Field');
         
-        // Buscar por RUT primero (si existe la columna)
+        // Buscar por RUT primero
         if ($rut && in_array('rut', $columnasExistentes)) {
             $stmt = $this->pdo->prepare("SELECT id FROM tecnicos WHERE rut = ? LIMIT 1");
             $stmt->execute([$rut]);
@@ -444,7 +516,6 @@ class ImportarPlanificacionHH
         $tecnico = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($tecnico) {
-            // Actualizar RUT si está vacío
             if ($rut && in_array('rut', $columnasExistentes)) {
                 $stmt = $this->pdo->prepare("UPDATE tecnicos SET rut = ? WHERE id = ? AND (rut IS NULL OR rut = '')");
                 $stmt->execute([$rut, $tecnico['id']]);
@@ -464,17 +535,16 @@ class ImportarPlanificacionHH
             $params[] = $rut;
         }
         
-        // Relacionar con vertical según el componente
-        if ($idEspecialidad) {
-            $stmt = $this->pdo->prepare("SELECT id_vertical FROM componentes WHERE id = ?");
-            $stmt->execute([$idEspecialidad]);
-            $idVertical = $stmt->fetchColumn();
-            
-            if ($idVertical && in_array('id_vertical', $columnasExistentes)) {
-                $sql .= ", id_vertical";
-                $values .= ", ?";
-                $params[] = $idVertical;
-            }
+        if (in_array('cargo', $columnasExistentes) && $cargo) {
+            $sql .= ", cargo";
+            $values .= ", ?";
+            $params[] = $cargo;
+        }
+        
+        if (in_array('id_especialidad', $columnasExistentes) && $idEspecialidad) {
+            $sql .= ", id_especialidad";
+            $values .= ", ?";
+            $params[] = $idEspecialidad;
         }
         
         $sql .= ") $values)";
@@ -490,7 +560,7 @@ class ImportarPlanificacionHH
     /**
      * Extrae las planificaciones diarias de una fila
      */
-    private function extraerPlanificacionesDiarias(Worksheet $hoja, int $fila, array $mapaColumnas): array
+    private function extraerPlanificacionesDiarias($hoja, int $fila, array $mapaColumnas): array
     {
         $planificaciones = [];
         
@@ -498,7 +568,6 @@ class ImportarPlanificacionHH
             $col = $mapaColumnas["dia_$dia"] ?? null;
             if (!$col) continue;
             
-            // Validar que el día exista en el mes
             if (!checkdate($this->mes, $dia, $this->año)) {
                 continue;
             }
@@ -524,7 +593,7 @@ class ImportarPlanificacionHH
     private function normalizarCodigoTurno($valor): string
     {
         if ($valor === null || $valor === '') {
-            return '-1'; // Descanso
+            return '-1';
         }
         
         $valorStr = trim((string)$valor);
@@ -538,8 +607,7 @@ class ImportarPlanificacionHH
         }
         
         // Detectar errores de Excel
-        if (stripos($valorStr, 'ERROR') !== false || 
-            stripos($valorStr, '#') !== false) {
+        if (stripos($valorStr, 'ERROR') !== false || stripos($valorStr, '#') !== false) {
             return '-1';
         }
         
@@ -556,15 +624,14 @@ class ImportarPlanificacionHH
             }
         }
         
-        return '-1'; // Por defecto, descanso
+        return '-1';
     }
     
     /**
      * Crea el registro de planificación mensual
      */
-    private function crearPlanificacionMensual(int $tecnicoId, ?string $turno, array $planificacionesDiarias): int
+    private function crearPlanificacionMensual(int $tecnicoId, array $planificacionesDiarias): int
     {
-        // Calcular estadísticas
         $hhDia = 0;
         $hhNoche = 0;
         $diasLaborales = 0;
@@ -591,10 +658,7 @@ class ImportarPlanificacionHH
         $mesNombre = $this->obtenerNombreMes($this->mes);
         
         // Eliminar planificación anterior si existe
-        $stmt = $this->pdo->prepare("
-            DELETE FROM planificacion_hh_mensual 
-            WHERE id_tecnico = ? AND año = ? AND mes = ?
-        ");
+        $stmt = $this->pdo->prepare("DELETE FROM planificacion_hh_mensual WHERE id_tecnico = ? AND año = ? AND mes = ?");
         $stmt->execute([$tecnicoId, $this->año, $this->mes]);
         
         // Insertar nueva planificación
@@ -602,17 +666,14 @@ class ImportarPlanificacionHH
             INSERT INTO planificacion_hh_mensual (
                 id_tecnico, año, mes, mes_nombre,
                 hh_planificadas_dia, hh_planificadas_noche, hh_planificadas_total,
-                dias_laborales, dias_descanso,
-                turnos_dia, turnos_noche,
-                created_at
+                dias_laborales, dias_descanso, turnos_dia, turnos_noche, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
         $stmt->execute([
             $tecnicoId, $this->año, $this->mes, $mesNombre,
             $hhDia, $hhNoche, $hhTotal,
-            $diasLaborales, $diasDescanso,
-            $turnosDia, $turnosNoche
+            $diasLaborales, $diasDescanso, $turnosDia, $turnosNoche
         ]);
         
         $this->stats['planificaciones_creadas']++;
@@ -625,24 +686,17 @@ class ImportarPlanificacionHH
     private function crearPlanificacionesDiarias(int $tecnicoId, int $planificacionMensualId, array $planificacionesDiarias): void
     {
         // Eliminar planificaciones diarias anteriores
-        $stmt = $this->pdo->prepare("
-            DELETE FROM planificacion_hh_diaria 
-            WHERE id_tecnico = ? AND año = ? AND mes = ?
-        ");
+        $stmt = $this->pdo->prepare("DELETE FROM planificacion_hh_diaria WHERE id_tecnico = ? AND año = ? AND mes = ?");
         $stmt->execute([$tecnicoId, $this->año, $this->mes]);
         
         // Insertar nuevas planificaciones diarias
         $stmt = $this->pdo->prepare("
             INSERT INTO planificacion_hh_diaria (
-                id_tecnico, id_planificacion_mensual,
-                año, mes, dia, fecha, dia_semana,
-                id_turno, horas_planificadas,
-                tipo_dia, turno_tipo, codigo_turno,
-                created_at
+                id_tecnico, id_planificacion_mensual, año, mes, dia, fecha, dia_semana,
+                id_turno, horas_planificadas, tipo_dia, turno_tipo, codigo_turno, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
-        $insertados = 0;
         foreach ($planificacionesDiarias as $dia => $plan) {
             $fecha = sprintf('%04d-%02d-%02d', $this->año, $this->mes, $dia);
             $diaSemana = $this->obtenerDiaSemana($fecha);
@@ -656,10 +710,7 @@ class ImportarPlanificacionHH
                 $plan['id_turno'], $plan['horas'],
                 $tipoDia, $turnoTipo, $plan['codigo_turno']
             ]);
-            $insertados++;
         }
-        
-        $this->log("Técnico ID $tecnicoId: $insertados días planificados");
     }
     
     /**
@@ -682,86 +733,5 @@ class ImportarPlanificacionHH
     {
         $dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         return $dias[date('w', strtotime($fecha))];
-    }
-    
-    /**
-     * Crea el registro de importación
-     */
-    private function crearRegistroImportacion(string $archivo, ?int $usuarioId): int
-    {
-        try {
-            $stmt = $this->pdo->prepare("
-                INSERT INTO importaciones_planificacion (
-                    nombre_archivo, año, mes, mes_nombre,
-                    usuario_id, estado, created_at
-                ) VALUES (?, ?, ?, ?, ?, 'procesando', NOW())
-            ");
-            
-            $stmt->execute([
-                basename($archivo),
-                $this->año,
-                $this->mes,
-                $this->obtenerNombreMes($this->mes),
-                $usuarioId
-            ]);
-            
-            return (int)$this->pdo->lastInsertId();
-        } catch (Exception $e) {
-            $this->log("Error creando registro importación: " . $e->getMessage());
-            return 0;
-        }
-    }
-    
-    /**
-     * Actualiza el registro de importación
-     */
-    private function actualizarRegistroImportacion(
-        int $id,
-        string $estado,
-        ?string $error,
-        float $duracion
-    ): void {
-        if ($id <= 0) return;
-        
-        try {
-            $stmt = $this->pdo->prepare("
-                UPDATE importaciones_planificacion SET
-                    estado = ?,
-                    mensaje_error = ?,
-                    tiempo_procesamiento = ?,
-                    total_tecnicos = ?,
-                    tecnicos_creados = ?,
-                    tecnicos_actualizados = ?,
-                    registros_exitosos = ?,
-                    registros_fallidos = ?,
-                    log_detalle = ?,
-                    updated_at = NOW()
-                WHERE id = ?
-            ");
-            
-            $stmt->execute([
-                $estado,
-                $error,
-                $duracion,
-                $this->stats['total_tecnicos'],
-                $this->stats['tecnicos_creados'],
-                $this->stats['tecnicos_actualizados'],
-                $this->stats['planificaciones_creadas'],
-                $this->stats['errores'],
-                json_encode($this->log, JSON_UNESCAPED_UNICODE),
-                $id
-            ]);
-        } catch (Exception $e) {
-            $this->log("Error actualizando registro importación: " . $e->getMessage());
-        }
-    }
-    
-    /**
-     * Agrega un mensaje al log
-     */
-    private function log(string $mensaje): void
-    {
-        $timestamp = date('H:i:s');
-        $this->log[] = "[$timestamp] $mensaje";
     }
 }
