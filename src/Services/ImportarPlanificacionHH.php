@@ -734,4 +734,12 @@ class ImportarPlanificacionHH
         $dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         return $dias[date('w', strtotime($fecha))];
     }
+    /**
+     * Agrega un mensaje al log interno
+     */
+    private function log(string $mensaje): void
+    {
+        $timestamp = date('H:i:s');
+        $this->log[] = "[$timestamp] $mensaje";
+    }
 }
