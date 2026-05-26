@@ -90,23 +90,26 @@ function callOpenRouter($userMessage, $stats, $apiKey) {
     $aiModel = 'meta-llama/llama-3.1-8b-instruct:free';
     
     $systemPrompt = "Eres el asistente experto de MedicalOT para el Hospital de Antofagasta. " .
-                    "Responde basándote SOLO en los datos proporcionados. " .
-                    "Sé conciso, profesional y orientado a la acción. " .
-                    "Usa emojis moderadamente y formato estructurado con negritas (**texto**) y bullets (•). " .
-                    "SIEMPRE responde en español.\n\n" .
-                    "CAPACIDADES ADICIONALES:\n" .
-                    "• Puedes hacer cálculos matemáticos (divisiones, porcentajes, proyecciones)\n" .
-                    "• Puedes estimar recursos necesarios basándote en datos históricos\n" .
-                    "• Puedes comparar periodos y detectar tendencias\n" .
-                    "• Puedes responder preguntas de 'qué pasaría si...' (scenarios)\n\n" .
-                    "CONSTANTES DE CAPACIDAD:\n" .
-                    "• Horas por técnico al mes: " . HORAS_POR_TECNICO_MES . " HHs (20 días × 8 horas)\n" .
-                    "• Horas efectivas por técnico: " . HORAS_EFECTIVAS_MES . " HHs (considerando 85% eficiencia)\n" .
-                    "• Días laborables por mes: " . DIAS_LABORABLES_MES . "\n\n" .
-                    "EJEMPLOS DE CÁLCULOS:\n" .
-                    "• '¿Cuántos técnicos necesito para 8,767 HHs?' → 8767 ÷ " . HORAS_EFECTIVAS_MES . " = X técnicos\n" .
-                    "• '¿Cuántas HHs puede cubrir un equipo de 10 técnicos?' → 10 × " . HORAS_EFECTIVAS_MES . " = X HHs\n" .
-                    "• '¿Cuál es la carga promedio por técnico?' → HHs totales ÷ número de técnicos";
+                "Responde basándote SOLO en los datos proporcionados. " .
+                "Sé conciso, profesional y orientado a la acción. " .
+                "Usa emojis moderadamente y formato estructurado con negritas (**texto**) y bullets (•). " .
+                "SIEMPRE responde en español.\n\n" .
+                "REGLA CRÍTICA: Si el contexto incluye datos 'YA CALCULADOS' (como promedios), " .
+                "USA ESOS VALORES DIRECTAMENTE en tu respuesta. NO recalculles ni listes todos los datos.\n\n" .
+                "EJEMPLO:\n" .
+                "Pregunta: '¿Cuál es el promedio de HHs por mes?'\n" .
+                "Contexto: 'PROMEDIO de HHs por mes: 8285.5 HHs'\n" .
+                "✅ Respuesta CORRECTA: '📊 El promedio es **8,285.5 HHs/mes**'\n" .
+                "❌ Respuesta INCORRECTA: Listar todos los meses y luego calcular\n\n" .
+                "CAPACIDADES:\n" .
+                "• Cálculos matemáticos (divisiones, porcentajes, proyecciones)\n" .
+                "• Estimación de recursos basándose en datos históricos\n" .
+                "• Comparación de periodos y detección de tendencias\n" .
+                "• Respuestas a preguntas de 'qué pasaría si...' (scenarios)\n\n" .
+                "CONSTANTES DE CAPACIDAD:\n" .
+                "• Horas por técnico al mes: " . HORAS_POR_TECNICO_MES . " HHs\n" .
+                "• Horas efectivas por técnico: " . HORAS_EFECTIVAS_MES . " HHs (85% eficiencia)\n" .
+                "• Días laborables por mes: " . DIAS_LABORABLES_MES;
     
     $context = buildContext($stats);
     
@@ -163,7 +166,18 @@ function buildContext($stats) {
     $ctx .= "• OTs en Riesgo (+7 días): {$stats['general']['ots_riesgo']}\n";
     $ctx .= "• OTs Reprogramadas: {$stats['general']['ots_reprogramadas']}\n\n";
     
-    // Agregar métricas de capacidad
+    // 🆕 Agregar estadísticas mensuales calculadas
+    $statsMes = calcularEstadisticasMensuales($stats);
+    if ($statsMes) {
+        $ctx .= "📈 ESTADÍSTICAS MENSUALES (YA CALCULADAS):\n";
+        $ctx .= "• **PROMEDIO de HHs por mes: {$statsMes['promedio_hh']} HHs**\n";
+        $ctx .= "• PROMEDIO de OTs por mes: {$statsMes['promedio_ots']} OTs\n";
+        $ctx .= "• Mes con MÁS carga: {$statsMes['max_mes']} ({$statsMes['max_hh']} HHs)\n";
+        $ctx .= "• Mes con MENOS carga: {$statsMes['min_mes']} ({$statsMes['min_hh']} HHs)\n";
+        $ctx .= "• Tendencia anual: {$statsMes['tendencia']}\n\n";
+    }
+    
+    // Capacidad operativa
     $hhPorOT = $stats['general']['total_ots'] > 0 
         ? round($stats['general']['hh_plan'] / $stats['general']['total_ots'], 1) 
         : 0;
@@ -182,7 +196,7 @@ function buildContext($stats) {
     }
     $ctx .= "\n";
     
-    $ctx .= "📅 DISTRIBUCIÓN POR MES:\n";
+    $ctx .= "📅 DETALLE POR MES (datos brutos):\n";
     foreach ($stats['meses'] as $m) {
         $tecnicosMes = ceil($m['hh'] / HORAS_EFECTIVAS_MES);
         $ctx .= "• " . ucfirst($m['mes_carga']) . ": {$m['total']} OTs, {$m['hh']} HHs (~{$tecnicosMes} técnicos)\n";
@@ -493,6 +507,100 @@ function generateMockResponse($message, $stats) {
                "🎯 **Recomendación:**\n" .
                ($hhPorOT > 6 ? "Revisar si hay OTs que podrían dividirse en tareas más pequeñas para mejorar seguimiento." 
                              : "Tu eficiencia está en línea con estándares de la industria.");
+    }
+
+    // Calcula estadísticas mensuales (promedio, máximo, mínimo, tendencia)
+    function calcularEstadisticasMensuales($stats) {
+        if (empty($stats['meses'])) return null;
+
+        // 🆕 Preguntas de promedio / media / estadísticas
+        if (preg_match('/(promedio|media|mean|estad[ií]stica|cu[aá]l es el promedio|cu[aá]nto es (el )?promedio)/i', $msg)) {
+            $statsMes = calcularEstadisticasMensuales($stats);
+            
+            if (!$statsMes) {
+                return "⚠️ No hay datos suficientes para calcular promedios.";
+            }
+            
+            // Si pregunta específicamente por HHs
+            if (preg_match('/(hh|hora|horas)/i', $msg)) {
+                return "📊 **PROMEDIO DE HORAS HOMBRE POR MES (2026)**\n\n" .
+                    "🎯 **{$statsMes['promedio_hh']} HHs/mes**\n\n" .
+                    "📈 **Análisis estadístico:**\n" .
+                    "• Promedio mensual: **{$statsMes['promedio_hh']} HHs**\n" .
+                    "• Mes con mayor carga: **{$statsMes['max_mes']}** ({$statsMes['max_hh']} HHs)\n" .
+                    "• Mes con menor carga: **{$statsMes['min_mes']}** ({$statsMes['min_hh']} HHs)\n" .
+                    "• Rango de variación: **" . ($statsMes['max_hh'] - $statsMes['min_hh']) . " HHs**\n" .
+                    "• Tendencia anual: **{$statsMes['tendencia']}**\n\n" .
+                    "💡 **Insight:**\n" .
+                    "La carga mensual varía entre {$statsMes['min_hh']} y {$statsMes['max_hh']} HHs. " .
+                    "Para dimensionar equipos, usa el promedio ({$statsMes['promedio_hh']} HHs) " .
+                    "más un buffer del 20% para picos de demanda.";
+            }
+            
+            // Si pregunta por OTs
+            if (preg_match('/(ots?|[oó]rdenes?)/i', $msg)) {
+                return "📊 **PROMEDIO DE OTs POR MES (2026)**\n\n" .
+                    "🎯 **{$statsMes['promedio_ots']} OTs/mes**\n\n" .
+                    "📈 **Análisis estadístico:**\n" .
+                    "• Promedio mensual: **{$statsMes['promedio_ots']} OTs**\n" .
+                    "• Total anual: **{$stats['general']['total_ots']} OTs**\n" .
+                    "• Meses analizados: **{$statsMes['total_meses']}**\n\n" .
+                    "💡 **Insight:**\n" .
+                    "El hospital mantiene un flujo constante de ~{$statsMes['promedio_ots']} órdenes mensuales.";
+            }
+            
+            // Promedio genérico
+            return "📊 **PROMEDIOS MENSUALES 2026**\n\n" .
+                "🎯 **Horas Hombre:** {$statsMes['promedio_hh']} HHs/mes\n" .
+                "🎯 **Órdenes de Trabajo:** {$statsMes['promedio_ots']} OTs/mes\n\n" .
+                "📈 **Análisis:**\n" .
+                "• Mes pico: **{$statsMes['max_mes']}** ({$statsMes['max_hh']} HHs)\n" .
+                "• Mes valle: **{$statsMes['min_mes']}** ({$statsMes['min_hh']} HHs)\n" .
+                "• Tendencia: **{$statsMes['tendencia']}**\n\n" .
+                "¿Quieres que profundice en algún mes específico?";
+        }
+        
+        $hhPorMes = array_column($stats['meses'], 'hh');
+        $otsPorMes = array_column($stats['meses'], 'total');
+        
+        // Calcular promedios
+        $promedioHH = round(array_sum($hhPorMes) / count($hhPorMes), 1);
+        $promedioOTs = round(array_sum($otsPorMes) / count($otsPorMes), 1);
+        
+        // Máximo y mínimo
+        $maxHH = max($hhPorMes);
+        $minHH = min($hhPorMes);
+        $maxMes = '';
+        $minMes = '';
+        
+        foreach ($stats['meses'] as $m) {
+            if ($m['hh'] == $maxHH) $maxMes = $m['mes_carga'];
+            if ($m['hh'] == $minHH) $minMes = $m['mes_carga'];
+        }
+        
+        // Tendencia (comparar primera mitad vs segunda mitad del año)
+        $primeraMitad = array_slice($hhPorMes, 0, 6);
+        $segundaMitad = array_slice($hhPorMes, 6, 6);
+        $promedioPrimera = array_sum($primeraMitad) / count($primeraMitad);
+        $promedioSegunda = array_sum($segundaMitad) / count($segundaMitad);
+        
+        $tendencia = 'estable';
+        if ($promedioSegunda > $promedioPrimera * 1.1) {
+            $tendencia = 'creciente (+'.round((($promedioSegunda/$promedioPrimera)-1)*100, 1).'%)';
+        } elseif ($promedioSegunda < $promedioPrimera * 0.9) {
+            $tendencia = 'decreciente ('.round((($promedioSegunda/$promedioPrimera)-1)*100, 1).'%)';
+        }
+        
+        return [
+            'promedio_hh' => $promedioHH,
+            'promedio_ots' => $promedioOTs,
+            'max_hh' => $maxHH,
+            'max_mes' => $maxMes,
+            'min_hh' => $minHH,
+            'min_mes' => $minMes,
+            'tendencia' => $tendencia,
+            'total_meses' => count($hhPorMes)
+        ];
     }
     
     // Respuesta genérica
