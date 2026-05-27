@@ -1,6 +1,14 @@
 <?php
-require_once __DIR__ . '/../config.php';
-requireLogin();
+define('APP_ENTRY_POINT', true);
+    
+    $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+    $projectRoot = dirname($docRoot);
+    $configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
+    
+    if (!$configPath) {
+        throw new Exception("Archivo de configuración no encontrado");
+    }
+    require_once $configPath;
 $user = getCurrentUser();
 $isAdmin = ($user['role'] === 'admin_hosp' || $user['role'] === 'admin');
 ?>
