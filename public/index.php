@@ -1035,18 +1035,25 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 </div>
                 
                 <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
-                    <select id="filterYear" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff; font-size:0.85rem;">
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
+                    <select id="filterYear" onchange="applyFilters()" style="...">
+                        <option value="2026" <?= date('Y') == 2026 ? 'selected' : '' ?>>2026</option>
+                        <option value="2025" <?= date('Y') == 2025 ? 'selected' : '' ?>>2025</option>
                     </select>
                     <select id="filterMonth" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff; font-size:0.85rem;">
                         <option value="">Todo el año</option>
-                        <option value="enero">Enero</option><option value="febrero">Febrero</option>
-                        <option value="marzo">Marzo</option><option value="abril">Abril</option>
-                        <option value="mayo">Mayo</option><option value="junio">Junio</option>
-                        <option value="julio">Julio</option><option value="agosto">Agosto</option>
-                        <option value="septiembre">Septiembre</option><option value="octubre">Octubre</option>
-                        <option value="noviembre">Noviembre</option><option value="diciembre">Diciembre</option>
+                        <!-- Las opciones se generan dinámicamente o estáticamente -->
+                        <option value="enero" <?= date('n') == 1 ? 'selected' : '' ?>>Enero</option>
+                        <option value="febrero" <?= date('n') == 2 ? 'selected' : '' ?>>Febrero</option>
+                        <option value="marzo" <?= date('n') == 3 ? 'selected' : '' ?>>Marzo</option>
+                        <option value="abril" <?= date('n') == 4 ? 'selected' : '' ?>>Abril</option>
+                        <option value="mayo" <?= date('n') == 5 ? 'selected' : '' ?>>Mayo</option>
+                        <option value="junio" <?= date('n') == 6 ? 'selected' : '' ?>>Junio</option>
+                        <option value="julio" <?= date('n') == 7 ? 'selected' : '' ?>>Julio</option>
+                        <option value="agosto" <?= date('n') == 8 ? 'selected' : '' ?>>Agosto</option>
+                        <option value="septiembre" <?= date('n') == 9 ? 'selected' : '' ?>>Septiembre</option>
+                        <option value="octubre" <?= date('n') == 10 ? 'selected' : '' ?>>Octubre</option>
+                        <option value="noviembre" <?= date('n') == 11 ? 'selected' : '' ?>>Noviembre</option>
+                        <option value="diciembre" <?= date('n') == 12 ? 'selected' : '' ?>>Diciembre</option>
                     </select>
                     <select id="filterWeek" onchange="applyFilters()" style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff; font-size:0.85rem;">
                         <option value="">Todo el mes</option>
@@ -1896,13 +1903,20 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
     <script>
         // 🎯 ESTADO GLOBAL DE FILTROS EN CASCADA
+        // Obtener fecha actual para filtros iniciales
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonthIndex = now.getMonth(); // 0-11
+        const mesesNombres = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        const currentMonthName = mesesNombres[currentMonthIndex];
+
         let dashboardFilters = {
-            year: '2026',
-            month: '',
+            year: String(currentYear),
+            month: currentMonthName, // ✅ Iniciar con mes actual
             week: '',
-            mode: 'standard',        // 'standard' | 'risk'
-            especialidad: null,       // 🆕 Código de especialidad seleccionada (drill-down)
-            especialidadLabel: ''     // 🆕 Nombre para mostrar
+            mode: 'standard',
+            especialidad: null,
+            especialidadLabel: ''
         };
 
         // ✅ ÚNICA DECLARACIÓN GLOBAL DE FILTROS
@@ -2214,12 +2228,20 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         }
 
         function applyFilters() {
-            currentFilters.search = document.getElementById('otSearch').value.trim();
-            currentFilters.esp    = document.getElementById('fEsp').value;
-            currentFilters.estado = document.getElementById('fEstado').value;
-            currentFilters.mes    = document.getElementById('fMes').value;
-            currentPage = 1; // Reset a página 1 al cambiar filtros
-            loadOTs();
+            const yearSelect = document.getElementById('filterYear');
+            const monthSelect = document.getElementById('filterMonth');
+            const weekSelect = document.getElementById('filterWeek');
+
+            if (yearSelect) dashboardFilters.year = yearSelect.value;
+            if (monthSelect) dashboardFilters.month = monthSelect.value;
+            if (weekSelect) dashboardFilters.week = weekSelect.value;
+            
+            // Resetear drill-down al cambiar filtros globales
+            dashboardFilters.especialidad = null;
+            dashboardFilters.especialidadLabel = '';
+
+            loadWeeks(); // Recargar semanas disponibles
+            loadKpis();  // Recargar KPIs con nuevos filtros
         }
 
         function handleSearch() {
@@ -4206,6 +4228,19 @@ function renderRecentTable(data) {
 
 // Cargar al iniciar si el módulo está activo
 document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('kpis')?.classList.contains('active')) {
+        loadKpis();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Sincronizar selects con filtros iniciales
+    const yearSelect = document.getElementById('filterYear');
+    const monthSelect = document.getElementById('filterMonth');
+    
+    if (yearSelect) yearSelect.value = dashboardFilters.year;
+    if (monthSelect) monthSelect.value = dashboardFilters.month;
+
     if (document.getElementById('kpis')?.classList.contains('active')) {
         loadKpis();
     }
