@@ -112,7 +112,7 @@ class ImportarPlanificacionHH
             
             // Identificar fila de encabezados DIAS (fechas como 4/1/26)
             // Buscamos en las filas siguientes a los metadatos
-            $filaEncabezadosDias = null;
+            $filaEncabezadosDias = $this->detectarFilaRealDias($hoja, $filaEncabezadosMeta);
             for ($f = $filaEncabezadosMeta + 1; $f <= $filaEncabezadosMeta + 5; $f++) {
                 $valorPrueba = $hoja->getCell([12, $f])->getValue(); // Columna L suele ser el día 1
                 if ($valorPrueba && preg_match('/\d{1,2}\/\d{1,2}\/\d{2,4}/', (string)$valorPrueba)) {
@@ -130,6 +130,14 @@ class ImportarPlanificacionHH
 
             // Mapear columnas usando la fila de DÍAS para los días, y la de METADATOS para el resto
             $mapaColumnas = $this->mapearColumnasMixto($hoja, $filaEncabezadosMeta, $filaEncabezadosDias);
+
+            $diasMapeados = array_filter(array_keys($mapaColumnas), fn($k) => str_starts_with($k, 'dia_'));
+
+            $this->log("📊 Total días mapeados: " . count($diasMapeados));
+
+            if (count($diasMapeados) == 0) {
+                $this->log("🚨 ERROR CRÍTICO: NO SE DETECTARON DÍAS");
+            }
             
             // Procesar cada fila de técnico
             $totalFilas = $hoja->getHighestRow();
@@ -933,5 +941,35 @@ class ImportarPlanificacionHH
         $this->log("📅 Días detectados: $diasDetectados");
 
         return $mapa;
+    }
+    private function detectarFilaRealDias(Worksheet $hoja, int $filaInicioBusqueda = 10): int
+    {
+        $totalCols = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($hoja->getHighestColumn());
+
+        for ($fila = $filaInicioBusqueda; $fila <= $filaInicioBusqueda + 15; $fila++) {
+
+            $coincidencias = 0;
+
+            for ($col = 10; $col <= $totalCols; $col++) { // desde columna J aprox
+                $valor = $hoja->getCell([$col, $fila])->getValue();
+                if (!$valor) continue;
+
+                $v = trim((string)$valor);
+
+                if (
+                    is_numeric($v) && $v >= 1 && $v <= 31 ||
+                    preg_match('/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/', $v)
+                ) {
+                    $coincidencias++;
+                }
+            }
+
+            if ($coincidencias >= 5) {
+                $this->log("✅ Fila real de días detectada: $fila");
+                return $fila;
+            }
+        }
+
+        throw new \Exception("❌ No se pudo detectar fila de días automáticamente");
     }
 }
