@@ -583,19 +583,42 @@ class ImportarPlanificacionHH
             $col = $mapaColumnas["dia_$dia"] ?? null;
             if (!$col) continue;
             
+            // Validar que el día exista en el mes
             if (!checkdate($this->mes, $dia, $this->año)) {
                 continue;
             }
             
-            $valor = $this->obtenerValorCelda($hoja, $fila, $col);
-            $codigoTurno = $this->normalizarCodigoTurno($valor);
+            $valorRaw = $this->obtenerValorCelda($hoja, $fila, $col);
+            $codigoTurno = $this->normalizarCodigoTurno($valorRaw);
+            
+            // Buscar el turno en el mapa cargado desde BD
             $turno = $this->mapaTurnos[$codigoTurno] ?? null;
+            
+            $horas = 0;
+            $tipo = 'descanso';
+            $idTurno = null;
+            
+            if ($turno) {
+                $horas = floatval($turno['hh_diarias'] ?? 0);
+                $tipo = $turno['tipo'] ?? 'descanso';
+                $idTurno = $turno['id'] ?? null;
+            } else {
+                // Si no encuentra el turno en el mapa, asumir 0 horas
+                if ($codigoTurno !== '-1') {
+                    $this->log("   ⚠️ Día $dia: Código '$codigoTurno' no encontrado en mapa de turnos. Horas=0.");
+                }
+            }
+            
+            // Log solo para los primeros 5 días del primer técnico para no saturar
+            if ($dia <= 5 && $this->stats['total_tecnicos'] == 1) {
+                $this->log("   Día $dia: Valor='$valorRaw' -> Código='$codigoTurno' -> Horas=$horas");
+            }
             
             $planificaciones[$dia] = [
                 'codigo_turno' => $codigoTurno,
-                'id_turno' => $turno['id'] ?? null,
-                'horas' => $turno['hh_diarias'] ?? 0,
-                'tipo_turno' => $turno['tipo'] ?? 'descanso'
+                'id_turno' => $idTurno,
+                'horas' => $horas,
+                'tipo_turno' => $tipo
             ];
         }
         
@@ -608,7 +631,7 @@ class ImportarPlanificacionHH
     private function normalizarCodigoTurno($valor): string
     {
         if ($valor === null || $valor === '') {
-            return '-1';
+            return '-1'; // Descanso
         }
         
         $valorStr = trim((string)$valor);
@@ -621,17 +644,19 @@ class ImportarPlanificacionHH
             }
         }
         
-        // Detectar errores de Excel
-        if (stripos($valorStr, 'ERROR') !== false || stripos($valorStr, '#') !== false) {
+        // Detectar errores de Excel (#VALUE!, #REF!, etc.)
+        if (stripos($valorStr, 'ERROR') !== false || 
+            stripos($valorStr, '#') !== false ||
+            stripos($valorStr, 'N/A') !== false) {
             return '-1';
         }
         
-        // Detectar números negativos grandes (errores)
+        // Detectar números negativos grandes (errores de fórmula)
         if (is_numeric($valorStr) && (float)$valorStr < -1) {
             return '-1';
         }
         
-        // Si es numérico positivo, usar directamente
+        // Si es numérico positivo, usar directamente como string
         if (is_numeric($valorStr)) {
             $num = (int)$valorStr;
             if ($num >= 1 && $num <= 13) {
@@ -639,6 +664,8 @@ class ImportarPlanificacionHH
             }
         }
         
+        // Cualquier otro valor no reconocido -> Descanso
+        $this->log("   ⚠️ Código de turno no reconocido: '$valorStr' -> Tratado como descanso");
         return '-1';
     }
     
