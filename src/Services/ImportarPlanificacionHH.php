@@ -103,17 +103,32 @@ class ImportarPlanificacionHH
             
             $this->log("Período a procesar: " . $this->obtenerNombreMes($mes) . " $año");
             
-            // Identificar fila de encabezados
-            $filaEncabezados = $this->identificarFilaEncabezados($hoja);
-            if (!$filaEncabezados) {
-                throw new Exception("No se pudo identificar la fila de encabezados (buscando #, AREA, RUT)");
+                        // Identificar fila de encabezados METADATOS (#, AREA, RUT)
+            $filaEncabezadosMeta = $this->identificarFilaEncabezados($hoja);
+            if (!$filaEncabezadosMeta) {
+                throw new Exception("No se pudo identificar la fila de encabezados de metadatos");
             }
             
-            $this->log("Fila de encabezados encontrada en: $filaEncabezados");
+            // Identificar fila de encabezados DIAS (fechas como 4/1/26)
+            // Buscamos en las filas siguientes a los metadatos
+            $filaEncabezadosDias = null;
+            for ($f = $filaEncabezadosMeta + 1; $f <= $filaEncabezadosMeta + 5; $f++) {
+                $valorPrueba = $hoja->getCell([12, $f])->getValue(); // Columna L suele ser el día 1
+                if ($valorPrueba && preg_match('/\d{1,2}\/\d{1,2}\/\d{2,4}/', (string)$valorPrueba)) {
+                    $filaEncabezadosDias = $f;
+                    break;
+                }
+            }
             
-            // Mapear columnas
-            $mapaColumnas = $this->mapearColumnas($hoja, $filaEncabezados);
-            $this->log("Columnas mapeadas: " . count($mapaColumnas) . " columnas totales");
+            if (!$filaEncabezadosDias) {
+                // Fallback: usar la misma fila de metadatos si no encuentra días separados
+                $filaEncabezadosDias = $filaEncabezadosMeta;
+            }
+
+            $this->log("Fila Metadatos: $filaEncabezadosMeta, Fila Días: $filaEncabezadosDias");
+
+            // Mapear columnas usando la fila de DÍAS para los días, y la de METADATOS para el resto
+            $mapaColumnas = $this->mapearColumnasMixto($hoja, $filaEncabezadosMeta, $filaEncabezadosDias);
             
             // Procesar cada fila de técnico
             $totalFilas = $hoja->getHighestRow();
@@ -815,5 +830,68 @@ class ImportarPlanificacionHH
     {
         $timestamp = date('H:i:s');
         $this->log[] = "[$timestamp] $mensaje";
+    }
+
+    /**
+    * Mapea columnas usando dos filas diferentes: una para metadatos y otra para días
+    */
+    private function mapearColumnasMixto(Worksheet $hoja, int $filaMeta, int $filaDias): array
+    {
+        $mapa = [];
+        
+        // 1. Mapear metadatos desde $filaMeta
+        $totalCols = $hoja->getHighestColumn();
+        $totalColsIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($totalCols);
+        
+        for ($col = 1; $col <= $totalColsIdx; $col++) {
+            $valor = $hoja->getCell([$col, $filaMeta])->getValue();
+            if (!$valor) continue;
+            
+            $valorLimpio = strtoupper(trim((string)$valor));
+            
+            if ($valorLimpio === '#') $mapa['numero'] = $col;
+            elseif ($valorLimpio === 'AREA') $mapa['area'] = $col;
+            elseif ($valorLimpio === 'RESPONSABLE') $mapa['responsable'] = $col;
+            elseif ($valorLimpio === 'RUT') $mapa['rut'] = $col;
+            elseif ($valorLimpio === 'CARGO') $mapa['cargo'] = $col;
+            elseif ($valorLimpio === 'GRUPO') $mapa['grupo'] = $col;
+            elseif (stripos($valorLimpio, 'COMPONENTE') !== false) $mapa['componente'] = $col;
+            elseif (stripos($valorLimpio, 'APELLIDOS') !== false || stripos($valorLimpio, 'NOMBRES') !== false) $mapa['nombre'] = $col;
+            elseif ($valorLimpio === 'HH') $mapa['aporta_hh'] = $col;
+            elseif (stripos($valorLimpio, 'ESTATUS') !== false || $valorLimpio === 'ESTADO') $mapa['estatus'] = $col;
+            elseif (stripos($valorLimpio, 'TURNO') !== false && !is_numeric($valorLimpio)) $mapa['turno'] = $col;
+        }
+        
+        // 2. Mapear días desde $filaDias
+        for ($col = 1; $col <= $totalColsIdx; $col++) {
+            $valor = $hoja->getCell([$col, $filaDias])->getValue();
+            if (!$valor) continue;
+            
+            $valorStr = trim((string)$valor);
+            
+            // Detectar fechas (4/1/26) o números (1)
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $valorStr, $matches)) {
+                $dia = (int)$matches[2]; // Mes/Día/Año -> Día es el segundo grupo? No, depende del formato.
+                // En tu Excel es 4/1/26 (Mes/Dia/Año)? O Dia/Mes/Año?
+                // Tu log decía "4/1/26". Si es Mes/Dia, dia=1. Si es Dia/Mes, dia=4.
+                // Asumiremos formato chileno Dia/Mes/Año o Mes/Dia/Año según el contexto.
+                // En tu Excel anterior, L16 era 4/1/26 y era el día 1 de Abril.
+                // Entonces 4/1/26 significa Mes=4, Dia=1.
+                $mesExcel = (int)$matches[1];
+                $diaExcel = (int)$matches[2];
+                
+                // Validar que el mes coincida con el mes de importación
+                if ($mesExcel == $this->mes) {
+                    $mapa["dia_$diaExcel"] = $col;
+                }
+            } elseif (is_numeric($valorStr)) {
+                $dia = (int)$valorStr;
+                if ($dia >= 1 && $dia <= 31) {
+                    $mapa["dia_$dia"] = $col;
+                }
+            }
+        }
+        
+        return $mapa;
     }
 }
