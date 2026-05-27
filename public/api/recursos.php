@@ -5,14 +5,15 @@
  */
 header('Content-Type: application/json; charset=utf-8');
 define('APP_ENTRY_POINT', true);
-require_once __DIR__ . '/../../config.php';
-
-// Verificar sesión
-if (!isset($_SESSION['usuario_id'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'No autorizado']);
-    exit;
-}
+    
+    $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+    $projectRoot = dirname($docRoot);
+    $configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
+    
+    if (!$configPath) {
+        throw new Exception("Archivo de configuración no encontrado");
+    }
+    require_once $configPath;
 
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 
