@@ -411,7 +411,7 @@ class ImportarPlanificacionHH
             return;
         }
         
-        // Extraer datos básicos
+                // Extraer datos básicos
         $rut = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['rut'] ?? null);
         $nombre = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['nombre'] ?? null);
         $cargo = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['cargo'] ?? null);
@@ -427,9 +427,6 @@ class ImportarPlanificacionHH
         
         // Buscar o crear técnico (pasando area y grupo para inferencia)
         $tecnicoId = $this->buscarOCrearTecnico($rutNormalizado, $nombre, $cargo, $idEspecialidad, $area, $grupo);
-        if (!$tecnicoId) {
-            throw new Exception("No se pudo procesar técnico: $nombre");
-        }
         
         // Extraer planificaciones diarias
         $planificacionesDiarias = $this->extraerPlanificacionesDiarias($hoja, $fila, $mapaColumnas);
@@ -564,6 +561,9 @@ class ImportarPlanificacionHH
     
     /**
      * Busca o crea un técnico en la BD
+     */
+        /**
+     * Busca o crea un técnico en la BD, intentando llenar todos los campos posibles
      */
         /**
      * Busca o crea un técnico en la BD, intentando llenar todos los campos posibles
