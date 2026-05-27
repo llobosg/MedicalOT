@@ -135,11 +135,12 @@ class ImportarPlanificacionHH
             $totalFilas = $hoja->getHighestRow();
             $this->log("Total de filas en hoja: $totalFilas");
             
-            for ($fila = $filaEncabezados + 1; $fila <= $totalFilas; $fila++) {
+            // 🔥 USAR FILA CORRECTA DE METADATOS
+            for ($fila = $filaEncabezadosMeta + 1; $fila <= $totalFilas; $fila++) {
                 try {
                     $this->procesarFilaTecnico($hoja, $fila, $mapaColumnas);
                 } catch (Exception $e) {
-                    $this->log("Error en fila $fila: " . $e->getMessage());
+                    $this->log("❌ Error en fila $fila: " . $e->getMessage());
                     $this->stats['errores']++;
                 }
             }
@@ -419,6 +420,11 @@ class ImportarPlanificacionHH
         
         // Extraer planificaciones diarias
         $planificacionesDiarias = $this->extraerPlanificacionesDiarias($hoja, $fila, $mapaColumnas);
+
+        if (empty($planificacionesDiarias)) {
+            $this->log("🚨 Fila $fila SIN planificaciones diarias");
+            return;
+        }
         
         // Crear planificación mensual
         $planificacionMensualId = $this->crearPlanificacionMensual($tecnicoId, $planificacionesDiarias);
@@ -665,38 +671,41 @@ class ImportarPlanificacionHH
                 'tipo_turno' => $tipo
             ];
         }
+        if ($this->stats['total_tecnicos'] <= 2) {
+            $this->log("🧪 DEBUG COMPLETO FILA:");
+            foreach ($planificaciones as $d => $p) {
+                $this->log("   Día $d → {$p['codigo_turno']} | HH={$p['horas']}");
+            }
+        }
         
         return $planificaciones;
     }
     
-        /**
-     * Normaliza el código de turno de forma estricta
-     */
+    /**
+    * Normaliza el código de turno de forma estricta
+    */
     private function normalizarCodigoTurno($valor): string
     {
-        if ($valor === null || $valor === '') {
-            return '-1'; // Descanso
+        if ($valor === null) return '-1';
+
+        $v = strtoupper(trim((string)$valor));
+
+        if ($v === '' || $v === '-' || $v === ' ') return '-1';
+
+        // Descansos conocidos
+        $descansos = ['-1','0','D','V','DESCANSO','LIBRE','VACACIONES','LICENCIA','NA','N/A'];
+        if (in_array($v, $descansos)) return '-1';
+
+        // Número válido
+        if (is_numeric($v)) {
+            return (string)((int)$v);
         }
-        
-        $valorStr = trim((string)$valor);
-        
-        // Casos especiales explícitos de descanso
-        $descansos = ['-1', '0', 'D', 'V', 'DESCANSO', 'VACANTE', 'EN PROCESO', 'INGRESO'];
-        foreach ($descansos as $d) {
-            if (strtoupper($valorStr) === $d) {
-                return '-1';
-            }
+
+        // Casos tipo "7A", "1B"
+        if (preg_match('/(\d+)/', $v, $m)) {
+            return (string)((int)$m[1]);
         }
-        
-        // Si es numérico entero entre 1 y 13, usarlo
-        if (is_numeric($valorStr)) {
-            $num = (int)$valorStr;
-            if ($num >= 1 && $num <= 13) {
-                return (string)$num;
-            }
-        }
-        
-        // Cualquier otra cosa (textos raros, fórmulas no resueltas, errores) -> Descanso
+
         return '-1';
     }
     
@@ -788,18 +797,31 @@ class ImportarPlanificacionHH
         ");
         
         foreach ($planificacionesDiarias as $dia => $plan) {
+
             $fecha = sprintf('%04d-%02d-%02d', $this->año, $this->mes, $dia);
             $diaSemana = $this->obtenerDiaSemana($fecha);
-            
-            $tipoDia = ($plan['codigo_turno'] === '-1' || $plan['codigo_turno'] === '0') ? 'descanso' : 'laboral';
+
+            $tipoDia = ($plan['codigo_turno'] === '-1') ? 'descanso' : 'laboral';
             $turnoTipo = $tipoDia === 'descanso' ? 'descanso' : ($plan['tipo_turno'] ?? 'dia');
-            
-            $stmt->execute([
-                $tecnicoId, $planificacionMensualId,
-                $this->año, $this->mes, $dia, $fecha, $diaSemana,
-                $plan['id_turno'], $plan['horas'],
-                $tipoDia, $turnoTipo, $plan['codigo_turno']
-            ]);
+
+            try {
+                $stmt->execute([
+                    $tecnicoId,
+                    $planificacionMensualId,
+                    $this->año,
+                    $this->mes,
+                    $dia,
+                    $fecha,
+                    $diaSemana,
+                    $plan['id_turno'],
+                    $plan['horas'],
+                    $tipoDia,
+                    $turnoTipo,
+                    $plan['codigo_turno']
+                ]);
+            } catch (\Exception $e) {
+                $this->log("❌ ERROR INSERT día $dia técnico $tecnicoId: " . $e->getMessage());
+            }
         }
     }
     
@@ -840,16 +862,18 @@ class ImportarPlanificacionHH
     {
         $mapa = [];
         
-        // 1. Mapear metadatos desde $filaMeta
         $totalCols = $hoja->getHighestColumn();
         $totalColsIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($totalCols);
-        
+
+        // =========================
+        // 1. METADATOS
+        // =========================
         for ($col = 1; $col <= $totalColsIdx; $col++) {
             $valor = $hoja->getCell([$col, $filaMeta])->getValue();
             if (!$valor) continue;
-            
+
             $valorLimpio = strtoupper(trim((string)$valor));
-            
+
             if ($valorLimpio === '#') $mapa['numero'] = $col;
             elseif ($valorLimpio === 'AREA') $mapa['area'] = $col;
             elseif ($valorLimpio === 'RESPONSABLE') $mapa['responsable'] = $col;
@@ -860,39 +884,54 @@ class ImportarPlanificacionHH
             elseif (stripos($valorLimpio, 'APELLIDOS') !== false || stripos($valorLimpio, 'NOMBRES') !== false) $mapa['nombre'] = $col;
             elseif ($valorLimpio === 'HH') $mapa['aporta_hh'] = $col;
             elseif (stripos($valorLimpio, 'ESTATUS') !== false || $valorLimpio === 'ESTADO') $mapa['estatus'] = $col;
-            elseif (stripos($valorLimpio, 'TURNO') !== false && !is_numeric($valorLimpio)) $mapa['turno'] = $col;
         }
-        
-        // 2. Mapear días desde $filaDias
+
+        // =========================
+        // 2. DETECCIÓN ROBUSTA DE DÍAS
+        // =========================
+        $diasDetectados = 0;
+
         for ($col = 1; $col <= $totalColsIdx; $col++) {
+
             $valor = $hoja->getCell([$col, $filaDias])->getValue();
             if (!$valor) continue;
-            
+
             $valorStr = trim((string)$valor);
-            
-            // Detectar fechas (4/1/26) o números (1)
-            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $valorStr, $matches)) {
-                $dia = (int)$matches[2]; // Mes/Día/Año -> Día es el segundo grupo? No, depende del formato.
-                // En tu Excel es 4/1/26 (Mes/Dia/Año)? O Dia/Mes/Año?
-                // Tu log decía "4/1/26". Si es Mes/Dia, dia=1. Si es Dia/Mes, dia=4.
-                // Asumiremos formato chileno Dia/Mes/Año o Mes/Dia/Año según el contexto.
-                // En tu Excel anterior, L16 era 4/1/26 y era el día 1 de Abril.
-                // Entonces 4/1/26 significa Mes=4, Dia=1.
-                $mesExcel = (int)$matches[1];
-                $diaExcel = (int)$matches[2];
-                
-                // Validar que el mes coincida con el mes de importación
-                if ($mesExcel == $this->mes) {
-                    $mapa["dia_$diaExcel"] = $col;
+
+            // FORMATO: 4/1/26 o 01/04/2026
+            if (preg_match('/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/', $valorStr, $m)) {
+
+                $a = (int)$m[1];
+                $b = (int)$m[2];
+
+                // Detectar si es MES/DIA o DIA/MES automáticamente
+                if ($a > 12) {
+                    $dia = $a;
+                } elseif ($b > 12) {
+                    $dia = $b;
+                } else {
+                    // fallback: asumir formato MES/DIA
+                    $dia = $b;
                 }
-            } elseif (is_numeric($valorStr)) {
+
+                if ($dia >= 1 && $dia <= 31) {
+                    $mapa["dia_$dia"] = $col;
+                    $diasDetectados++;
+                }
+
+            }
+            // FORMATO SIMPLE: 1, 2, 3...
+            elseif (is_numeric($valorStr)) {
                 $dia = (int)$valorStr;
                 if ($dia >= 1 && $dia <= 31) {
                     $mapa["dia_$dia"] = $col;
+                    $diasDetectados++;
                 }
             }
         }
-        
+
+        $this->log("📅 Días detectados: $diasDetectados");
+
         return $mapa;
     }
 }
