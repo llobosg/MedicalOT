@@ -411,8 +411,13 @@ class ImportarPlanificacionHH
             return;
         }
         
+        // Extraer datos básicos
+        $rut = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['rut'] ?? null);
+        $nombre = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['nombre'] ?? null);
         $cargo = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['cargo'] ?? null);
         $componente = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['componente'] ?? null);
+        $area = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['area'] ?? null);
+        $grupo = $this->obtenerValorCelda($hoja, $fila, $mapaColumnas['grupo'] ?? null);
         
         // Normalizar RUT
         $rutNormalizado = $this->normalizarRut($rut);
@@ -420,8 +425,8 @@ class ImportarPlanificacionHH
         // Buscar componente/especialidad
         $idEspecialidad = $this->buscarComponenteId($componente);
         
-        // Buscar o crear técnico
-        $tecnicoId = $this->buscarOCrearTecnico($rutNormalizado, $nombre, $cargo, $idEspecialidad);
+        // Buscar o crear técnico (pasando area y grupo para inferencia)
+        $tecnicoId = $this->buscarOCrearTecnico($rutNormalizado, $nombre, $cargo, $idEspecialidad, $area, $grupo);
         if (!$tecnicoId) {
             throw new Exception("No se pudo procesar técnico: $nombre");
         }
@@ -560,15 +565,18 @@ class ImportarPlanificacionHH
     /**
      * Busca o crea un técnico en la BD
      */
-    private function buscarOCrearTecnico(?string $rut, ?string $nombre, ?string $cargo, ?int $idEspecialidad): ?int
+        /**
+     * Busca o crea un técnico en la BD, intentando llenar todos los campos posibles
+     */
+    private function buscarOCrearTecnico(?string $rut, ?string $nombre, ?string $cargo, ?int $idEspecialidad, ?string $areaExcel, ?string $grupoExcel): ?int
     {
         if (empty($nombre)) return null;
         
-        // Verificar qué columnas existen en la tabla tecnicos
+        // Verificar columnas existentes
         $stmt = $this->pdo->query("SHOW COLUMNS FROM tecnicos");
         $columnasExistentes = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'Field');
         
-        // Buscar por RUT primero
+        // 1. Buscar por RUT primero
         if ($rut && in_array('rut', $columnasExistentes)) {
             $stmt = $this->pdo->prepare("SELECT id FROM tecnicos WHERE rut = ? LIMIT 1");
             $stmt->execute([$rut]);
@@ -576,25 +584,51 @@ class ImportarPlanificacionHH
             
             if ($tecnico) {
                 $this->stats['tecnicos_actualizados']++;
+                // Opcional: Actualizar datos si faltan
+                $updates = [];
+                $params = [];
+                if (in_array('id_especialidad', $columnasExistentes) && $idEspecialidad) {
+                    $updates[] = "id_especialidad = ?";
+                    $params[] = $idEspecialidad;
+                }
+                if (!empty($updates)) {
+                    $sqlUpd = "UPDATE tecnicos SET " . implode(", ", $updates) . " WHERE id = ?";
+                    $params[] = $tecnico['id'];
+                    $this->pdo->prepare($sqlUpd)->execute($params);
+                }
                 return $tecnico['id'];
             }
         }
         
-        // Buscar por nombre
+        // 2. Buscar por nombre (si no hay RUT o no se encontró)
         $stmt = $this->pdo->prepare("SELECT id FROM tecnicos WHERE nombre = ? LIMIT 1");
         $stmt->execute([$nombre]);
         $tecnico = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($tecnico) {
-            if ($rut && in_array('rut', $columnasExistentes)) {
-                $stmt = $this->pdo->prepare("UPDATE tecnicos SET rut = ? WHERE id = ? AND (rut IS NULL OR rut = '')");
-                $stmt->execute([$rut, $tecnico['id']]);
-            }
             $this->stats['tecnicos_actualizados']++;
+            // Actualizar RUT si estaba vacío
+            if ($rut && in_array('rut', $columnasExistentes)) {
+                $this->pdo->prepare("UPDATE tecnicos SET rut = ? WHERE id = ? AND (rut IS NULL OR rut = '')")
+                          ->execute([$rut, $tecnico['id']]);
+            }
             return $tecnico['id'];
         }
         
-        // Crear nuevo técnico
+        // 3. Crear nuevo técnico
+        // Intentar inferir Especialidad y Vertical si no vinieron mapeadas
+        
+        // A. Inferir Especialidad desde Area/Cargo si $idEspecialidad es null
+        if (!$idEspecialidad && !empty($areaExcel)) {
+            $idEspecialidad = $this->inferirEspecialidadDesdeArea($areaExcel);
+        }
+        
+        // B. Inferir Vertical desde Area/Grupo
+        $idVertical = null;
+        if (!empty($areaExcel) || !empty($grupoExcel)) {
+            $idVertical = $this->inferirVerticalDesdeArea($areaExcel, $grupoExcel);
+        }
+
         $sql = "INSERT INTO tecnicos (nombre, activo";
         $values = "VALUES (?, 1";
         $params = [$nombre];
@@ -617,14 +651,74 @@ class ImportarPlanificacionHH
             $params[] = $idEspecialidad;
         }
         
+        if (in_array('id_vertical', $columnasExistentes) && $idVertical) {
+            $sql .= ", id_vertical";
+            $values .= ", ?";
+            $params[] = $idVertical;
+        }
+        
+        // Si ya agregaste la columna id_tipo_turno, puedes intentar guardar un turno inicial
+        // Por ahora, lo dejamos null hasta que se defina mejor la lógica de turno "default"
+        
         $sql .= ") $values)";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         
         $this->stats['tecnicos_creados']++;
-        $this->log("Técnico creado: $nombre (ID: " . $this->pdo->lastInsertId() . ")");
+        $this->log("Técnico creado: $nombre (ID: " . $this->pdo->lastInsertId() . ") | Esp: $idEspecialidad | Vert: $idVertical");
         return (int)$this->pdo->lastInsertId();
+    }
+
+    /**
+     * Intenta encontrar una especialidad basada en el nombre del área del Excel
+     */
+    private function inferirEspecialidadDesdeArea(string $area): ?int
+    {
+        $areaUpper = strtoupper(trim($area));
+        $mapa = [
+            'CLIMA' => 'M-CLIMATIZACION',
+            'CLIMATIZACIÓN' => 'M-CLIMATIZACION',
+            'ELECTRICO' => 'M-ELECTRICIDAD',
+            'ELÉCTRICO' => 'M-ELECTRICIDAD',
+            'GASFITERIA' => 'M-GASFITERIA',
+            'GASFITERÍA' => 'M-GASFITERIA',
+            'INFRAESTRUCTURA' => 'M-INFRAESTRUCTURA',
+            'REDES' => 'M-ELECTRONICA', // Asumiendo redes como electrónica/corrientes débiles
+            'CONTROL CENTRALIZADO' => 'M-ELECTRONICA',
+            'SACC' => 'M-ELECTRONICA'
+        ];
+        
+        foreach ($mapa as $key => $codigoEsp) {
+            if (stripos($areaUpper, $key) !== false) {
+                // Buscar ID de especialidad por código
+                $stmt = $this->pdo->prepare("SELECT id FROM especialidades WHERE codigo = ? LIMIT 1");
+                $stmt->execute([$codigoEsp]);
+                $esp = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($esp) return $esp['id'];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Intenta encontrar una vertical basada en el área o grupo
+     */
+    private function inferirVerticalDesdeArea(?string $area, ?string $grupo): ?int
+    {
+        // Lógica simple: buscar vertical que contenga palabras clave del área
+        if (!$area && !$grupo) return null;
+        
+        $searchTerm = strtoupper(trim($area ?? $grupo));
+        
+        // Buscar verticales activas
+        $stmt = $this->pdo->query("SELECT id_vertical, nombre_vertical FROM verticales WHERE activo = 1");
+        while ($v = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (stripos(strtoupper($v['nombre_vertical']), $searchTerm) !== false) {
+                return $v['id_vertical'];
+            }
+        }
+        return null;
     }
     
     /**

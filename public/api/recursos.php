@@ -35,13 +35,11 @@ try {
                         t.id, t.rut, t.nombre, t.correo, t.telefono, t.activo,
                         t.id_especialidad, e.nombre as especialidad_nombre,
                         t.id_vertical, v.nombre_vertical,
-                        tt.nombre as turno_hoy,
-                        pd.horas_planificadas as hh_hoy
+                        t.id_tipo_turno, tt.nombre as turno_actual
                     FROM tecnicos t
                     LEFT JOIN especialidades e ON t.id_especialidad = e.id
                     LEFT JOIN verticales v ON t.id_vertical = v.id_vertical
-                    LEFT JOIN planificacion_hh_diaria pd ON t.id = pd.id_tecnico AND pd.fecha = ?
-                    LEFT JOIN tipos_turno tt ON pd.id_turno = tt.id
+                    LEFT JOIN tipos_turno tt ON t.id_tipo_turno = tt.id
                     WHERE t.activo = 1
                     ORDER BY t.nombre ASC";
             
