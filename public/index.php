@@ -1299,101 +1299,284 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 </form>
             </div>
         </div>
-        <!-- NUEVAS FICHAS PARA EL MOCKUP -->
 
-        <!-- MÓDULO 8: RECURSOS -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- MÓDULO 8: RECURSOS (Rediseñado - Estilo Centro Cargas) -->
+        <!-- ═══════════════════════════════════════════════════════ -->
         <section id="recursos" class="module-section">
-            <div style="max-width:1200px; margin:0 auto; padding:1rem;">
-                <h3 style="margin-bottom:1.5rem; color:#1e293b;">👷 Mantenedor de Recursos</h3>
+        <style>
+            .rc-container { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; max-width:1400px; margin:0 auto; padding:0 1rem; }
+            .rc-card { background:#fff; border-radius:1rem; padding:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.07); border-top:4px solid #ccc; display:flex; flex-direction:column; height:100%; transition:transform 0.2s, box-shadow 0.2s; }
+            .rc-card:hover { transform:translateY(-2px); box-shadow:0 8px 15px -3px rgba(0,0,0,0.1); }
+            .rc-card.tec { border-top-color:#8b5cf6; }
+            .rc-card.vert { border-top-color:#3b82f6; }
+            .rc-card.turno { border-top-color:#f59e0b; }
+            .rc-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; }
+            .rc-title { font-size:1.1rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.5rem; margin:0; }
+            .rc-desc { font-size:0.8rem; color:#64748b; margin-bottom:1rem; line-height:1.4; }
+            .rc-dropzone { border:2px dashed #cbd5e1; border-radius:0.75rem; padding:1.5rem 1rem; text-align:center; cursor:pointer; transition:all 0.3s; background:#fafbfc; min-height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; flex:0 0 auto; margin-bottom:1rem; }
+            .rc-dropzone:hover { border-color:#8b5cf6; background:#f5f3ff; }
+            .rc-dropzone i { font-size:2rem; margin-bottom:0.5rem; }
+            .rc-dropzone.tec i { color:#8b5cf6; }
+            .rc-dropzone.vert i { color:#3b82f6; }
+            .rc-dropzone.turno i { color:#f59e0b; }
+            .rc-dropzone p { margin:0; font-size:0.85rem; color:#475569; font-weight:600; }
+            .rc-dropzone small { font-size:0.7rem; color:#94a3b8; margin-top:0.3rem; }
+            .rc-table-wrapper { flex:1; overflow-y:auto; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; min-height:200px; max-height:400px; }
+            .rc-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+            .rc-table th { background:#f8fafc; padding:0.6rem; text-align:left; position:sticky; top:0; font-weight:600; border-bottom:2px solid #e2e8f0; z-index:5; font-size:0.75rem; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; }
+            .rc-table td { padding:0.6rem; border-bottom:1px solid #f1f5f9; white-space:nowrap; }
+            .rc-table tr:hover { background:#f8fafc; }
+            .rc-search { width:100%; padding:0.6rem 0.9rem; border:2px solid #e2e8f0; border-radius:0.5rem; font-size:0.85rem; margin-bottom:0.75rem; transition:border-color 0.2s; box-sizing:border-box; }
+            .rc-search:focus { border-color:#8b5cf6; outline:none; }
+            .rc-btn-add { background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; border:none; padding:0.5rem 1rem; border-radius:0.5rem; cursor:pointer; font-weight:600; font-size:0.8rem; display:flex; align-items:center; gap:0.3rem; transition:all 0.2s; margin-bottom:0.75rem; }
+            .rc-btn-add:hover { transform:translateY(-1px); box-shadow:0 4px 8px rgba(139,92,246,0.3); }
+            .rc-btn-add.vert-btn { background:linear-gradient(135deg,#3b82f6,#2563eb); }
+            .rc-btn-add.turno-btn { background:linear-gradient(135deg,#f59e0b,#d97706); }
+            .rc-bitacora { margin-top:auto; padding-top:0.75rem; border-top:1px solid #f1f5f9; }
+            .rc-bitacora-title { font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem; }
+            .rc-log-item { display:flex; justify-content:space-between; align-items:center; padding:0.3rem 0; border-bottom:1px solid #f8fafc; font-size:0.72rem; }
+            .rc-log-item:last-child { border-bottom:none; }
+            .rc-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.65rem; font-weight:700; color:#fff; }
+            .rc-badge.act { background:#10b981; }
+            .rc-badge.inact { background:#94a3b8; }
+            .rc-badge.vac { background:#f59e0b; }
+            @media(max-width:1000px) { .rc-container { grid-template-columns:1fr; } }
+        </style>
+
+        <div style="max-width:1400px; margin:0 auto; padding:0 1rem 1rem;">
+            <h2 style="font-size:1.5rem; font-weight:700; color:#1e293b; margin-bottom:0.25rem;">👷 Centro de Recursos</h2>
+            <p style="font-size:0.85rem; color:#64748b; margin:0;">Gestión unificada de técnicos, verticales y turnos activos</p>
+        </div>
+
+        <div class="rc-container">
+            <!-- ====== COLUMNA 1: TÉCNICOS (Violeta) ====== -->
+            <div class="rc-card tec">
+                <div class="rc-header">
+                    <h3 class="rc-title"><i class="bi bi-person-badge"></i> Técnicos</h3>
+                </div>
+                <div class="rc-desc">Mantenedor de personal técnico. Asigna vertical, especialidad y turno.</div>
                 
-                <!-- Pestañas Modernas -->
-                <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:2px solid #e2e8f0; padding-bottom:0;">
-                    <button onclick="showResourceTab('tecnicos')" id="tab-tecnicos" class="resource-tab active">👨‍🔧 Técnicos</button>
-                    <button onclick="showResourceTab('grupos')" id="tab-grupos" class="resource-tab">👥 Grupos</button>
-                    <button onclick="showResourceTab('turnos')" id="tab-turnos" class="resource-tab">⏱️ Turnos Activos</button>
+                <input type="text" class="rc-search" id="searchTecnicos" placeholder="🔍 Buscar técnico..." onkeyup="filterResources()">
+                <button class="rc-btn-add" onclick="openModal('tecnico')">➕ Nuevo Técnico</button>
+                
+                <div class="rc-table-wrapper">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>RUT</th>
+                                <th>Vertical</th>
+                                <th>Turno</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaTecnicosBody">
+                            <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
-
-                <!-- BUSCADOR INTELIGENTE -->
-                <div style="margin-bottom:1rem; position:relative;">
-                    <input type="text" id="searchRecursos" placeholder="🔍 Buscar por nombre, grupo o turno..." 
-                        onkeyup="filterResources()"
-                        style="width:100%; padding:0.75rem 1rem 0.75rem 2.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; box-sizing:border-box; transition:border-color 0.2s;"
-                        onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
-                    <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8;">🔍</span>
+                
+                <div class="rc-bitacora">
+                    <div class="rc-bitacora-title">📋 Últimos cambios</div>
+                    <div id="bitacoraTec"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin actividad reciente</p></div>
                 </div>
+            </div>
 
-                <!-- CONTENEDOR TÉCNICOS -->
-                <div id="view-tecnicos">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <p style="color:#64748b; font-size:0.9rem;">Gestión de técnicos, especialidades y turnos.</p>
-                        <button onclick="openModal('tecnico')" class="btn-primary">➕ Nuevo Técnico</button>
-                    </div>
-                    <div class="card" style="padding:0; overflow-x:auto;">
-                        <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
-                            <thead>
-                                <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;">
-                                    <th style="padding:1rem; text-align:left; border-top-left-radius:0.5rem;">RUT</th>
-                                    <th style="padding:1rem; text-align:left;">Nombre Completo</th>
-                                    <th style="padding:1rem; text-align:left;">Especialidad</th>
-                                    <th style="padding:1rem; text-align:left;">Vertical</th>
-                                    <th style="padding:1rem; text-align:left;">Turno</th>
-                                    <th style="padding:1rem; text-align:left;">Contacto</th>
-                                    <th style="padding:1rem; text-align:center; border-top-right-radius:0.5rem;">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaTecnicosBody">
-                                <tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- ====== COLUMNA 2: VERTICALES (Azul) ====== -->
+            <div class="rc-card vert">
+                <div class="rc-header">
+                    <h3 class="rc-title"><i class="bi bi-building"></i> Verticales</h3>
                 </div>
-
-                <!-- CONTENEDOR GRUPOS -->
-                <div id="view-grupos" style="display:none;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <p style="color:#64748b; font-size:0.9rem;">Gestión de grupos de trabajo y asignación vertical.</p>
-                        <button onclick="openModal('grupo')" class="btn-primary">➕ Nuevo Grupo</button>
-                    </div>
-                    <div class="card" style="padding:0; overflow-x:auto;">
-                        <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
-                            <thead>
-                                <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;">
-                                    <th style="padding:1rem; text-align:left; border-top-left-radius:0.5rem;">Nombre Grupo</th>
-                                    <th style="padding:1rem; text-align:left;">Vertical Asociada</th>
-                                    <th style="padding:1rem; text-align:left;">Turno Asignado</th>
-                                    <th style="padding:1rem; text-align:left;">Descripción</th>
-                                    <th style="padding:1rem; text-align:center; border-top-right-radius:0.5rem;">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaGruposBody">
-                                <tr><td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="rc-desc">Áreas técnicas del hospital. Cada técnico pertenece a una vertical.</div>
+                
+                <input type="text" class="rc-search" id="searchVerticales" placeholder="🔍 Buscar vertical..." onkeyup="filterVerticales()">
+                <?php if ($isAdmin): ?>
+                <button class="rc-btn-add vert-btn" onclick="abrirModalVerticales()">➕ Nueva Vertical</button>
+                <?php endif; ?>
+                
+                <div class="rc-table-wrapper">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Responsable</th>
+                                <th>Especialidad</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaVerticalesResBody">
+                            <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
-
-                <!-- CONTENEDOR TURNOS ACTIVOS -->
-                <div id="view-turnos" style="display:none;">
-                    <div style="margin-bottom:1rem;">
-                        <p style="color:#64748b; font-size:0.9rem;">Lista unificada de todos los recursos con turno activo.</p>
-                    </div>
-                    <div class="card" style="padding:0; overflow-x:auto;">
-                        <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
-                            <thead>
-                                <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;">
-                                    <th style="padding:1rem; text-align:left; border-top-left-radius:0.5rem;">Tipo</th>
-                                    <th style="padding:1rem; text-align:left;">Nombre</th>
-                                    <th style="padding:1rem; text-align:left;">Turno</th>
-                                    <th style="padding:1rem; text-align:left;">Vertical / Especialidad</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaTurnosBody">
-                                <tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
-                            </tbody>
-                        </table>
+                
+                <div class="rc-bitacora">
+                    <div class="rc-bitacora-title">📋 Resumen</div>
+                    <div id="resumenVert">
+                        <div class="rc-log-item"><span>Total verticales</span><strong id="totalVerts">-</strong></div>
+                        <div class="rc-log-item"><span>Activas</span><strong id="activeVerts" style="color:#10b981;">-</strong></div>
+                        <div class="rc-log-item"><span>Técnicos asignados</span><strong id="totalTechAssign">-</strong></div>
                     </div>
                 </div>
             </div>
+
+            <!-- ====== COLUMNA 3: TURNOS ACTIVOS (Ámbar) ====== -->
+            <div class="rc-card turno">
+                <div class="rc-header">
+                    <h3 class="rc-title"><i class="bi bi-clock-history"></i> Turnos Activos</h3>
+                </div>
+                <div class="rc-desc">Recursos con turno asignado. Vista unificada de disponibilidad.</div>
+                
+                <input type="text" class="rc-search" id="searchTurnosRes" placeholder="🔍 Buscar por nombre o turno..." onkeyup="filterTurnosRes()">
+                
+                <div class="rc-table-wrapper">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Nombre</th>
+                                <th>Turno</th>
+                                <th>Vertical</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaTurnosResBody">
+                            <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="rc-bitacora">
+                    <div class="rc-bitacora-title">📋 Distribución</div>
+                    <div id="resumenTurnos">
+                        <div class="rc-log-item"><span>Con turno activo</span><strong id="totalConTurno">-</strong></div>
+                        <div class="rc-log-item"><span>Sin turno</span><strong id="totalSinTurno" style="color:#f59e0b;">-</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        // === RECURSOS REDISEÑADO: LÓGICA COMPATIBLE ===
+        // Reutiliza los endpoints existentes: /api/recursos.php y /api/verticales.php
+
+        async function cargarTecnicosRes() {
+            const tbody = document.getElementById('tablaTecnicosBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/recursos.php?action=list_tecnicos');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                if (!data.data.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">Sin técnicos</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.data.map(t => `
+                    <tr>
+                        <td style="font-weight:600; color:#1e293b;">
+                            ${t.nombre}
+                            <div style="font-size:0.7rem; color:#94a3b8;">${t.especialidad_nombre || ''}</div>
+                        </td>
+                        <td style="font-family:monospace; color:#64748b;">${t.rut || '-'}</td>
+                        <td>${t.nombre_vertical || '<span style="color:#cbd5e1;">-</span>'}</td>
+                        <td>${t.turno_actual || '<span style="color:#cbd5e1; font-style:italic;">Sin turno</span>'}</td>
+                        <td><span class="rc-badge act">Activo</span></td>
+                    </tr>
+                `).join('');
+                // Actualizar contadores
+                const conTurno = data.data.filter(t => t.turno_actual).length;
+                const el1 = document.getElementById('totalConTurno');
+                const el2 = document.getElementById('totalSinTurno');
+                if (el1) el1.textContent = conTurno;
+                if (el2) el2.textContent = data.data.length - conTurno;
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:1rem;">❌ ${err.message}</td></tr>`;
+            }
+        }
+
+        async function cargarVerticalesRes() {
+            const tbody = document.getElementById('tablaVerticalesResBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/verticales.php?action=list');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                const verts = data.verticales || [];
+                if (!verts.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">Sin verticales</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = verts.map(v => `
+                    <tr>
+                        <td style="font-weight:600; color:#1e293b;">${v.nombre_vertical}</td>
+                        <td style="color:#64748b;">${v.nombre_responsable || '-'}</td>
+                        <td><span class="rc-badge" style="background:#3b82f6;">${v.cod_especialidad_principal || '-'}</span></td>
+                        <td><span class="rc-badge ${v.activo ? 'act' : 'inact'}">${v.activo ? 'Activa' : 'Inactiva'}</span></td>
+                    </tr>
+                `).join('');
+                // Actualizar resumen
+                const elT = document.getElementById('totalVerts');
+                const elA = document.getElementById('activeVerts');
+                if (elT) elT.textContent = verts.length;
+                if (elA) elA.textContent = verts.filter(v => v.activo).length;
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:1rem;">❌ ${err.message}</td></tr>`;
+            }
+        }
+
+        async function cargarTurnosRes() {
+            const tbody = document.getElementById('tablaTurnosResBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/recursos.php?action=list_con_turno');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                if (!data.data.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">Sin recursos con turno</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.data.map(r => `
+                    <tr>
+                        <td><span class="rc-badge" style="background:${r.tipo_recurso === 'tecnico' ? '#8b5cf6' : '#f59e0b'};">${r.tipo_recurso === 'tecnico' ? '👨‍🔧 Tec' : '👥 Grupo'}</span></td>
+                        <td style="font-weight:600; color:#1e293b;">${r.nombre_display}</td>
+                        <td>${r.turno_nombre || '-'}</td>
+                        <td style="color:#64748b;">${r.vertical_nombre || r.especialidad_nombre || '-'}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:1rem;">❌ ${err.message}</td></tr>`;
+            }
+        }
+
+        // Filtros locales rápidos
+        function filterResources() {
+            const q = document.getElementById('searchTecnicos').value.toLowerCase();
+            document.querySelectorAll('#tablaTecnicosBody tr').forEach(r => {
+                r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+        function filterVerticales() {
+            const q = document.getElementById('searchVerticales').value.toLowerCase();
+            document.querySelectorAll('#tablaVerticalesResBody tr').forEach(r => {
+                r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+        function filterTurnosRes() {
+            const q = document.getElementById('searchTurnosRes').value.toLowerCase();
+            document.querySelectorAll('#tablaTurnosResBody tr').forEach(r => {
+                r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+
+        // Cargar al activar módulo
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.getElementById('recursos')?.classList.contains('active')) {
+                cargarTecnicosRes();
+                cargarVerticalesRes();
+                cargarTurnosRes();
+            }
+        });
+        </script>
         </section>
 
         <!-- MODAL GENÉRICO PARA TÉCNICO / GRUPO -->
