@@ -427,9 +427,9 @@ class ImportarPlanificacionHH
         $this->crearPlanificacionesDiarias($tecnicoId, $planificacionMensualId, $planificacionesDiarias);
     }
     
-    /**
-    * Obtiene el valor de una celda, intentando calcular fórmulas y limpiando errores
-    */
+        /**
+     * Obtiene el valor de una celda, intentando calcular fórmulas y limpiando errores
+     */
     private function obtenerValorCelda($hoja, int $fila, ?int $col): ?string
     {
         if (!$col) return null;
@@ -669,9 +669,9 @@ class ImportarPlanificacionHH
         return $planificaciones;
     }
     
-    /**
-    * Normaliza el código de turno de forma estricta
-    */
+        /**
+     * Normaliza el código de turno de forma estricta
+     */
     private function normalizarCodigoTurno($valor): string
     {
         if ($valor === null || $valor === '') {
