@@ -1065,7 +1065,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             <!-- ═══════════════════════════════════════════════════════════ -->
             <!-- FILA 1: FICHAS KPI (4 columnas)                            -->
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1rem; margin-bottom:1.5rem;">
+            <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:1rem; margin-bottom:1.5rem;">
                 
                 <!-- 🥇 Ficha 1: TOTAL HHs PLANIFICADAS (Hero - Destacada) -->
                 <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); padding:1.5rem; border-radius:1rem; box-shadow:0 4px 12px rgba(59,130,246,0.3); color:white; position:relative; overflow:hidden;">
@@ -1124,6 +1124,23 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                     <div id="kpi-risk-hint" style="font-size:0.75rem; color:#ef4444; margin-top:0.25rem;">
                         ⚠️ Click para ver detalle
+                    </div>
+                </div>
+
+                <!-- 🆕 Ficha 5: HH DISPONIBLES vs DEMANDA -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #f59e0b; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-10px; right:-10px; font-size:4rem; opacity:0.08;">👷</div>
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">HH Disponibles (Plan)</div>
+                    <div style="display:flex; align-items:baseline; gap:0.3rem; margin-top:0.5rem;">
+                        <span id="kpi-hh-disponibles" style="font-size:2rem; font-weight:700; color:#1e293b;">--</span>
+                        <span style="font-size:0.85rem; color:#64748b;">HH</span>
+                    </div>
+                    <div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                        <span id="kpi-hh-cobertura" style="font-size:0.8rem; font-weight:700; padding:2px 8px; border-radius:10px; background:#dcfce7; color:#166534;">--%</span>
+                        <span style="font-size:0.7rem; color:#64748b;">Cobertura</span>
+                    </div>
+                    <div style="font-size:0.7rem; color:#94a3b8; margin-top:0.3rem;">
+                        👷 <span id="kpi-tecnicos-plan">--</span> técnicos planificados
                     </div>
                 </div>
             </div>
@@ -3631,6 +3648,26 @@ async function loadKpis() {
             updateText('kpi-sla', d.sla_percent, '%');
             updateText('kpi-ots-closed', d.ots_closed ?? 0, '');
             updateText('kpi-ots-risk', d.ots_riesgo ?? 0, '');
+
+            // 🆕 KPI HH DISPONIBLES
+            updateText('kpi-hh-disponibles', d.hh_disponibles || 0, '');
+            updateText('kpi-tecnicos-plan', d.tecnicos_plan || 0, '');
+
+            const coberturaEl = document.getElementById('kpi-hh-cobertura');
+            if (coberturaEl && d.hh_cobertura !== undefined) {
+                const cov = d.hh_cobertura;
+                coberturaEl.textContent = cov + '%';
+                if (cov >= 90) {
+                    coberturaEl.style.background = '#dcfce7';
+                    coberturaEl.style.color = '#166534';
+                } else if (cov >= 70) {
+                    coberturaEl.style.background = '#fef3c7';
+                    coberturaEl.style.color = '#92400e';
+                } else {
+                    coberturaEl.style.background = '#fee2e2';
+                    coberturaEl.style.color = '#991b1b';
+                }
+            }
             
             // 🎯 KPI TOTAL HH con animación (scope unificado)
             const totalHHEl = document.getElementById('kpi-total-hh');

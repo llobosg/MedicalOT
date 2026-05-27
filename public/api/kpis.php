@@ -47,7 +47,7 @@ try {
                 
                 $whereClause = implode(" AND ", $where);
                 
-                // Stats
+                // Stats OTs (Demanda)
                 $sqlStats = "SELECT COUNT(*) as total_ots,
                             COALESCE(SUM(total_hh_planificadas), 0) as hh_plan,
                             COALESCE(SUM(total_hh_reales_acumuladas), 0) as hh_real
@@ -77,16 +77,66 @@ try {
                 $stmtRiesgo = $pdo->prepare($sqlRiesgo);
                 $stmtRiesgo->execute($params);
                 $riesgo = $stmtRiesgo->fetchColumn();
-                
+
+                // 🆕 DATOS DE PLANIFICACIÓN HH (Oferta)
+                $hh_disponibles = 0;
+                $tecnicos_plan = 0;
+                $hh_cobertura = 0;
+
+                try {
+                    // Normalizar mes a número si viene como texto
+                    $mes_num = $month;
+                    if (is_string($month)) {
+                        $meses_map = [
+                            'enero'=>1,'febrero'=>2,'marzo'=>3,'abril'=>4,'mayo'=>5,'junio'=>6,
+                            'julio'=>7,'agosto'=>8,'septiembre'=>9,'octubre'=>10,'noviembre'=>11,'diciembre'=>12
+                        ];
+                        if (isset($meses_map[strtolower($month)])) {
+                            $mes_num = $meses_map[strtolower($month)];
+                        } else {
+                            $mes_num = (int)$month;
+                        }
+                    }
+                    
+                    if ($mes_num) {
+                        $stmtHH = $pdo->prepare("
+                            SELECT 
+                                COALESCE(SUM(hh_planificadas_total), 0) as hh_total,
+                                COUNT(DISTINCT id_tecnico) as tecnicos
+                            FROM planificacion_hh_mensual
+                            WHERE año = ? AND mes = ?
+                        ");
+                        $stmtHH->execute([$year, $mes_num]);
+                        $rowHH = $stmtHH->fetch(PDO::FETCH_ASSOC);
+                        
+                        $hh_disponibles = floatval($rowHH['hh_total'] ?? 0);
+                        $tecnicos_plan = intval($rowHH['tecnicos'] ?? 0);
+                    }
+                } catch (Exception $e) {
+                    error_log("Error consultando HH Plan: " . $e->getMessage());
+                }
+
+                // Calcular Cobertura (Oferta / Demanda)
+                $demanda_hh = floatval($stats['hh_plan'] ?? 0);
+                if ($demanda_hh > 0 && $hh_disponibles > 0) {
+                    $hh_cobertura = round(($hh_disponibles / $demanda_hh) * 100, 1);
+                } elseif ($demanda_hh == 0 && $hh_disponibles > 0) {
+                    $hh_cobertura = 100; // Si no hay demanda pero sí oferta, cobertura completa teórica
+                }
+
                 echo json_encode([
                     'success' => true,
                     'data' => [
-                        'total_ots'   => (int)($stats['total_ots'] ?? 0),
-                        'hh_plan'     => floatval($stats['hh_plan'] ?? 0),
-                        'hh_real'     => floatval($stats['hh_real'] ?? 0),
-                        'sla_percent' => floatval($slaPercent),
-                        'ots_closed'  => $total_cerradas,
-                        'ots_riesgo'  => (int)($riesgo ?? 0)
+                        'total_ots'       => (int)($stats['total_ots'] ?? 0),
+                        'hh_plan'         => floatval($stats['hh_plan'] ?? 0), // Demanda SIC
+                        'hh_real'         => floatval($stats['hh_real'] ?? 0),
+                        'sla_percent'     => floatval($slaPercent),
+                        'ots_closed'      => $total_cerradas,
+                        'ots_riesgo'      => (int)($riesgo ?? 0),
+                        // 🆕 Nuevos campos HH
+                        'hh_disponibles'  => $hh_disponibles,
+                        'tecnicos_plan'   => $tecnicos_plan,
+                        'hh_cobertura'    => $hh_cobertura
                     ]
                 ]);
             } catch (Throwable $e) {
