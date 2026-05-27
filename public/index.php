@@ -1372,6 +1372,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <button onclick="showResourceTab('tecnicos')" id="tab-tecnicos" class="resource-tab active">👨‍🔧 Técnicos</button>
                 <button onclick="showResourceTab('grupos')" id="tab-grupos" class="resource-tab">👥 Grupos</button>
                 <button onclick="showResourceTab('turnos')" id="tab-turnos" class="resource-tab">⏱️ Turnos Activos</button>
+                <button onclick="showResourceTab('asistencia')" id="tab-asistencia" class="resource-tab">📅 Asistencia Hoy</button>
             </div>
 
             <!-- BUSCADOR INTELIGENTE -->
@@ -1448,6 +1449,30 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         </thead>
                         <tbody id="tablaTurnosBody">
                             <tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Contenedor Asistencia -->
+            <div id="view-asistencia" style="display:none;">
+                <div style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0;">Registro Diario: <span id="fechaHoyAsistencia"></span></h4>
+                    <button onclick="guardarAsistenciaMasiva()" class="btn-primary">💾 Guardar Cambios</button>
+                </div>
+                
+                <div class="card" style="padding:0; overflow-x:auto;">
+                    <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase;">
+                                <th style="padding:1rem; text-align:left;">Técnico</th>
+                                <th style="padding:1rem; text-align:left;">Turno Planif.</th>
+                                <th style="padding:1rem; text-align:left;">Estado Real</th>
+                                <th style="padding:1rem; text-align:left;">Observaciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaAsistenciaBody">
+                            <tr><td colspan="4" style="text-align:center; padding:2rem;">Cargando lista...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1535,18 +1560,19 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             if (tab === 'tecnicos') cargarTecnicos();
             if (tab === 'grupos') cargarGrupos();
             if (tab === 'turnos') cargarTurnosActivos();
+            if (tab === 'asistencia') cargarAsistenciaHoy();
         }
 
         async function cargarTecnicos() {
             const tbody = document.getElementById('tablaTecnicosBody');
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando técnicos...</td></tr>';
             try {
                 const res = await fetch('/api/recursos.php?action=list_tecnicos');
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
                 
                 if (data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">No hay técnicos registrados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">No hay técnicos registrados.</td></tr>';
                     return;
                 }
                 
@@ -1554,19 +1580,41 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
                         <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-family:monospace; color:#64748b;">${t.rut || '-'}</td>
                         <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${t.nombre}</td>
+                        
+                        <!-- ESPECIALIDAD -->
                         <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">
                             ${t.especialidad_nombre ? `<span class="badge b-pen">${t.especialidad_nombre}</span>` : '<span style="color:#cbd5e1;">-</span>'}
                         </td>
+                        
+                        <!-- VERTICAL -->
                         <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#475569;">${t.nombre_vertical || '-'}</td>
-                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">${t.turno_actual || '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}</td>
-                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
-                            <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
-                            <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" title="Eliminar" style="cursor:pointer; color:#ef4444;">🗑️</button>
+                        
+                        <!-- TURNO ACTUAL -->
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">
+                            ${t.turno_actual ? `<span class="badge b-blue">${t.turno_actual}</span>` : '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}
+                        </td>
+                        
+                        <!-- CONTACTO -->
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-size:0.9rem; color:#64748b;">
+                            ${t.correo ? `<div>📧 ${t.correo}</div>` : ''}
+                            ${t.telefono ? `<div>📱 ${t.telefono}</div>` : ''}
+                            ${(!t.correo && !t.telefono) ? '-' : ''}
+                        </td>
+                        
+                        <!-- ACCIONES (Uno al lado del otro) -->
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center; white-space:nowrap;">
+                            <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" 
+                                    title="Editar Ficha" 
+                                    style="cursor:pointer; margin-right:8px; background:none; border:none; font-size:1.1rem;">✏️</button>
+                            
+                            <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" 
+                                    title="Desactivar" 
+                                    style="cursor:pointer; background:none; border:none; font-size:1.1rem; color:#ef4444;">🗑️</button>
                         </td>
                     </tr>
                 `).join('');
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
             }
         }
 
@@ -1650,114 +1698,129 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             });
         }
 
+        async function cargarAsistenciaHoy() {
+            const tbody = document.getElementById('tablaAsistenciaBody');
+            const fechaHoy = new Date().toISOString().split('T')[0];
+            document.getElementById('fechaHoyAsistencia').textContent = new Date().toLocaleDateString('es-CL', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+            
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem;">⏳ Cargando...</td></tr>';
+            
+            try {
+                // Endpoint hipotético: debe devolver técnicos activos y su turno de hoy si existe
+                const res = await fetch(`/api/asistencia.php?action=get_daily_list&fecha=${fechaHoy}`);
+                const data = await res.json();
+                
+                if (!data.success) throw new Error(data.error);
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem;">No hay técnicos programados para hoy.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map((t, index) => `
+                    <tr>
+                        <td style="font-weight:600;">${t.nombre}</td>
+                        <td>${t.turno_planificado || 'Descanso'}</td>
+                        <td>
+                            <select class="status-select" id="status_${index}" data-id="${t.tecnico_id}" style="padding:0.4rem; border-radius:0.3rem; border:1px solid #cbd5e1;">
+                                <option value="presente" ${t.estado_real === 'presente' ? 'selected' : ''}>✅ Presente</option>
+                                <option value="ausente" ${t.estado_real === 'ausente' ? 'selected' : ''}>❌ Ausente</option>
+                                <option value="licencia" ${t.estado_real === 'licencia' ? 'selected' : ''}>🏥 Licencia Médica</option>
+                                <option value="vacaciones" ${t.estado_real === 'vacaciones' ? 'selected' : ''}>🏖️ Vacaciones</option>
+                                <option value="permiso" ${t.estado_real === 'permiso' ? 'selected' : ''}>📝 Permiso Admin.</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="text" id="obs_${index}" value="${t.observaciones || ''}" placeholder="Notas..." style="width:100%; padding:0.4rem; border:1px solid #cbd5e1; border-radius:0.3rem;">
+                        </td>
+                    </tr>
+                `).join('');
+                
+                // Guardar referencia global para el guardado masivo
+                window.asistenciaData = data.data;
+                
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function guardarAsistenciaMasiva() {
+            const registros = [];
+            const fechaHoy = new Date().toISOString().split('T')[0];
+            
+            window.asistenciaData.forEach((t, index) => {
+                const status = document.getElementById(`status_${index}`).value;
+                const obs = document.getElementById(`obs_${index}`).value;
+                registros.push({
+                    tecnico_id: t.tecnico_id,
+                    fecha: fechaHoy,
+                    estado: status,
+                    observaciones: obs
+                });
+            });
+            
+            try {
+                const res = await fetch('/api/asistencia.php?action=save_daily', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ registros })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Toast.success('✅ Asistencia guardada correctamente');
+                } else {
+                    Toast.error('❌ Error: ' + data.error);
+                }
+            } catch (err) {
+                Toast.error('❌ Error de conexión');
+            }
+        }
+
         async function openModal(type, item = null) {
             currentResourceType = type;
             const modal = document.getElementById('modalRecursos');
             const form = document.getElementById('formRecursos');
+            
+            // Resetear formulario
             form.reset();
             document.getElementById('res_id').value = '';
             document.getElementById('res_type').value = type;
+            
+            // Mostrar/Ocultar campos según tipo
             document.getElementById('fields-tecnico').style.display = type === 'tecnico' ? 'block' : 'none';
             document.getElementById('fields-grupo').style.display = type === 'grupo' ? 'block' : 'none';
+            
+            // Título dinámico
             document.getElementById('tituloModalRecursos').textContent = item ? `Editar ${type === 'tecnico' ? 'Técnico' : 'Grupo'}` : `Nuevo ${type === 'tecnico' ? 'Técnico' : 'Grupo'}`;
             
-            await loadSelects(); // Cargar selects dinámicamente
+            // Cargar selects (Verticales, Especialidades, Turnos)
+            await loadSelects(); 
             
+            // Si hay item (es edición), llenar datos
             if (item) {
                 if (type === 'tecnico') {
                     document.getElementById('res_rut').value = item.rut || '';
                     document.getElementById('res_nombre').value = item.nombre || '';
+                    document.getElementById('res_correo').value = item.correo || '';
+                    document.getElementById('res_telefono').value = item.telefono || '';
+                    
+                    // Seleccionar valores en los dropdowns
                     if (item.id_especialidad) document.getElementById('res_especialidad').value = item.id_especialidad;
                     if (item.id_vertical) document.getElementById('res_vertical_tecnico').value = item.id_vertical;
                     if (item.id_tipo_turno) document.getElementById('res_turno').value = item.id_tipo_turno;
+                    
                     document.getElementById('res_id').value = item.id;
                 } else {
+                    // Lógica para grupos...
                     document.getElementById('res_nombre_grupo').value = item.nombre_grupo || '';
                     if (item.id_vertical) document.getElementById('res_vertical_grupo').value = item.id_vertical;
                     if (item.id_tipo_turno) document.getElementById('res_turno').value = item.id_tipo_turno;
+                    document.getElementById('res_desc').value = item.descripcion || '';
                     document.getElementById('res_id').value = item.id;
                 }
             }
+            
             modal.style.display = 'flex';
-        }
-
-        async function loadSelects() {
-            try {
-                // Cargar Verticales
-                const resVert = await fetch('/api/verticales.php?action=list');
-                const dataVert = await resVert.json();
-                const vertData = dataVert.verticales || [];
-                
-                const vertTecSelect = document.getElementById('res_vertical_tecnico');
-                const vertGrpSelect = document.getElementById('res_vertical_grupo');
-                
-                if (vertTecSelect) {
-                    vertTecSelect.innerHTML = '<option value="">Seleccionar Vertical...</option>' +
-                        vertData.map(v => `<option value="${v.id_vertical}">${v.nombre_vertical}</option>`).join('');
-                }
-                if (vertGrpSelect) {
-                    vertGrpSelect.innerHTML = '<option value="">Ninguna</option>' +
-                        vertData.map(v => `<option value="${v.id_vertical}">${v.nombre_vertical}</option>`).join('');
-                }
-
-                // Cargar Especialidades
-                const resEsp = await fetch('/api/especialidades.php?action=list');
-                const dataEsp = await resEsp.json();
-                const espData = dataEsp.data || [];
-                const espSelect = document.getElementById('res_especialidad');
-                if (espSelect) {
-                    espSelect.innerHTML = '<option value="">Seleccionar...</option>' +
-                        espData.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
-                }
-
-                // Cargar Turnos
-                const resTurno = await fetch('/api/recursos.php?action=list_tipos_turno');
-                const dataTurno = await resTurno.json();
-                const turnoData = dataTurno.data || [];
-                const turnoSelect = document.getElementById('res_turno');
-                if (turnoSelect) {
-                    turnoSelect.innerHTML = '<option value="">Sin Turno Asignado</option>' +
-                        turnoData.map(t => `<option value="${t.id}">${t.codigo} - ${t.nombre}</option>`).join('');
-                }
-            } catch (err) {
-                console.error("Error cargando selects:", err);
-            }
-        }
-
-        async function saveResource(e) {
-            e.preventDefault();
-            const type = document.getElementById('res_type').value;
-            const id = document.getElementById('res_id').value;
-            
-            const formData = new FormData();
-            formData.append('action', id ? `update_${type}` : `create_${type}`);
-            if (id) formData.append('id', id);
-            
-            if (type === 'tecnico') {
-                formData.append('rut', document.getElementById('res_rut').value);
-                formData.append('nombre', document.getElementById('res_nombre').value);
-                formData.append('id_especialidad', document.getElementById('res_especialidad').value);
-                formData.append('id_vertical', document.getElementById('res_vertical_tecnico').value);
-            } else {
-                formData.append('nombre_grupo', document.getElementById('res_nombre_grupo').value);
-                formData.append('id_vertical', document.getElementById('res_vertical_grupo').value);
-            }
-            formData.append('id_tipo_turno', document.getElementById('res_turno').value);
-            
-            try {
-                const res = await fetch('/api/recursos.php', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (data.success) {
-                    Toast.success(data.message);
-                    closeModal();
-                    if (type === 'tecnico') cargarTecnicos();
-                    else cargarGrupos();
-                } else {
-                    Toast.error(data.error || 'Error al guardar');
-                }
-            } catch (err) {
-                Toast.error('Error de conexión');
-            }
         }
 
         function editResource(type, item) {
@@ -2877,48 +2940,6 @@ function showResourceTab(tab) {
     if (tab === 'turnos') cargarTurnosActivos();
 }
 
-async function cargarTecnicos() {
-    const tbody = document.getElementById('tablaTecnicosBody');
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando técnicos...</td></tr>';
-    
-    try {
-        const res = await fetch('/api/recursos.php?action=list_tecnicos');
-        const data = await res.json();
-        if (!data.success) throw new Error(data.error);
-
-        if (data.data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">No hay técnicos registrados.</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = data.data.map(t => `
-            <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-family:monospace; color:#64748b;">${t.rut || '-'}</td>
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${t.nombre}</td>
-                
-                <!-- AMPLIAR COLUMNA ESPECIALIDAD -->
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; min-width:180px;">
-                    ${t.especialidad_nombre ? `<span class="badge b-pen">${t.especialidad_nombre}</span>` : '<span style="color:#cbd5e1;">-</span>'}
-                </td>
-                
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#475569;">${t.nombre_vertical || '-'}</td>
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">${t.turno_actual || '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}</td>
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-size:0.9rem; color:#64748b;">
-                    ${t.correo ? `<div>📧 ${t.correo}</div>` : ''}
-                    ${t.telefono ? `<div>📱 ${t.telefono}</div>` : ''}
-                    ${(!t.correo && !t.telefono) ? '-' : ''}
-                </td>
-                <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
-                    <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
-                    <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" title="Eliminar" style="cursor:pointer; color:#ef4444;">🗑️</button>
-                </td>
-            </tr>
-        `).join('');
-    } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
-    }
-}
-
 async function cargarGrupos() {
     const tbody = document.getElementById('tablaGruposBody');
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando grupos...</td></tr>';
@@ -3015,51 +3036,6 @@ function filterResources() {
 }
 
 // === MODALES Y FORMULARIOS ===
-
-async function openModal(type, item = null) {
-    currentResourceType = type;
-    const modal = document.getElementById('modalRecursos');
-    const form = document.getElementById('formRecursos');
-    
-    form.reset();
-    document.getElementById('res_id').value = '';
-    document.getElementById('res_type').value = type;
-    
-    document.getElementById('fields-tecnico').style.display = type === 'tecnico' ? 'block' : 'none';
-    document.getElementById('fields-grupo').style.display = type === 'grupo' ? 'block' : 'none';
-    
-    document.getElementById('tituloModalRecursos').textContent = item ? `Editar ${type === 'tecnico' ? 'Técnico' : 'Grupo'}` : `Nuevo ${type === 'tecnico' ? 'Técnico' : 'Grupo'}`;
-
-    // 1. Primero cargamos los selects (esto limpia las opciones anteriores)
-    await loadSelects();
-
-    // 2. Luego prellenamos los datos SI hay un item (edición)
-    if (item) {
-        if (type === 'tecnico') {
-            document.getElementById('res_rut').value = item.rut || '';
-            document.getElementById('res_nombre').value = item.nombre || '';
-            
-            // Asignar IDs numéricos explícitamente
-            if (item.id_especialidad) document.getElementById('res_especialidad').value = item.id_especialidad;
-            if (item.id_vertical) document.getElementById('res_vertical_tecnico').value = item.id_vertical;
-            if (item.id_tipo_turno) document.getElementById('res_turno').value = item.id_tipo_turno;
-            
-            document.getElementById('res_correo').value = item.correo || '';
-            document.getElementById('res_telefono').value = item.telefono || '';
-            document.getElementById('res_id').value = item.id;
-        } else {
-            document.getElementById('res_nombre_grupo').value = item.nombre_grupo || '';
-            
-            if (item.id_vertical) document.getElementById('res_vertical_grupo').value = item.id_vertical;
-            if (item.id_tipo_turno) document.getElementById('res_turno').value = item.id_tipo_turno;
-            
-            document.getElementById('res_desc').value = item.descripcion || '';
-            document.getElementById('res_id').value = item.id;
-        }
-    }
-
-    modal.style.display = 'flex';
-}
 
 async function loadSelects() {
     try {
@@ -3182,31 +3158,7 @@ async function saveResource(e) {
     }
 }
 
-function editResource(type, item) {
-    openModal(type, item);
-}
 
-async function deleteResource(type, id, name) {
-    if (!confirm(`¿Eliminar ${name}?`)) return;
-    
-    try {
-        const res = await fetch(`/api/recursos.php?action=delete_${type}&id=${id}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-            Toast.success('Eliminado correctamente');
-            if (type === 'tecnico') cargarTecnicos();
-            else cargarGrupos();
-        } else {
-            Toast.error(data.error);
-        }
-    } catch (err) {
-        Toast.error('Error al eliminar');
-    }
-}
-
-function closeModal() {
-    document.getElementById('modalRecursos').style.display = 'none';
-}
 
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('recursos').classList.contains('active')) {
