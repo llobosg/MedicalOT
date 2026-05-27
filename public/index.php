@@ -428,6 +428,20 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <div class="home-card-title">KPIs</div>
                     <div class="home-card-desc">Indicadores y métricas</div>
                 </div>
+                <!-- FICHA RECURSOS -->
+                <div class="home-card" onclick="showModule('recursos')">
+                    <div class="icon-3d-container" style="background:transparent; box-shadow:none; border:none;">
+                        <!-- Icono de Usuarios/Recursos -->
+                        <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <div class="home-card-title">Recursos</div>
+                    <div class="home-card-desc">Técnicos, Grupos y Turnos</div>
+                </div>
                 <!-- Solo Admin y Admin Cont pueden ver esta sección
                 <?php if($isAdmin || $user['role'] === 'admin_cont'): ?>
                    <div class="home-card" onclick="showModule('presentacion')">
@@ -1326,331 +1340,126 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         <!-- MÓDULO 8: RECURSOS (Rediseñado - Estilo Centro Cargas) -->
         <!-- ═══════════════════════════════════════════════════════ -->
         <section id="recursos" class="module-section">
-        <style>
-            .rc-container { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; max-width:1400px; margin:0 auto; padding:0 1rem; }
-            .rc-card { background:#fff; border-radius:1rem; padding:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.07); border-top:4px solid #ccc; display:flex; flex-direction:column; height:100%; transition:transform 0.2s, box-shadow 0.2s; }
-            .rc-card:hover { transform:translateY(-2px); box-shadow:0 8px 15px -3px rgba(0,0,0,0.1); }
-            .rc-card.tec { border-top-color:#8b5cf6; }
-            .rc-card.vert { border-top-color:#3b82f6; }
-            .rc-card.turno { border-top-color:#f59e0b; }
-            .rc-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; }
-            .rc-title { font-size:1.1rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.5rem; margin:0; }
-            .rc-desc { font-size:0.8rem; color:#64748b; margin-bottom:1rem; line-height:1.4; }
-            .rc-dropzone { border:2px dashed #cbd5e1; border-radius:0.75rem; padding:1.5rem 1rem; text-align:center; cursor:pointer; transition:all 0.3s; background:#fafbfc; min-height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; flex:0 0 auto; margin-bottom:1rem; }
-            .rc-dropzone:hover { border-color:#8b5cf6; background:#f5f3ff; }
-            .rc-dropzone i { font-size:2rem; margin-bottom:0.5rem; }
-            .rc-dropzone.tec i { color:#8b5cf6; }
-            .rc-dropzone.vert i { color:#3b82f6; }
-            .rc-dropzone.turno i { color:#f59e0b; }
-            .rc-dropzone p { margin:0; font-size:0.85rem; color:#475569; font-weight:600; }
-            .rc-dropzone small { font-size:0.7rem; color:#94a3b8; margin-top:0.3rem; }
-            .rc-table-wrapper { flex:1; overflow-y:auto; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; min-height:200px; max-height:400px; }
-            .rc-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
-            .rc-table th { background:#f8fafc; padding:0.6rem; text-align:left; position:sticky; top:0; font-weight:600; border-bottom:2px solid #e2e8f0; z-index:5; font-size:0.75rem; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; }
-            .rc-table td { padding:0.6rem; border-bottom:1px solid #f1f5f9; white-space:nowrap; }
-            .rc-table tr:hover { background:#f8fafc; }
-            .rc-search { width:100%; padding:0.6rem 0.9rem; border:2px solid #e2e8f0; border-radius:0.5rem; font-size:0.85rem; margin-bottom:0.75rem; transition:border-color 0.2s; box-sizing:border-box; }
-            .rc-search:focus { border-color:#8b5cf6; outline:none; }
-            .rc-btn-add { background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; border:none; padding:0.5rem 1rem; border-radius:0.5rem; cursor:pointer; font-weight:600; font-size:0.8rem; display:flex; align-items:center; gap:0.3rem; transition:all 0.2s; margin-bottom:0.75rem; }
-            .rc-btn-add:hover { transform:translateY(-1px); box-shadow:0 4px 8px rgba(139,92,246,0.3); }
-            .rc-btn-add.vert-btn { background:linear-gradient(135deg,#3b82f6,#2563eb); }
-            .rc-btn-add.turno-btn { background:linear-gradient(135deg,#f59e0b,#d97706); }
-            .rc-bitacora { margin-top:auto; padding-top:0.75rem; border-top:1px solid #f1f5f9; }
-            .rc-bitacora-title { font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem; }
-            .rc-log-item { display:flex; justify-content:space-between; align-items:center; padding:0.3rem 0; border-bottom:1px solid #f8fafc; font-size:0.72rem; }
-            .rc-log-item:last-child { border-bottom:none; }
-            .rc-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.65rem; font-weight:700; color:#fff; }
-            .rc-badge.act { background:#10b981; }
-            .rc-badge.inact { background:#94a3b8; }
-            .rc-badge.vac { background:#f59e0b; }
-            @media(max-width:1000px) { .rc-container { grid-template-columns:1fr; } }
-        </style>
+        <div style="max-width:1200px; margin:0 auto; padding:1rem;">
+            <h3 style="margin-bottom:1.5rem; color:#1e293b;">👷 Mantenedor de Recursos</h3>
+            
+            <!-- Pestañas Modernas -->
+            <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:2px solid #e2e8f0; padding-bottom:0;">
+                <button onclick="showResourceTab('tecnicos')" id="tab-tecnicos" class="resource-tab active">👨‍🔧 Técnicos</button>
+                <button onclick="showResourceTab('grupos')" id="tab-grupos" class="resource-tab">👥 Grupos</button>
+                <button onclick="showResourceTab('turnos')" id="tab-turnos" class="resource-tab">⏱️ Turnos Activos</button>
+            </div>
 
-        <div style="max-width:1400px; margin:0 auto; padding:0 1rem 1rem;">
-            <h2 style="font-size:1.5rem; font-weight:700; color:#1e293b; margin-bottom:0.25rem;">👷 Centro de Recursos</h2>
-            <p style="font-size:0.85rem; color:#64748b; margin:0;">Gestión unificada de técnicos, verticales y turnos activos</p>
-        </div>
+            <!-- BUSCADOR INTELIGENTE -->
+            <div style="margin-bottom:1rem; position:relative;">
+                <input type="text" id="searchRecursos" placeholder="🔍 Buscar por nombre, grupo o turno..."
+                    onkeyup="filterResources()"
+                    style="width:100%; padding:0.75rem 1rem 0.75rem 2.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; box-sizing:border-box;"
+                    onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
+                <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8;">🔍</span>
+            </div>
 
-        <div class="rc-container">
-            <!-- ====== COLUMNA 1: TÉCNICOS (Violeta) ====== -->
-            <div class="rc-card tec">
-                <div class="rc-header">
-                    <h3 class="rc-title"><i class="bi bi-person-badge"></i> Técnicos</h3>
+            <!-- CONTENEDOR TÉCNICOS -->
+            <div id="view-tecnicos">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <p style="color:#64748b; font-size:0.9rem;">Gestión de técnicos, especialidades y turnos.</p>
+                    <button onclick="openModal('tecnico')" class="btn-primary">➕ Nuevo Técnico</button>
                 </div>
-                <div class="rc-desc">Mantenedor de personal técnico. Asigna vertical, especialidad y turno.</div>
-                
-                <input type="text" class="rc-search" id="searchTecnicos" placeholder="🔍 Buscar técnico..." onkeyup="filterResources()">
-                <button class="rc-btn-add" onclick="openModal('tecnico')">➕ Nuevo Técnico</button>
-                
-                <div class="rc-table-wrapper">
-                    <table class="rc-table">
+                <div class="card" style="padding:0; overflow-x:auto;">
+                    <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
                         <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>RUT</th>
-                                <th>Vertical</th>
-                                <th>Turno</th>
-                                <th>Estado</th>
+                            <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase;">
+                                <th style="padding:1rem; text-align:left;">RUT</th>
+                                <th style="padding:1rem; text-align:left;">Nombre Completo</th>
+                                <th style="padding:1rem; text-align:left;">Especialidad</th>
+                                <th style="padding:1rem; text-align:left;">Vertical</th>
+                                <th style="padding:1rem; text-align:left;">Turno</th>
+                                <th style="padding:1rem; text-align:center;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tablaTecnicosBody">
-                            <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">Cargando...</td></tr>
+                            <tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
                         </tbody>
                     </table>
-                </div>
-                
-                <div class="rc-bitacora">
-                    <div class="rc-bitacora-title">📋 Últimos cambios</div>
-                    <div id="bitacoraTec"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin actividad reciente</p></div>
                 </div>
             </div>
 
-            <!-- ====== COLUMNA 2: VERTICALES (Azul) ====== -->
-            <div class="rc-card vert">
-                <div class="rc-header">
-                    <h3 class="rc-title"><i class="bi bi-building"></i> Verticales</h3>
+            <!-- CONTENEDOR GRUPOS -->
+            <div id="view-grupos" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <p style="color:#64748b; font-size:0.9rem;">Gestión de grupos de trabajo.</p>
+                    <button onclick="openModal('grupo')" class="btn-primary">➕ Nuevo Grupo</button>
                 </div>
-                <div class="rc-desc">Áreas técnicas del hospital. Cada técnico pertenece a una vertical.</div>
-                
-                <input type="text" class="rc-search" id="searchVerticales" placeholder="🔍 Buscar vertical..." onkeyup="filterVerticales()">
-                <?php if ($isAdmin): ?>
-                <button class="rc-btn-add vert-btn" onclick="abrirModalVerticales()">➕ Nueva Vertical</button>
-                <?php endif; ?>
-                
-                <div class="rc-table-wrapper">
-                    <table class="rc-table">
+                <div class="card" style="padding:0; overflow-x:auto;">
+                    <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
                         <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Responsable</th>
-                                <th>Especialidad</th>
-                                <th>Estado</th>
+                            <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase;">
+                                <th style="padding:1rem; text-align:left;">Nombre Grupo</th>
+                                <th style="padding:1rem; text-align:left;">Vertical Asociada</th>
+                                <th style="padding:1rem; text-align:left;">Turno Asignado</th>
+                                <th style="padding:1rem; text-align:center;">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="tablaVerticalesResBody">
-                            <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">Cargando...</td></tr>
+                        <tbody id="tablaGruposBody">
+                            <tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
                         </tbody>
                     </table>
-                </div>
-                
-                <div class="rc-bitacora">
-                    <div class="rc-bitacora-title">📋 Resumen</div>
-                    <div id="resumenVert">
-                        <div class="rc-log-item"><span>Total verticales</span><strong id="totalVerts">-</strong></div>
-                        <div class="rc-log-item"><span>Activas</span><strong id="activeVerts" style="color:#10b981;">-</strong></div>
-                        <div class="rc-log-item"><span>Técnicos asignados</span><strong id="totalTechAssign">-</strong></div>
-                    </div>
                 </div>
             </div>
 
-            <!-- ====== COLUMNA 3: TURNOS ACTIVOS (Ámbar) ====== -->
-            <div class="rc-card turno">
-                <div class="rc-header">
-                    <h3 class="rc-title"><i class="bi bi-clock-history"></i> Turnos Activos</h3>
+            <!-- CONTENEDOR TURNOS ACTIVOS -->
+            <div id="view-turnos" style="display:none;">
+                <div style="margin-bottom:1rem;">
+                    <p style="color:#64748b; font-size:0.9rem;">Lista unificada de recursos con turno activo.</p>
                 </div>
-                <div class="rc-desc">Recursos con turno asignado. Vista unificada de disponibilidad.</div>
-                
-                <input type="text" class="rc-search" id="searchTurnosRes" placeholder="🔍 Buscar por nombre o turno..." onkeyup="filterTurnosRes()">
-                
-                <div class="rc-table-wrapper">
-                    <table class="rc-table">
+                <div class="card" style="padding:0; overflow-x:auto;">
+                    <table style="width:100%; border-collapse:separate; border-spacing:0 0.5rem;">
                         <thead>
-                            <tr>
-                                <th>Tipo</th>
-                                <th>Nombre</th>
-                                <th>Turno</th>
-                                <th>Vertical</th>
+                            <tr style="background:#f8fafc; color:#64748b; font-size:0.85rem; text-transform:uppercase;">
+                                <th style="padding:1rem; text-align:left;">Tipo</th>
+                                <th style="padding:1rem; text-align:left;">Nombre</th>
+                                <th style="padding:1rem; text-align:left;">Turno</th>
+                                <th style="padding:1rem; text-align:left;">Vertical / Especialidad</th>
                             </tr>
                         </thead>
-                        <tbody id="tablaTurnosResBody">
-                            <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">Cargando...</td></tr>
+                        <tbody id="tablaTurnosBody">
+                            <tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">Cargando...</td></tr>
                         </tbody>
                     </table>
-                </div>
-                
-                <div class="rc-bitacora">
-                    <div class="rc-bitacora-title">📋 Distribución</div>
-                    <div id="resumenTurnos">
-                        <div class="rc-log-item"><span>Con turno activo</span><strong id="totalConTurno">-</strong></div>
-                        <div class="rc-log-item"><span>Sin turno</span><strong id="totalSinTurno" style="color:#f59e0b;">-</strong></div>
-                    </div>
                 </div>
             </div>
         </div>
-
-        <script>
-        // === RECURSOS REDISEÑADO: LÓGICA COMPATIBLE ===
-        // Reutiliza los endpoints existentes: /api/recursos.php y /api/verticales.php
-
-        async function cargarTecnicosRes() {
-            const tbody = document.getElementById('tablaTecnicosBody');
-            if (!tbody) return;
-            try {
-                const res = await fetch('/api/recursos.php?action=list_tecnicos');
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error);
-                if (!data.data.length) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">Sin técnicos</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = data.data.map(t => `
-                    <tr>
-                        <td style="font-weight:600; color:#1e293b;">
-                            ${t.nombre}
-                            <div style="font-size:0.7rem; color:#94a3b8;">${t.especialidad_nombre || ''}</div>
-                        </td>
-                        <td style="font-family:monospace; color:#64748b;">${t.rut || '-'}</td>
-                        <td>${t.nombre_vertical || '<span style="color:#cbd5e1;">-</span>'}</td>
-                        <td>${t.turno_actual || '<span style="color:#cbd5e1; font-style:italic;">Sin turno</span>'}</td>
-                        <td><span class="rc-badge act">Activo</span></td>
-                    </tr>
-                `).join('');
-                // Actualizar contadores
-                const conTurno = data.data.filter(t => t.turno_actual).length;
-                const el1 = document.getElementById('totalConTurno');
-                const el2 = document.getElementById('totalSinTurno');
-                if (el1) el1.textContent = conTurno;
-                if (el2) el2.textContent = data.data.length - conTurno;
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:1rem;">❌ ${err.message}</td></tr>`;
-            }
-        }
-
-        async function cargarVerticalesRes() {
-            const tbody = document.getElementById('tablaVerticalesResBody');
-            if (!tbody) return;
-            try {
-                const res = await fetch('/api/verticales.php?action=list');
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error);
-                const verts = data.verticales || [];
-                if (!verts.length) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">Sin verticales</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = verts.map(v => `
-                    <tr>
-                        <td style="font-weight:600; color:#1e293b;">${v.nombre_vertical}</td>
-                        <td style="color:#64748b;">${v.nombre_responsable || '-'}</td>
-                        <td><span class="rc-badge" style="background:#3b82f6;">${v.cod_especialidad_principal || '-'}</span></td>
-                        <td><span class="rc-badge ${v.activo ? 'act' : 'inact'}">${v.activo ? 'Activa' : 'Inactiva'}</span></td>
-                    </tr>
-                `).join('');
-                // Actualizar resumen
-                const elT = document.getElementById('totalVerts');
-                const elA = document.getElementById('activeVerts');
-                if (elT) elT.textContent = verts.length;
-                if (elA) elA.textContent = verts.filter(v => v.activo).length;
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:1rem;">❌ ${err.message}</td></tr>`;
-            }
-        }
-
-        async function cargarTurnosRes() {
-            const tbody = document.getElementById('tablaTurnosResBody');
-            if (!tbody) return;
-            try {
-                const res = await fetch('/api/recursos.php?action=list_con_turno');
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error);
-                if (!data.data.length) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">Sin recursos con turno</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = data.data.map(r => `
-                    <tr>
-                        <td><span class="rc-badge" style="background:${r.tipo_recurso === 'tecnico' ? '#8b5cf6' : '#f59e0b'};">${r.tipo_recurso === 'tecnico' ? '👨‍🔧 Tec' : '👥 Grupo'}</span></td>
-                        <td style="font-weight:600; color:#1e293b;">${r.nombre_display}</td>
-                        <td>${r.turno_nombre || '-'}</td>
-                        <td style="color:#64748b;">${r.vertical_nombre || r.especialidad_nombre || '-'}</td>
-                    </tr>
-                `).join('');
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:1rem;">❌ ${err.message}</td></tr>`;
-            }
-        }
-
-        // Filtros locales rápidos
-        function filterResources() {
-            const q = document.getElementById('searchTecnicos').value.toLowerCase();
-            document.querySelectorAll('#tablaTecnicosBody tr').forEach(r => {
-                r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
-        }
-        function filterVerticales() {
-            const q = document.getElementById('searchVerticales').value.toLowerCase();
-            document.querySelectorAll('#tablaVerticalesResBody tr').forEach(r => {
-                r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
-        }
-        function filterTurnosRes() {
-            const q = document.getElementById('searchTurnosRes').value.toLowerCase();
-            document.querySelectorAll('#tablaTurnosResBody tr').forEach(r => {
-                r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
-        }
-
-        // Cargar al activar módulo
-        document.addEventListener('DOMContentLoaded', () => {
-            if (document.getElementById('recursos')?.classList.contains('active')) {
-                cargarTecnicosRes();
-                cargarVerticalesRes();
-                cargarTurnosRes();
-            }
-        });
-        </script>
         </section>
 
         <!-- MODAL GENÉRICO PARA TÉCNICO / GRUPO -->
         <div id="modalRecursos" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:2000; justify-content:center; align-items:center; padding:1rem;">
             <div style="background:#fff; padding:0; border-radius:1rem; width:90%; max-width:550px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow:hidden; animation: slideIn 0.3s ease-out;">
-                
-                <!-- Header Modal -->
                 <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
                     <h3 id="tituloModalRecursos" style="margin:0; font-size:1.1rem; font-weight:600; color:#1e293b;">Nuevo Registro</h3>
-                    <button onclick="closeModal()" style="background:none; border:none; font-size:1.5rem; color:#94a3b8; cursor:pointer; line-height:1; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">&times;</button>
+                    <button onclick="closeModal()" style="background:none; border:none; font-size:1.5rem; color:#94a3b8; cursor:pointer;">&times;</button>
                 </div>
-
-                <!-- Formulario -->
                 <form id="formRecursos" onsubmit="saveResource(event)" autocomplete="off" style="padding:1.5rem;">
                     <input type="hidden" id="res_type" value="">
                     <input type="hidden" id="res_id" value="">
-
+                    
                     <!-- CAMPOS TÉCNICO -->
                     <div id="fields-tecnico" style="display:none;">
                         <div style="margin-bottom:1rem;">
                             <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">RUT *</label>
-                            <input type="text" id="res_rut" placeholder="12.345.678-9" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; transition:border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
+                            <input type="text" id="res_rut" placeholder="12.345.678-9" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
                         </div>
-                        
                         <div style="margin-bottom:1rem;">
                             <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Nombre Completo *</label>
-                            <input type="text" id="res_nombre" placeholder="Nombre Apellido" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; transition:border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
+                            <input type="text" id="res_nombre" placeholder="Nombre Apellido" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
                         </div>
-
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
                             <div>
                                 <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Vertical</label>
-                                <select id="res_vertical_tecnico" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b; font-size:0.95rem;">
-                                    <option value="">Seleccionar...</option>
-                                </select>
+                                <select id="res_vertical_tecnico" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff;"></select>
                             </div>
                             <div>
                                 <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Especialidad</label>
-                                <select id="res_especialidad" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b; font-size:0.95rem;">
-                                    <option value="">Seleccionar...</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
-                            <div>
-                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Email</label>
-                                <input type="email" id="res_correo" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
-                            </div>
-                            <div>
-                                <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Teléfono</label>
-                                <input type="text" id="res_telefono" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
+                                <select id="res_especialidad" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff;"></select>
                             </div>
                         </div>
                     </div>
@@ -1659,37 +1468,306 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <div id="fields-grupo" style="display:none;">
                         <div style="margin-bottom:1rem;">
                             <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Nombre del Grupo *</label>
-                            <input type="text" id="res_nombre_grupo" placeholder="Ej: Equipo A Climatización" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
+                            <input type="text" id="res_nombre_grupo" placeholder="Ej: Equipo A Climatización" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
                         </div>
-                        
                         <div style="margin-bottom:1rem;">
                             <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Vertical Asociada</label>
-                            <select id="res_vertical_grupo" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b; font-size:0.95rem;">
-                                <option value="">Ninguna</option>
-                            </select>
-                        </div>
-
-                        <div style="margin-bottom:1rem;">
-                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Descripción</label>
-                            <textarea id="res_desc" rows="3" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; resize:vertical;"></textarea>
+                            <select id="res_vertical_grupo" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff;"></select>
                         </div>
                     </div>
 
                     <!-- CAMPO COMÚN: TURNO -->
                     <div style="margin-bottom:1.5rem;">
                         <label style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.5rem;">Tipo de Turno</label>
-                        <select id="res_turno" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff; color:#1e293b; font-size:0.95rem;">
+                        <select id="res_turno" style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; background:#fff;">
                             <option value="">Sin Turno Asignado</option>
                         </select>
                     </div>
 
                     <div style="display:flex; gap:0.75rem; justify-content:flex-end; padding-top:1rem; border-top:1px solid #f1f5f9;">
-                        <button type="button" onclick="closeModal()" style="padding:0.6rem 1.2rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer; font-weight:500; color:#475569; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">Cancelar</button>
-                        <button type="submit" style="padding:0.6rem 1.2rem; border:none; border-radius:0.5rem; background:var(--primary); color:#fff; cursor:pointer; font-weight:600; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">💾 Guardar</button>
+                        <button type="button" onclick="closeModal()" style="padding:0.6rem 1.2rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; cursor:pointer;">Cancelar</button>
+                        <button type="submit" style="padding:0.6rem 1.2rem; border:none; border-radius:0.5rem; background:var(--primary); color:#fff; cursor:pointer;">💾 Guardar</button>
                     </div>
                 </form>
             </div>
         </div>
+
+        <script>
+        // === LÓGICA DE RECURSOS ===
+        let currentResourceType = 'tecnico';
+
+        function showResourceTab(tab) {
+            document.getElementById('view-tecnicos').style.display = tab === 'tecnicos' ? 'block' : 'none';
+            document.getElementById('view-grupos').style.display = tab === 'grupos' ? 'block' : 'none';
+            document.getElementById('view-turnos').style.display = tab === 'turnos' ? 'block' : 'none';
+            
+            document.getElementById('tab-tecnicos').classList.toggle('active', tab === 'tecnicos');
+            document.getElementById('tab-grupos').classList.toggle('active', tab === 'grupos');
+            document.getElementById('tab-turnos').classList.toggle('active', tab === 'turnos');
+            
+            const searchInput = document.getElementById('searchRecursos');
+            if(searchInput) searchInput.value = '';
+            
+            if (tab === 'tecnicos') cargarTecnicos();
+            if (tab === 'grupos') cargarGrupos();
+            if (tab === 'turnos') cargarTurnosActivos();
+        }
+
+        async function cargarTecnicos() {
+            const tbody = document.getElementById('tablaTecnicosBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando...</td></tr>';
+            try {
+                const res = await fetch('/api/recursos.php?action=list_tecnicos');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">No hay técnicos registrados.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map(t => `
+                    <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-family:monospace; color:#64748b;">${t.rut || '-'}</td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${t.nombre}</td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">
+                            ${t.especialidad_nombre ? `<span class="badge b-pen">${t.especialidad_nombre}</span>` : '<span style="color:#cbd5e1;">-</span>'}
+                        </td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#475569;">${t.nombre_vertical || '-'}</td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">${t.turno_actual || '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}</td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
+                            <button onclick="editResource('tecnico', ${JSON.stringify(t).replace(/"/g, '&quot;')})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
+                            <button onclick="deleteResource('tecnico', ${t.id}, '${t.nombre}')" title="Eliminar" style="cursor:pointer; color:#ef4444;">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function cargarGrupos() {
+            const tbody = document.getElementById('tablaGruposBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando...</td></tr>';
+            try {
+                const res = await fetch('/api/recursos.php?action=list_grupos');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">No hay grupos registrados.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map(g => `
+                    <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${g.nombre_grupo}</td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#475569;">${g.nombre_vertical || '-'}</td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">${g.turno_actual || '<span style="color:#94a3b8; font-style:italic;">Sin turno</span>'}</td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; text-align:center;">
+                            <button onclick="editResource('grupo', ${JSON.stringify(g).replace(/"/g, '&quot;')})" title="Editar" style="cursor:pointer; margin-right:5px;">✏️</button>
+                            <button onclick="deleteResource('grupo', ${g.id}, '${g.nombre_grupo}')" title="Eliminar" style="cursor:pointer; color:#ef4444;">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function cargarTurnosActivos() {
+            const tbody = document.getElementById('tablaTurnosBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">⏳ Cargando...</td></tr>';
+            try {
+                const res = await fetch('/api/recursos.php?action=list_con_turno');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">No hay recursos con turno activo.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map(r => `
+                    <tr style="background:#fff; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="background:${r.tipo_recurso === 'tecnico' ? '#dbeafe' : '#fce7f3'}; color:${r.tipo_recurso === 'tecnico' ? '#1e40af' : '#9d174d'}; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600;">
+                                ${r.tipo_recurso === 'tecnico' ? '👨‍🔧 Técnico' : '👥 Grupo'}
+                            </span>
+                        </td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">${r.nombre_display}</td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9;">
+                            ${r.turno_nombre ? `<span class="badge b-blue">${r.turno_nombre}</span>` : '<span style="color:#cbd5e1;">-</span>'}
+                        </td>
+                        <td style="padding:1rem; border-bottom:1px solid #f1f5f9; color:#64748b;">
+                            ${r.vertical_nombre ? `<div>🏢 ${r.vertical_nombre}</div>` : ''}
+                            ${r.especialidad_nombre ? `<div>🛠️ ${r.especialidad_nombre}</div>` : ''}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:2rem;">❌ Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        function filterResources() {
+            const query = document.getElementById('searchRecursos').value.toLowerCase().trim();
+            let tbodyId = '';
+            if (document.getElementById('view-tecnicos').style.display !== 'none') tbodyId = 'tablaTecnicosBody';
+            else if (document.getElementById('view-grupos').style.display !== 'none') tbodyId = 'tablaGruposBody';
+            else if (document.getElementById('view-turnos').style.display !== 'none') tbodyId = 'tablaTurnosBody';
+            
+            if (!tbodyId) return;
+            
+            const rows = document.querySelectorAll(`#${tbodyId} tr`);
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        async function openModal(type, item = null) {
+            currentResourceType = type;
+            const modal = document.getElementById('modalRecursos');
+            const form = document.getElementById('formRecursos');
+            form.reset();
+            document.getElementById('res_id').value = '';
+            document.getElementById('res_type').value = type;
+            document.getElementById('fields-tecnico').style.display = type === 'tecnico' ? 'block' : 'none';
+            document.getElementById('fields-grupo').style.display = type === 'grupo' ? 'block' : 'none';
+            document.getElementById('tituloModalRecursos').textContent = item ? `Editar ${type === 'tecnico' ? 'Técnico' : 'Grupo'}` : `Nuevo ${type === 'tecnico' ? 'Técnico' : 'Grupo'}`;
+            
+            await loadSelects(); // Cargar selects dinámicamente
+            
+            if (item) {
+                if (type === 'tecnico') {
+                    document.getElementById('res_rut').value = item.rut || '';
+                    document.getElementById('res_nombre').value = item.nombre || '';
+                    if (item.id_especialidad) document.getElementById('res_especialidad').value = item.id_especialidad;
+                    if (item.id_vertical) document.getElementById('res_vertical_tecnico').value = item.id_vertical;
+                    if (item.id_tipo_turno) document.getElementById('res_turno').value = item.id_tipo_turno;
+                    document.getElementById('res_id').value = item.id;
+                } else {
+                    document.getElementById('res_nombre_grupo').value = item.nombre_grupo || '';
+                    if (item.id_vertical) document.getElementById('res_vertical_grupo').value = item.id_vertical;
+                    if (item.id_tipo_turno) document.getElementById('res_turno').value = item.id_tipo_turno;
+                    document.getElementById('res_id').value = item.id;
+                }
+            }
+            modal.style.display = 'flex';
+        }
+
+        async function loadSelects() {
+            try {
+                // Cargar Verticales
+                const resVert = await fetch('/api/verticales.php?action=list');
+                const dataVert = await resVert.json();
+                const vertData = dataVert.verticales || [];
+                
+                const vertTecSelect = document.getElementById('res_vertical_tecnico');
+                const vertGrpSelect = document.getElementById('res_vertical_grupo');
+                
+                if (vertTecSelect) {
+                    vertTecSelect.innerHTML = '<option value="">Seleccionar Vertical...</option>' +
+                        vertData.map(v => `<option value="${v.id_vertical}">${v.nombre_vertical}</option>`).join('');
+                }
+                if (vertGrpSelect) {
+                    vertGrpSelect.innerHTML = '<option value="">Ninguna</option>' +
+                        vertData.map(v => `<option value="${v.id_vertical}">${v.nombre_vertical}</option>`).join('');
+                }
+
+                // Cargar Especialidades
+                const resEsp = await fetch('/api/especialidades.php?action=list');
+                const dataEsp = await resEsp.json();
+                const espData = dataEsp.data || [];
+                const espSelect = document.getElementById('res_especialidad');
+                if (espSelect) {
+                    espSelect.innerHTML = '<option value="">Seleccionar...</option>' +
+                        espData.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+                }
+
+                // Cargar Turnos
+                const resTurno = await fetch('/api/recursos.php?action=list_tipos_turno');
+                const dataTurno = await resTurno.json();
+                const turnoData = dataTurno.data || [];
+                const turnoSelect = document.getElementById('res_turno');
+                if (turnoSelect) {
+                    turnoSelect.innerHTML = '<option value="">Sin Turno Asignado</option>' +
+                        turnoData.map(t => `<option value="${t.id}">${t.codigo} - ${t.nombre}</option>`).join('');
+                }
+            } catch (err) {
+                console.error("Error cargando selects:", err);
+            }
+        }
+
+        async function saveResource(e) {
+            e.preventDefault();
+            const type = document.getElementById('res_type').value;
+            const id = document.getElementById('res_id').value;
+            
+            const formData = new FormData();
+            formData.append('action', id ? `update_${type}` : `create_${type}`);
+            if (id) formData.append('id', id);
+            
+            if (type === 'tecnico') {
+                formData.append('rut', document.getElementById('res_rut').value);
+                formData.append('nombre', document.getElementById('res_nombre').value);
+                formData.append('id_especialidad', document.getElementById('res_especialidad').value);
+                formData.append('id_vertical', document.getElementById('res_vertical_tecnico').value);
+            } else {
+                formData.append('nombre_grupo', document.getElementById('res_nombre_grupo').value);
+                formData.append('id_vertical', document.getElementById('res_vertical_grupo').value);
+            }
+            formData.append('id_tipo_turno', document.getElementById('res_turno').value);
+            
+            try {
+                const res = await fetch('/api/recursos.php', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.success) {
+                    Toast.success(data.message);
+                    closeModal();
+                    if (type === 'tecnico') cargarTecnicos();
+                    else cargarGrupos();
+                } else {
+                    Toast.error(data.error || 'Error al guardar');
+                }
+            } catch (err) {
+                Toast.error('Error de conexión');
+            }
+        }
+
+        function editResource(type, item) {
+            openModal(type, item);
+        }
+
+        async function deleteResource(type, id, name) {
+            if (!confirm(`¿Eliminar ${name}?`)) return;
+            try {
+                const res = await fetch(`/api/recursos.php?action=delete_${type}&id=${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    Toast.success('Eliminado correctamente');
+                    if (type === 'tecnico') cargarTecnicos();
+                    else cargarGrupos();
+                } else {
+                    Toast.error(data.error);
+                }
+            } catch (err) {
+                Toast.error('Error al eliminar');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modalRecursos').style.display = 'none';
+        }
+
+        // Inicializar si estamos en la pestaña
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.getElementById('recursos').classList.contains('active')) {
+                cargarTecnicos();
+            }
+        });
+        </script>
 
         <!-- MÓDULO 9: PLANIFICACIÓN INTELIGENTE -->
         <section id="planificacion" class="module-section">

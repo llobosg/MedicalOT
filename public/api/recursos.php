@@ -1,238 +1,186 @@
 <?php
-// public/api/recursos.php
+/**
+ * API Endpoint - Gestión de Recursos (Técnicos y Grupos)
+ */
 header('Content-Type: application/json; charset=utf-8');
-while (ob_get_level()) ob_end_clean();
+define('APP_ENTRY_POINT', true);
+require_once __DIR__ . '/../../config.php';
+
+// Verificar sesión y permisos básicos
+if (!isset($_SESSION['usuario_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'No autorizado']);
+    exit;
+}
+
+$action = $_GET['action'] ?? ($_POST['action'] ?? '');
 
 try {
-    // 🔐 Seguridad y Rutas
-    if (session_status() === PHP_SESSION_NONE) session_start();
-
-    // 🔐 Configuración de Seguridad y Rutas
-    define('APP_ENTRY_POINT', true);
-    
-    $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
-    $projectRoot = dirname($docRoot);
-    $configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
-    if (!$configPath) throw new Exception("Config no encontrado");
-    require_once $configPath;
-
-    if (!isset($_SESSION['user_id'])) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'No autorizado']);
-        exit;
-    }
-
-    $action = $_GET['action'] ?? ($_POST['action'] ?? 'list_tecnicos');
-    $type   = $_GET['type'] ?? ''; // 'tecnico' o 'grupo'
-
-    try {
-        // --- LISTAR TÉCNICOS ---
-        if ($action === 'list_tecnicos') {
-            // AGREGAR LEFT JOIN con verticales y seleccionar nombre_vertical
-            $stmt = $pdo->query("
-                SELECT t.*, e.nombre as especialidad_nombre, tt.nombre as turno_actual, at.id_tipo_turno, v.nombre_vertical
-                FROM tecnicos t
-                LEFT JOIN especialidades e ON t.id_especialidad = e.id
-                LEFT JOIN asignacion_turnos at ON t.id = at.id_tecnico AND at.fecha_hasta IS NULL
-                LEFT JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
-                LEFT JOIN verticales v ON t.id_vertical = v.id_vertical
-                ORDER BY t.nombre ASC
-            ");
-            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-            
-        // --- LISTAR GRUPOS ---
-        } elseif ($action === 'list_grupos') {
-            $stmt = $pdo->query("
-                SELECT g.*, v.nombre_vertical, tt.nombre as turno_actual, at.id_tipo_turno
-                FROM grupos g
-                LEFT JOIN verticales v ON g.id_vertical = v.id_vertical
-                LEFT JOIN asignacion_turnos at ON g.id = at.id_grupo AND at.fecha_hasta IS NULL
-                LEFT JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
-                ORDER BY g.nombre_grupo ASC
-            ");
-            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-
-        // --- LISTAR TIPOS DE TURNO ---
-        } elseif ($action === 'list_tipos_turno') {
-            $stmt = $pdo->query("SELECT * FROM tipos_turno WHERE activo = 1 ORDER BY codigo ASC");
-            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-
-        // --- CREAR TÉCNICO ---
-        } elseif ($action === 'create_tecnico') {
-            $rut = trim($_POST['rut'] ?? '');
-            $nombre = trim($_POST['nombre'] ?? '');
-            $correo = trim($_POST['correo'] ?? '');
-            $telefono = trim($_POST['telefono'] ?? '');
-            $id_esp = $_POST['id_especialidad'] ?? null;
-            $id_vert = $_POST['id_vertical'] ?? null; // Nuevo campo
-            $id_turno = $_POST['id_tipo_turno'] ?? null;
-
-            if (empty($rut) || empty($nombre)) throw new Exception("RUT y Nombre son obligatorios.");
-
-            $pdo->beginTransaction();
-
-            // Insertar Técnico con Vertical
-            $stmt = $pdo->prepare("INSERT INTO tecnicos (rut, nombre, correo, telefono, id_especialidad, id_vertical, activo) VALUES (?, ?, ?, ?, ?, ?, TRUE)");
-            $stmt->execute([$rut, $nombre, $correo, $telefono, $id_esp, $id_vert]);
-            $id_tecnico = $pdo->lastInsertId();
-
-            if ($id_turno) {
-                $stmt = $pdo->prepare("INSERT INTO asignacion_turnos (id_tecnico, id_tipo_turno, fecha_desde) VALUES (?, ?, CURDATE())");
-                $stmt->execute([$id_tecnico, $id_turno]);
-            }
-
-            $pdo->commit();
-            echo json_encode(['success' => true, 'message' => 'Técnico creado correctamente']);
-
-        // --- ACTUALIZAR TÉCNICO ---
-        } elseif ($action === 'update_tecnico') {
-            $id = $_POST['id'] ?? null;
-            $rut = trim($_POST['rut'] ?? '');
-            $nombre = trim($_POST['nombre'] ?? '');
-            $correo = trim($_POST['correo'] ?? '');
-            $telefono = trim($_POST['telefono'] ?? '');
-            $id_esp = $_POST['id_especialidad'] ?? null;
-            $id_vert = $_POST['id_vertical'] ?? null; // Nuevo campo
-            $id_turno = $_POST['id_tipo_turno'] ?? null;
-
-            if (!$id) throw new Exception("ID requerido.");
-
-            $pdo->beginTransaction();
-
-            // Actualizar datos básicos incluyendo Vertical
-            $stmt = $pdo->prepare("UPDATE tecnicos SET rut=?, nombre=?, correo=?, telefono=?, id_especialidad=?, id_vertical=? WHERE id=?");
-            $stmt->execute([$rut, $nombre, $correo, $telefono, $id_esp, $id_vert, $id]);
-
-            if ($id_turno) {
-                $stmtClose = $pdo->prepare("UPDATE asignacion_turnos SET fecha_hasta = CURDATE() WHERE id_tecnico = ? AND fecha_hasta IS NULL");
-                $stmtClose->execute([$id]);
-                $stmtOpen = $pdo->prepare("INSERT INTO asignacion_turnos (id_tecnico, id_tipo_turno, fecha_desde) VALUES (?, ?, CURDATE())");
-                $stmtOpen->execute([$id, $id_turno]);
-            }
-
-            $pdo->commit();
-            echo json_encode(['success' => true, 'message' => 'Técnico actualizado']);
-
-        // --- ELIMINAR TÉCNICO ---
-        } elseif ($action === 'delete_tecnico') {
-            $id = $_GET['id'] ?? null;
-            if (!$id) throw new Exception("ID requerido.");
-            
-            $stmt = $pdo->prepare("DELETE FROM tecnicos WHERE id=?");
-            $stmt->execute([$id]);
-            echo json_encode(['success' => true, 'message' => 'Técnico eliminado']);
-
-        // --- CREAR GRUPO ---
-        } elseif ($action === 'create_grupo') {
-            $nombre = trim($_POST['nombre_grupo'] ?? '');
-            $id_vert = $_POST['id_vertical'] ?? null;
-            $desc = trim($_POST['descripcion'] ?? '');
-            $id_turno = $_POST['id_tipo_turno'] ?? null;
-
-            if (empty($nombre)) throw new Exception("Nombre del grupo obligatorio.");
-
-            $pdo->beginTransaction();
-
-            $stmt = $pdo->prepare("INSERT INTO grupos (nombre_grupo, id_vertical, descripcion, activo) VALUES (?, ?, ?, TRUE)");
-            $stmt->execute([$nombre, $id_vert, $desc]);
-            $id_grupo = $pdo->lastInsertId();
-
-            if ($id_turno) {
-                $stmt = $pdo->prepare("INSERT INTO asignacion_turnos (id_grupo, id_tipo_turno, fecha_desde) VALUES (?, ?, CURDATE())");
-                $stmt->execute([$id_grupo, $id_turno]);
-            }
-
-            $pdo->commit();
-            echo json_encode(['success' => true, 'message' => 'Grupo creado']);
-
-        // --- ACTUALIZAR GRUPO ---
-        } elseif ($action === 'update_grupo') {
-            $id = $_POST['id'] ?? null;
-            $nombre = trim($_POST['nombre_grupo'] ?? '');
-            $id_vert = $_POST['id_vertical'] ?? null;
-            $desc = trim($_POST['descripcion'] ?? '');
-            $id_turno = $_POST['id_tipo_turno'] ?? null;
-
-            if (!$id) throw new Exception("ID requerido.");
-
-            $pdo->beginTransaction();
-
-            $stmt = $pdo->prepare("UPDATE grupos SET nombre_grupo=?, id_vertical=?, descripcion=? WHERE id=?");
-            $stmt->execute([$nombre, $id_vert, $desc, $id]);
-
-            if ($id_turno) {
-                $stmtClose = $pdo->prepare("UPDATE asignacion_turnos SET fecha_hasta = CURDATE() WHERE id_grupo = ? AND fecha_hasta IS NULL");
-                $stmtClose->execute([$id]);
-                $stmtOpen = $pdo->prepare("INSERT INTO asignacion_turnos (id_grupo, id_tipo_turno, fecha_desde) VALUES (?, ?, CURDATE())");
-                $stmtOpen->execute([$id, $id_turno]);
-            }
-
-            $pdo->commit();
-            echo json_encode(['success' => true, 'message' => 'Grupo actualizado']);
-
-        // --- ELIMINAR GRUPO ---
-        } elseif ($action === 'delete_grupo') {
-            $id = $_GET['id'] ?? null;
-            if (!$id) throw new Exception("ID requerido.");
-            
-            $stmt = $pdo->prepare("DELETE FROM grupos WHERE id=?");
-            $stmt->execute([$id]);
-            echo json_encode(['success' => true, 'message' => 'Grupo eliminado']);
-
-                // --- LISTAR RECURSOS CON TURNO ASIGNADO (TÉCNICOS Y GRUPOS) ---
-        } elseif ($action === 'list_con_turno') {
-            // Usamos UNION ALL para combinar Técnicos y Grupos
-            // Aseguramos que todos los campos tengan el mismo nombre de columna
-            
-            $sql = "
-                SELECT 
-                    'tecnico' as tipo_recurso, 
-                    t.id as id_recurso, 
-                    t.nombre as nombre_display, 
-                    tt.nombre as turno_nombre, 
-                    tt.codigo as turno_codigo,
-                    v.nombre_vertical as vertical_nombre, 
-                    e.nombre as especialidad_nombre
-                FROM tecnicos t
-                INNER JOIN asignacion_turnos at ON t.id = at.id_tecnico AND at.fecha_hasta IS NULL
-                INNER JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
-                LEFT JOIN verticales v ON t.id_vertical = v.id_vertical
-                LEFT JOIN especialidades e ON t.id_especialidad = e.id
-                
-                UNION ALL
-                
-                SELECT 
-                    'grupo' as tipo_recurso, 
-                    g.id as id_recurso, 
-                    g.nombre_grupo as nombre_display,
-                    tt.nombre as turno_nombre, 
-                    tt.codigo as turno_codigo,
-                    v.nombre_vertical as vertical_nombre, 
-                    NULL as especialidad_nombre
-                FROM grupos g
-                INNER JOIN asignacion_turnos at ON g.id = at.id_grupo AND at.fecha_hasta IS NULL
-                INNER JOIN tipos_turno tt ON at.id_tipo_turno = tt.id
-                LEFT JOIN verticales v ON g.id_vertical = v.id_vertical
-                
-                ORDER BY nombre_display ASC
-            ";
-            
+    switch ($action) {
+        // ==========================================
+        // LISTAR TÉCNICOS
+        // ==========================================
+        case 'list_tecnicos':
+            $sql = "SELECT 
+                        t.id, t.rut, t.nombre, t.correo, t.telefono, t.activo,
+                        t.id_especialidad, e.nombre as especialidad_nombre,
+                        t.id_vertical, v.nombre_vertical,
+                        t.id_tipo_turno, tt.nombre as turno_actual
+                    FROM tecnicos t
+                    LEFT JOIN especialidades e ON t.id_especialidad = e.id
+                    LEFT JOIN verticales v ON t.id_vertical = v.id_vertical
+                    LEFT JOIN tipos_turno tt ON t.id_tipo_turno = tt.id
+                    WHERE t.activo = 1
+                    ORDER BY t.nombre ASC";
             $stmt = $pdo->query($sql);
-            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['success' => true, 'data' => $data]);
+            break;
 
-        } else {
-            throw new Exception("Acción no válida");
-        }
+        // ==========================================
+        // LISTAR GRUPOS
+        // ==========================================
+        case 'list_grupos':
+            $sql = "SELECT 
+                        g.id, g.nombre_grupo, g.descripcion, g.activo,
+                        g.id_vertical, v.nombre_vertical,
+                        g.id_tipo_turno, tt.nombre as turno_actual
+                    FROM grupos_trabajo g
+                    LEFT JOIN verticales v ON g.id_vertical = v.id_vertical
+                    LEFT JOIN tipos_turno tt ON g.id_tipo_turno = tt.id
+                    WHERE g.activo = 1
+                    ORDER BY g.nombre_grupo ASC";
+            $stmt = $pdo->query($sql);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['success' => true, 'data' => $data]);
+            break;
 
-    } catch (\Exception $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        error_log("Error Recursos: " . $e->getMessage());
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        // ==========================================
+        // LISTAR RECURSOS CON TURNO ACTIVO (UNIFICADO)
+        // ==========================================
+        case 'list_con_turno':
+            $sql = "SELECT 
+                        'tecnico' as tipo_recurso,
+                        t.id, t.nombre as nombre_display, t.id_vertical, v.nombre_vertical, t.id_especialidad, e.nombre as especialidad_nombre,
+                        t.id_tipo_turno, tt.nombre as turno_nombre
+                    FROM tecnicos t
+                    LEFT JOIN verticales v ON t.id_vertical = v.id_vertical
+                    LEFT JOIN especialidades e ON t.id_especialidad = e.id
+                    LEFT JOIN tipos_turno tt ON t.id_tipo_turno = tt.id
+                    WHERE t.activo = 1 AND t.id_tipo_turno IS NOT NULL
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        'grupo' as tipo_recurso,
+                        g.id, g.nombre_grupo as nombre_display, g.id_vertical, v.nombre_vertical, NULL as id_especialidad, NULL as especialidad_nombre,
+                        g.id_tipo_turno, tt.nombre as turno_nombre
+                    FROM grupos_trabajo g
+                    LEFT JOIN verticales v ON g.id_vertical = v.id_vertical
+                    LEFT JOIN tipos_turno tt ON g.id_tipo_turno = tt.id
+                    WHERE g.activo = 1 AND g.id_tipo_turno IS NOT NULL
+                    
+                    ORDER BY turno_nombre ASC, nombre_display ASC";
+            $stmt = $pdo->query($sql);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['success' => true, 'data' => $data]);
+            break;
+
+        // ==========================================
+        // LISTAR TIPOS DE TURNO (Para Selects)
+        // ==========================================
+        case 'list_tipos_turno':
+            $sql = "SELECT id, codigo, nombre, hh_diarias, tipo FROM tipos_turno WHERE activo = 1 ORDER BY codigo ASC";
+            $stmt = $pdo->query($sql);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['success' => true, 'data' => $data]);
+            break;
+
+        // ==========================================
+        // CREAR / ACTUALIZAR TÉCNICO
+        // ==========================================
+        case 'create_tecnico':
+        case 'update_tecnico':
+            $id = $_POST['id'] ?? null;
+            $rut = $_POST['rut'] ?? '';
+            $nombre = $_POST['nombre'] ?? '';
+            $correo = $_POST['correo'] ?? '';
+            $telefono = $_POST['telefono'] ?? '';
+            $id_especialidad = $_POST['id_especialidad'] ?? null;
+            $id_vertical = $_POST['id_vertical'] ?? null;
+            $id_tipo_turno = $_POST['id_tipo_turno'] ?? null;
+
+            if (empty($nombre)) throw new Exception("El nombre es obligatorio");
+
+            if ($action === 'create_tecnico') {
+                $sql = "INSERT INTO tecnicos (rut, nombre, correo, telefono, id_especialidad, id_vertical, id_tipo_turno, activo) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 1)";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$rut, $nombre, $correo, $telefono, $id_especialidad, $id_vertical, $id_tipo_turno]);
+                $message = "Técnico creado exitosamente";
+            } else {
+                $sql = "UPDATE tecnicos SET rut=?, nombre=?, correo=?, telefono=?, id_especialidad=?, id_vertical=?, id_tipo_turno=? 
+                        WHERE id=?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$rut, $nombre, $correo, $telefono, $id_especialidad, $id_vertical, $id_tipo_turno, $id]);
+                $message = "Técnico actualizado exitosamente";
+            }
+            echo json_encode(['success' => true, 'message' => $message]);
+            break;
+
+        // ==========================================
+        // CREAR / ACTUALIZAR GRUPO
+        // ==========================================
+        case 'create_grupo':
+        case 'update_grupo':
+            $id = $_POST['id'] ?? null;
+            $nombre_grupo = $_POST['nombre_grupo'] ?? '';
+            $descripcion = $_POST['descripcion'] ?? '';
+            $id_vertical = $_POST['id_vertical'] ?? null;
+            $id_tipo_turno = $_POST['id_tipo_turno'] ?? null;
+
+            if (empty($nombre_grupo)) throw new Exception("El nombre del grupo es obligatorio");
+
+            if ($action === 'create_grupo') {
+                $sql = "INSERT INTO grupos_trabajo (nombre_grupo, descripcion, id_vertical, id_tipo_turno, activo) 
+                        VALUES (?, ?, ?, ?, 1)";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$nombre_grupo, $descripcion, $id_vertical, $id_tipo_turno]);
+                $message = "Grupo creado exitosamente";
+            } else {
+                $sql = "UPDATE grupos_trabajo SET nombre_grupo=?, descripcion=?, id_vertical=?, id_tipo_turno=? 
+                        WHERE id=?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$nombre_grupo, $descripcion, $id_vertical, $id_tipo_turno, $id]);
+                $message = "Grupo actualizado exitosamente";
+            }
+            echo json_encode(['success' => true, 'message' => $message]);
+            break;
+
+        // ==========================================
+        // ELIMINAR (Desactivar)
+        // ==========================================
+        case 'delete_tecnico':
+            $id = $_GET['id'] ?? $_POST['id'];
+            if (!$id) throw new Exception("ID requerido");
+            $stmt = $pdo->prepare("UPDATE tecnicos SET activo = 0 WHERE id = ?");
+            $stmt->execute([$id]);
+            echo json_encode(['success' => true, 'message' => 'Técnico desactivado']);
+            break;
+
+        case 'delete_grupo':
+            $id = $_GET['id'] ?? $_POST['id'];
+            if (!$id) throw new Exception("ID requerido");
+            $stmt = $pdo->prepare("UPDATE grupos_trabajo SET activo = 0 WHERE id = ?");
+            $stmt->execute([$id]);
+            echo json_encode(['success' => true, 'message' => 'Grupo desactivado']);
+            break;
+
+        default:
+            throw new Exception("Acción no válida: $action");
     }
 
-} catch (\Throwable $e) {
-    error_log("❌ API Recursos Fatal: " . $e->getMessage());
+} catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Error interno del servidor.']);
-    exit;
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
