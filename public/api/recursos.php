@@ -4,14 +4,22 @@
  */
 header('Content-Type: application/json; charset=utf-8');
 define('APP_ENTRY_POINT', true);
-require_once __DIR__ . '/../../config.php';
+    
+    $docRoot     = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+    $projectRoot = dirname($docRoot);
+    $configPath = file_exists("$projectRoot/config.php") ? "$projectRoot/config.php" : null;
+    
+    if (!$configPath) {
+        throw new Exception("Archivo de configuración no encontrado");
+    }
+    require_once $configPath;
 
-// Verificar sesión y permisos básicos
-if (!isset($_SESSION['usuario_id'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'No autorizado']);
-    exit;
-}
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'No autorizado']);
+        exit;
+    }
 
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 
