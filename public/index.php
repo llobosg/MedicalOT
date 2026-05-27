@@ -1089,7 +1089,23 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                 </div>
 
-                <!-- Ficha 2: SLA Cumplido -->
+                <!-- 🆕 Ficha 2: HH DISPONIBLES vs DEMANDA -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #f59e0b; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-10px; right:-10px; font-size:4rem; opacity:0.08;">👷</div>
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">HH Disponibles (Plan)</div>
+                    <div style="display:flex; align-items:baseline; gap:0.3rem; margin-top:0.5rem;">
+                        <span id="kpi-hh-disponibles" style="font-size:2rem; font-weight:700; color:#1e293b;">--</span>
+                        <span style="font-size:0.85rem; color:#64748b;">HH</span>
+                    </div>
+                    <div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                        <span id="kpi-hh-cobertura" style="font-size:0.8rem; font-weight:700; padding:2px 8px; border-radius:10px; background:#dcfce7; color:#166534;">--%</span>
+                        <span style="font-size:0.7rem; color:#64748b;">Cobertura</span>
+                    </div>
+                    <div style="font-size:0.7rem; color:#94a3b8; margin-top:0.3rem;">
+                        👷 <span id="kpi-tecnicos-plan">--</span> técnicos planificados
+                    </div>
+                </div>
+                <!-- Ficha 3: SLA Cumplido -->
                 <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #10b981;">
                     <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">SLA Cumplido</div>
                     <div style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">
@@ -1100,7 +1116,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                 </div>
 
-                <!-- Ficha 3: OTs Cerradas -->
+                <!-- Ficha 4: OTs Cerradas -->
                 <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #8b5cf6;">
                     <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs Cerradas</div>
                     <div style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">
@@ -1111,8 +1127,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                 </div>
 
-                <!-- Ficha 4: OTs en Riesgo -->
-                <!-- Ficha 4: OTs en Riesgo (CLICKEABLE) -->
+                <!-- Ficha 5: OTs en Riesgo (CLICKEABLE) -->
                 <div id="kpi-risk-card" 
                     onclick="toggleRiskMode()" 
                     style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #ef4444; cursor:pointer; position:relative; transition:all 0.3s;">
@@ -1131,23 +1146,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                     <div id="kpi-risk-hint" style="font-size:0.75rem; color:#ef4444; margin-top:0.25rem;">
                         ⚠️ Click para ver detalle
-                    </div>
-                </div>
-
-                <!-- 🆕 Ficha 5: HH DISPONIBLES vs DEMANDA -->
-                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #f59e0b; position:relative; overflow:hidden;">
-                    <div style="position:absolute; top:-10px; right:-10px; font-size:4rem; opacity:0.08;">👷</div>
-                    <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">HH Disponibles (Plan)</div>
-                    <div style="display:flex; align-items:baseline; gap:0.3rem; margin-top:0.5rem;">
-                        <span id="kpi-hh-disponibles" style="font-size:2rem; font-weight:700; color:#1e293b;">--</span>
-                        <span style="font-size:0.85rem; color:#64748b;">HH</span>
-                    </div>
-                    <div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;">
-                        <span id="kpi-hh-cobertura" style="font-size:0.8rem; font-weight:700; padding:2px 8px; border-radius:10px; background:#dcfce7; color:#166534;">--%</span>
-                        <span style="font-size:0.7rem; color:#64748b;">Cobertura</span>
-                    </div>
-                    <div style="font-size:0.7rem; color:#94a3b8; margin-top:0.3rem;">
-                        👷 <span id="kpi-tecnicos-plan">--</span> técnicos planificados
                     </div>
                 </div>
             </div>

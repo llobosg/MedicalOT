@@ -4,16 +4,45 @@
   --user=root \
   --password=gwAfapwVMcrROKFxDvSSwhOeGhVepEfK \
   --database=railway \
-  -e "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_prevision_sic IS NOT NULL;"
+  -e "SET @dbname = DATABASE();
+SET @tablename = 'componentes';
+SET @columnname = 'nombre_corto';
+SET @preparedStatement = (SELECT IF(
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE table_name = @tablename AND table_schema = @dbname AND column_name = @columnname) > 0,
+    'SELECT "Columna nombre_corto ya existe"',
+    'ALTER TABLE componentes ADD COLUMN nombre_corto VARCHAR(100) AFTER nombre'
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;"
+
+
+
+  /Applications/XAMPP/xamppfiles/bin/mysql \
+  --host=trolley.proxy.rlwy.net \
+  --port=28420 \
+  --user=root \
+  --password='gwAfapwVMcrROKFxDvSSwhOeGhVepEfK' \
+  --database=railway \
+  -e "INSERT INTO componentes (codigo, nombre, nombre_corto, grupo, descripcion, activo) VALUES
+('CLIMA', 'Climatización', 'Climatización', 'III', 'Mantenimiento y operación del sistema de climatización', 1),
+('CLIMA_PIC', 'Climatización-PIC', 'Climatización-PIC', 'III', 'Proyecto PIC - Climatización', 1),
+('SACC', 'Sistema de Automatización y Control Centralizado (SACC)', 'SACC', 'II', 'Mantenimiento y operación del SACC', 1),
+('ENERGIA', 'Sistema de Energía e Iluminación Artificial', 'Energía e Iluminación', 'II', 'Mantenimiento y operación del sistema de energía', 1),
+('GASES', 'Sistema de Gases Clínicos', 'Gases Clínicos', 'II', 'Mantenimiento y operación del sistema de gases clínicos', 1),
+('INFRA_SANIT', 'Infraestructura General y Sistema Sanitario', 'Infraestructura y Sist. Sanitario', 'I', 'Infraestructura general y mobiliario asociado al sistema sanitario', 1),
+('INFRA_MOB', 'Mantenimiento de Infraestructura General y Mobiliario', 'Mant. Infraestructura y Mobiliario', 'I', 'Mantenimiento de infraestructura general y mobiliario', 1),
+('AREAS_VERDES', 'Mantenimiento y Operación de Exteriores, Áreas Verdes y Paisajismo', 'Áreas Verdes y Paisajismo', 'I', 'Mantenimiento de áreas verdes y paisajismo', 1),
+('CORRIENTES', 'Corrientes Débiles + PCI + Correo Neumático', 'Corrientes Débiles+PCI+C_Neumático', 'II', 'Mantenimiento de corrientes débiles, PCI y correo neumático', 1)
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
 
 
-
-  # Commit y push
 git add .
-git commit -m "fix: mejorar detección de separador y limpieza de ID en MantencionImportService, 11 chatgpt"
+git commit -m "fix: KPIs filtro año, 2"
 git push origin main
 
 base de datos AWS RDS

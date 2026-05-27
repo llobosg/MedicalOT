@@ -642,29 +642,38 @@ class ImportarPlanificacionHH
         return '-1';
     }
     
-    /**
+        /**
      * Crea el registro de planificación mensual
      */
     private function crearPlanificacionMensual(int $tecnicoId, array $planificacionesDiarias): int
     {
-        $hhDia = 0;
-        $hhNoche = 0;
+        // Calcular estadísticas
+        $hhDia = 0.0;
+        $hhNoche = 0.0;
         $diasLaborales = 0;
         $diasDescanso = 0;
         $turnosDia = 0;
         $turnosNoche = 0;
         
-        foreach ($planificacionesDiarias as $plan) {
-            if ($plan['codigo_turno'] === '-1' || $plan['codigo_turno'] === '0') {
+        $this->log("🔵 [CALCULO HH] Iniciando cálculo para Técnico ID: $tecnicoId");
+        
+        foreach ($planificacionesDiarias as $dia => $plan) {
+            $codigo = $plan['codigo_turno'];
+            $horas = floatval($plan['horas'] ?? 0);
+            $tipo = $plan['tipo_turno'] ?? 'descanso';
+            
+            if ($codigo === '-1' || $codigo === '0' || $horas <= 0) {
                 $diasDescanso++;
             } else {
                 $diasLaborales++;
-                if ($plan['tipo_turno'] === 'noche') {
-                    $hhNoche += $plan['horas'];
+                if ($tipo === 'noche') {
+                    $hhNoche += $horas;
                     $turnosNoche++;
+                    $this->log("   Día $dia: Noche (+$horas HH) -> Total Noche: $hhNoche");
                 } else {
-                    $hhDia += $plan['horas'];
+                    $hhDia += $horas;
                     $turnosDia++;
+                    $this->log("   Día $dia: Día (+$horas HH) -> Total Día: $hhDia");
                 }
             }
         }
@@ -672,8 +681,13 @@ class ImportarPlanificacionHH
         $hhTotal = $hhDia + $hhNoche;
         $mesNombre = $this->obtenerNombreMes($this->mes);
         
+        $this->log("🟢 [CALCULO HH] Resumen Técnico $tecnicoId: Día=$hhDia, Noche=$hhNoche, Total=$hhTotal");
+
         // Eliminar planificación anterior si existe
-        $stmt = $this->pdo->prepare("DELETE FROM planificacion_hh_mensual WHERE id_tecnico = ? AND año = ? AND mes = ?");
+        $stmt = $this->pdo->prepare("
+            DELETE FROM planificacion_hh_mensual 
+            WHERE id_tecnico = ? AND año = ? AND mes = ?
+        ");
         $stmt->execute([$tecnicoId, $this->año, $this->mes]);
         
         // Insertar nueva planificación
@@ -681,14 +695,17 @@ class ImportarPlanificacionHH
             INSERT INTO planificacion_hh_mensual (
                 id_tecnico, año, mes, mes_nombre,
                 hh_planificadas_dia, hh_planificadas_noche, hh_planificadas_total,
-                dias_laborales, dias_descanso, turnos_dia, turnos_noche, created_at
+                dias_laborales, dias_descanso,
+                turnos_dia, turnos_noche,
+                created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
         $stmt->execute([
             $tecnicoId, $this->año, $this->mes, $mesNombre,
             $hhDia, $hhNoche, $hhTotal,
-            $diasLaborales, $diasDescanso, $turnosDia, $turnosNoche
+            $diasLaborales, $diasDescanso,
+            $turnosDia, $turnosNoche
         ]);
         
         $this->stats['planificaciones_creadas']++;
