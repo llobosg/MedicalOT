@@ -412,7 +412,7 @@ class ImportarPlanificacionHH
     }
     
     /**
-    * Obtiene el valor de una celda de forma segura, intentando calcular fórmulas
+    * Obtiene el valor de una celda, intentando calcular fórmulas y limpiando errores
     */
     private function obtenerValorCelda($hoja, int $fila, ?int $col): ?string
     {
@@ -426,7 +426,7 @@ class ImportarPlanificacionHH
                 $calculatedValue = $cell->getCalculatedValue();
                 if ($calculatedValue !== null && $calculatedValue !== '') {
                     $valStr = trim((string)$calculatedValue);
-                    // Si el valor calculado es un número o código válido, usarlo
+                    // Si es numérico o código válido, retornarlo
                     if (is_numeric($valStr) || in_array(strtoupper($valStr), ['D', 'V', '-1'])) {
                         return $valStr;
                     }
@@ -435,21 +435,25 @@ class ImportarPlanificacionHH
                 // Ignorar errores de cálculo
             }
             
-            // 2. Fallback: Obtener valor crudo (fórmula o texto)
+            // 2. Fallback: Obtener valor crudo
             $rawValue = $cell->getValue();
             if ($rawValue === null || $rawValue === '') return null;
             
             $valStr = trim((string)$rawValue);
             
-            // Si es una fórmula obvia, intentar extraer números si es posible, sino null
+            // Si es una fórmula, intentar evaluarla manualmente si es simple, sino null
             if (strpos($valStr, '=') === 0) {
-                // Es una fórmula. Intentamos ver si el resultado esperado es numérico
-                // Por ahora, devolvemos null para que normalizarCodigoTurno lo trate como descanso
-                // O podríamos intentar evaluarla, pero es riesgoso.
-                // Mejor estrategia: Si es fórmula, asumimos que el usuario debe guardar el archivo con valores.
-                // Para debug, logueamos.
-                $this->log("   ⚠️ Celda [$col,$fila] es fórmula: " . substr($valStr, 0, 50));
+                // Es una fórmula compleja. No podemos evaluarla fácilmente sin motor completo.
+                // Retornamos null para que normalizarCodigoTurno lo trate como descanso.
                 return null; 
+            }
+            
+            // Limpiar errores comunes de Excel
+            if (stripos($valStr, 'ERROR') !== false || 
+                stripos($valStr, '#') !== false ||
+                stripos($valStr, 'N/A') !== false ||
+                stripos($valStr, 'REF') !== false) {
+                return null;
             }
             
             return $valStr;
@@ -650,7 +654,7 @@ class ImportarPlanificacionHH
     }
     
     /**
-    * Normaliza el código de turno
+    * Normaliza el código de turno de forma estricta
     */
     private function normalizarCodigoTurno($valor): string
     {
@@ -660,7 +664,7 @@ class ImportarPlanificacionHH
         
         $valorStr = trim((string)$valor);
         
-        // Casos especiales que se consideran descanso
+        // Casos especiales explícitos de descanso
         $descansos = ['-1', '0', 'D', 'V', 'DESCANSO', 'VACANTE', 'EN PROCESO', 'INGRESO'];
         foreach ($descansos as $d) {
             if (strtoupper($valorStr) === $d) {
@@ -668,19 +672,7 @@ class ImportarPlanificacionHH
             }
         }
         
-        // Detectar errores de Excel (#VALUE!, #REF!, etc.)
-        if (stripos($valorStr, 'ERROR') !== false || 
-            stripos($valorStr, '#') !== false ||
-            stripos($valorStr, 'N/A') !== false) {
-            return '-1';
-        }
-        
-        // Detectar números negativos grandes (errores de fórmula)
-        if (is_numeric($valorStr) && (float)$valorStr < -1) {
-            return '-1';
-        }
-        
-        // Si es numérico positivo, usar directamente como string
+        // Si es numérico entero entre 1 y 13, usarlo
         if (is_numeric($valorStr)) {
             $num = (int)$valorStr;
             if ($num >= 1 && $num <= 13) {
@@ -688,10 +680,7 @@ class ImportarPlanificacionHH
             }
         }
         
-        // Si llega aquí, es un texto no reconocido (ej: nombre de turno "TURNO A")
-        // Intentar mapear nombres comunes a códigos si es necesario, o asumir descanso
-        // Por ahora, logueamos y asumimos descanso para evitar romper la suma
-        $this->log("   ⚠️ Código no reconocido: '$valorStr' -> Tratado como descanso");
+        // Cualquier otra cosa (textos raros, fórmulas no resueltas, errores) -> Descanso
         return '-1';
     }
     
