@@ -412,27 +412,48 @@ class ImportarPlanificacionHH
     }
     
     /**
-     * Obtiene el valor de una celda de forma segura
-     */
+    * Obtiene el valor de una celda de forma segura, intentando calcular fórmulas
+    */
     private function obtenerValorCelda($hoja, int $fila, ?int $col): ?string
     {
         if (!$col) return null;
         
         try {
-            $valor = $hoja->getCell([$col, $fila])->getValue();
-            if ($valor === null || $valor === '') return null;
+            $cell = $hoja->getCell([$col, $fila]);
             
-            $valorStr = trim((string)$valor);
-            
-            // Detectar valores inválidos
-            if (stripos($valorStr, 'ERROR') !== false || 
-                stripos($valorStr, '#N/A') !== false ||
-                stripos($valorStr, '#REF') !== false ||
-                stripos($valorStr, '#VALUE') !== false) {
-                return null;
+            // 1. Intentar obtener valor calculado (si es fórmula)
+            try {
+                $calculatedValue = $cell->getCalculatedValue();
+                if ($calculatedValue !== null && $calculatedValue !== '') {
+                    $valStr = trim((string)$calculatedValue);
+                    // Si el valor calculado es un número o código válido, usarlo
+                    if (is_numeric($valStr) || in_array(strtoupper($valStr), ['D', 'V', '-1'])) {
+                        return $valStr;
+                    }
+                }
+            } catch (\Exception $e) {
+                // Ignorar errores de cálculo
             }
             
-            return $valorStr;
+            // 2. Fallback: Obtener valor crudo (fórmula o texto)
+            $rawValue = $cell->getValue();
+            if ($rawValue === null || $rawValue === '') return null;
+            
+            $valStr = trim((string)$rawValue);
+            
+            // Si es una fórmula obvia, intentar extraer números si es posible, sino null
+            if (strpos($valStr, '=') === 0) {
+                // Es una fórmula. Intentamos ver si el resultado esperado es numérico
+                // Por ahora, devolvemos null para que normalizarCodigoTurno lo trate como descanso
+                // O podríamos intentar evaluarla, pero es riesgoso.
+                // Mejor estrategia: Si es fórmula, asumimos que el usuario debe guardar el archivo con valores.
+                // Para debug, logueamos.
+                $this->log("   ⚠️ Celda [$col,$fila] es fórmula: " . substr($valStr, 0, 50));
+                return null; 
+            }
+            
+            return $valStr;
+            
         } catch (Exception $e) {
             return null;
         }
@@ -588,6 +609,10 @@ class ImportarPlanificacionHH
             }
             
             $valorRaw = $this->obtenerValorCelda($hoja, $fila, $col);
+            // LOG CRÍTICO: Ver qué se está leyendo realmente (solo primeros 3 días del primer técnico)
+            if ($dia <= 3 && $this->stats['total_tecnicos'] == 1) {
+                $this->log("   🔍 Día $dia: Valor Leído='$valorRaw'");
+            }
             $codigoTurno = $this->normalizarCodigoTurno($valorRaw);
             
             // Buscar el turno en el mapa cargado desde BD
@@ -625,8 +650,8 @@ class ImportarPlanificacionHH
     }
     
     /**
-     * Normaliza el código de turno
-     */
+    * Normaliza el código de turno
+    */
     private function normalizarCodigoTurno($valor): string
     {
         if ($valor === null || $valor === '') {
@@ -663,14 +688,16 @@ class ImportarPlanificacionHH
             }
         }
         
-        // Cualquier otro valor no reconocido -> Descanso
-        $this->log("   ⚠️ Código de turno no reconocido: '$valorStr' -> Tratado como descanso");
+        // Si llega aquí, es un texto no reconocido (ej: nombre de turno "TURNO A")
+        // Intentar mapear nombres comunes a códigos si es necesario, o asumir descanso
+        // Por ahora, logueamos y asumimos descanso para evitar romper la suma
+        $this->log("   ⚠️ Código no reconocido: '$valorStr' -> Tratado como descanso");
         return '-1';
     }
     
-        /**
-     * Crea el registro de planificación mensual
-     */
+    /**
+    * Crea el registro de planificación mensual
+    */
     private function crearPlanificacionMensual(int $tecnicoId, array $planificacionesDiarias): int
     {
         // Calcular estadísticas
