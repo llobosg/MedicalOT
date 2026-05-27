@@ -2835,8 +2835,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // === GESTIÓN DE RECURSOS (TÉCNICOS Y GRUPOS) ===
 // === GESTIÓN DE RECURSOS (TÉCNICOS Y GRUPOS) ===
 
-let currentResourceType = 'tecnico'; 
-
 function showResourceTab(tab) {
     document.getElementById('view-tecnicos').style.display = tab === 'tecnicos' ? 'block' : 'none';
     document.getElementById('view-grupos').style.display = tab === 'grupos' ? 'block' : 'none';
