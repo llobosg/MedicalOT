@@ -29,19 +29,26 @@ try {
         // LISTAR TÉCNICOS
         // ==========================================
         case 'list_tecnicos':
+            $fecha_hoy = date('Y-m-d');
+            
             $sql = "SELECT 
                         t.id, t.rut, t.nombre, t.correo, t.telefono, t.activo,
                         t.id_especialidad, e.nombre as especialidad_nombre,
                         t.id_vertical, v.nombre_vertical,
-                        t.id_tipo_turno, tt.nombre as turno_actual
+                        tt.nombre as turno_hoy,
+                        pd.horas_planificadas as hh_hoy
                     FROM tecnicos t
                     LEFT JOIN especialidades e ON t.id_especialidad = e.id
                     LEFT JOIN verticales v ON t.id_vertical = v.id_vertical
-                    LEFT JOIN tipos_turno tt ON t.id_tipo_turno = tt.id
+                    LEFT JOIN planificacion_hh_diaria pd ON t.id = pd.id_tecnico AND pd.fecha = ?
+                    LEFT JOIN tipos_turno tt ON pd.id_turno = tt.id
                     WHERE t.activo = 1
                     ORDER BY t.nombre ASC";
-            $stmt = $pdo->query($sql);
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$fecha_hoy]);
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
             echo json_encode(['success' => true, 'data' => $data]);
             break;
 
@@ -182,6 +189,41 @@ try {
             $stmt = $pdo->prepare("UPDATE grupos_trabajo SET activo = 0 WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode(['success' => true, 'message' => 'Grupo desactivado']);
+            break;
+        
+        case 'turnos_distribution':
+            $year  = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+            $month = !empty($_GET['month']) ? $_GET['month'] : null;
+            
+            // Normalizar mes
+            $mes_num = null;
+            if ($month !== null && $month !== '') {
+                if (is_numeric($month)) {
+                    $mes_num = (int)$month;
+                } else {
+                    $meses_map = ['enero'=>1,'febrero'=>2,'marzo'=>3,'abril'=>4,'mayo'=>5,'junio'=>6,'julio'=>7,'agosto'=>8,'septiembre'=>9,'octubre'=>10,'noviembre'=>11,'diciembre'=>12];
+                    $key = strtolower(trim($month));
+                    if (isset($meses_map[$key])) $mes_num = $meses_map[$key];
+                }
+            }
+            if (!$mes_num) $mes_num = (int)date('n');
+
+            $sql = "SELECT 
+                        tt.nombre as turno_nombre,
+                        tt.tipo as turno_tipo, -- dia, noche, mixto
+                        COUNT(pd.id) as dias_asignados,
+                        SUM(pd.horas_planificadas) as total_hh
+                    FROM planificacion_hh_diaria pd
+                    JOIN tipos_turno tt ON pd.id_turno = tt.id
+                    WHERE pd.año = ? AND pd.mes = ?
+                    GROUP BY tt.id, tt.nombre, tt.tipo
+                    ORDER BY total_hh DESC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$year, $mes_num]);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'data' => $data]);
             break;
 
         default:

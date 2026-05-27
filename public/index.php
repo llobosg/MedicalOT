@@ -1084,9 +1084,9 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             </div>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- FILA 1: FICHAS KPI (4 columnas)                            -->
+            <!-- FILA 1: FICHAS KPI (6 columnas)                            -->
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:1rem; margin-bottom:1.5rem;">
+            <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:1rem; margin-bottom:1rem;">
                 
                 <!-- 🥇 Ficha 1: TOTAL HHs PLANIFICADAS (Hero - Destacada) -->
                 <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); padding:1.5rem; border-radius:1rem; box-shadow:0 4px 12px rgba(59,130,246,0.3); color:white; position:relative; overflow:hidden;">
@@ -1129,8 +1129,32 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         ✅ De OTs completadas a tiempo
                     </div>
                 </div>
+                <!-- 🆕 Ficha 4: DISTRIBUCIÓN DE TURNOS -->
+                <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #8b5cf6; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-10px; right:-10px; font-size:4rem; opacity:0.08;">🌙</div>
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">Distribución Turnos</div>
+                    
+                    <div style="margin-top:0.75rem; display:flex; flex-direction:column; gap:0.5rem;">
+                        <!-- Barra Día -->
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.8rem;">
+                            <span style="color:#64748b;">☀️ Día</span>
+                            <strong id="kpi-hh-dia" style="color:#1e293b;">-- HH</strong>
+                        </div>
+                        <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
+                            <div id="bar-hh-dia" style="height:100%; width:0%; background:#f59e0b; transition:width 0.5s ease;"></div>
+                        </div>
 
-                <!-- Ficha 4: OTs Cerradas -->
+                        <!-- Barra Noche -->
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.8rem;">
+                            <span style="color:#64748b;">🌙 Noche</span>
+                            <strong id="kpi-hh-noche" style="color:#1e293b;">-- HH</strong>
+                        </div>
+                        <div style="height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
+                            <div id="bar-hh-noche" style="height:100%; width:0%; background:#6366f1; transition:width 0.5s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Ficha 5: OTs Cerradas -->
                 <div style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #8b5cf6;">
                     <div style="font-size:0.8rem; color:#64748b; font-weight:600; text-transform:uppercase;">OTs Cerradas</div>
                     <div style="font-size:2rem; font-weight:700; color:#1e293b; margin-top:0.5rem;">
@@ -1141,7 +1165,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                 </div>
 
-                <!-- Ficha 5: OTs en Riesgo (CLICKEABLE) -->
+                <!-- Ficha 6: OTs en Riesgo (CLICKEABLE) -->
                 <div id="kpi-risk-card" 
                     onclick="toggleRiskMode()" 
                     style="background:white; padding:1.5rem; border-radius:1rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); border-left:4px solid #ef4444; cursor:pointer; position:relative; transition:all 0.3s;">
@@ -3784,6 +3808,28 @@ async function loadKpis() {
                     if (progress < 1) requestAnimationFrame(animateHH);
                 })(performance.now());
             }
+
+            // 🆕 ACTUALIZAR TARJETA DE TURNOS
+            const turnosDist = d.turnos_dist || {};
+            const hhDia = turnosDist.dia || 0;
+            const hhNoche = turnosDist.noche || 0;
+            const hhMixto = turnosDist.mixto || 0; // Si tienes turnos mixtos
+
+            // Actualizar textos
+            updateText('kpi-hh-dia', hhDia, ' HH');
+            updateText('kpi-hh-noche', hhNoche, ' HH');
+
+            // Calcular porcentajes para las barras
+            const totalTurnosHH = hhDia + hhNoche + hhMixto;
+            const pctDia = totalTurnosHH > 0 ? (hhDia / totalTurnosHH) * 100 : 0;
+            const pctNoche = totalTurnosHH > 0 ? (hhNoche / totalTurnosHH) * 100 : 0;
+
+            // Actualizar ancho de barras
+            const barDia = document.getElementById('bar-hh-dia');
+            const barNoche = document.getElementById('bar-hh-noche');
+
+            if (barDia) barDia.style.width = `${pctDia}%`;
+            if (barNoche) barNoche.style.width = `${pctNoche}%`;
         }
         
         // 2. Según el modo, cargar ranking estándar o de riesgo
@@ -5499,6 +5545,28 @@ function restoreStandardTitles() {
             input.disabled = false;
             sendBtn.disabled = false;
             input.focus();
+        }
+    }
+    async function loadTurnosKPI() {
+        const params = new URLSearchParams({
+            year: dashboardFilters.year,
+            month: dashboardFilters.month
+        });
+        
+        try {
+            const res = await fetch(`/api/kpis.php?action=turnos_distribution&${params}`);
+            const data = await res.json();
+            
+            if (data.success && data.data.length > 0) {
+                // Ejemplo: Mostrar HH Nocturnas vs Diurnas
+                const hhNoche = data.data.filter(d => d.turno_tipo === 'noche').reduce((sum, d) => sum + parseFloat(d.total_hh), 0);
+                const hhDia = data.data.filter(d => d.turno_tipo === 'dia').reduce((sum, d) => sum + parseFloat(d.total_hh), 0);
+                
+                console.log(`HH Día: ${hhDia}, HH Noche: ${hhNoche}`);
+                // Aquí puedes actualizar un gráfico de Chart.js o una barra de progreso
+            }
+        } catch (err) {
+            console.error("Error cargando KPI Turnos:", err);
         }
     }
 </script>

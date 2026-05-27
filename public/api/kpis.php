@@ -124,6 +124,35 @@ try {
                     $hh_cobertura = 100; // Si no hay demanda pero sí oferta, cobertura completa teórica
                 }
 
+                                // 🆕 DATOS DE DISTRIBUCIÓN DE TURNOS (Para la nueva tarjeta)
+                $turnos_dist = [];
+                try {
+                    // Normalizar mes para la consulta de turnos
+                    $mes_num_turnos = $mes_num; 
+                    
+                    $stmtTurnos = $pdo->prepare("
+                        SELECT 
+                            tt.tipo as turno_tipo, -- 'dia', 'noche', 'mixto'
+                            SUM(pd.horas_planificadas) as total_hh
+                        FROM planificacion_hh_diaria pd
+                        JOIN tipos_turno tt ON pd.id_turno = tt.id
+                        WHERE pd.año = ? AND pd.mes = ?
+                        GROUP BY tt.tipo
+                    ");
+                    $stmtTurnos->execute([$year, $mes_num_turnos]);
+                    $turnos_raw = $stmtTurnos->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    // Estructurar para el frontend
+                    foreach ($turnos_raw as $t) {
+                        $turnos_dist[$t['turno_tipo']] = floatval($t['total_hh']);
+                    }
+                } catch (Exception $e) {
+                    error_log("Error consultando distribución de turnos: " . $e->getMessage());
+                }
+
+                // Agregar al array de datos final
+                $data['turnos_dist'] = $turnos_dist;
+
                 echo json_encode([
                     'success' => true,
                     'data' => [
@@ -136,7 +165,8 @@ try {
                         // 🆕 Nuevos campos HH
                         'hh_disponibles'  => $hh_disponibles,
                         'tecnicos_plan'   => $tecnicos_plan,
-                        'hh_cobertura'    => $hh_cobertura
+                        'hh_cobertura'    => $hh_cobertura,
+                        'turnos_dist'     => $turnos_dist
                     ]
                 ]);
             } catch (Throwable $e) {
