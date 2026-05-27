@@ -9,8 +9,12 @@ define('APP_ENTRY_POINT', true);
         throw new Exception("Archivo de configuración no encontrado");
     }
     require_once $configPath;
-$user = getCurrentUser();
-$isAdmin = ($user['role'] === 'admin_hosp' || $user['role'] === 'admin');
+// Verificar sesión
+if (!isset($_SESSION['usuario_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'No autorizado']);
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
