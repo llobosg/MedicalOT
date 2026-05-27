@@ -573,8 +573,8 @@ class ImportarPlanificacionHH
     }
     
     /**
-     * Extrae las planificaciones diarias de una fila
-     */
+    * Extrae las planificaciones diarias de una fila
+    */
     private function extraerPlanificacionesDiarias($hoja, int $fila, array $mapaColumnas): array
     {
         $planificaciones = [];
@@ -583,7 +583,6 @@ class ImportarPlanificacionHH
             $col = $mapaColumnas["dia_$dia"] ?? null;
             if (!$col) continue;
             
-            // Validar que el día exista en el mes
             if (!checkdate($this->mes, $dia, $this->año)) {
                 continue;
             }
