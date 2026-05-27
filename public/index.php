@@ -1034,7 +1034,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     <p style="color:#64748b; margin:0.25rem 0 0 0; font-size:0.9rem;">Análisis en tiempo real de mantenimientos programados</p>
                 </div>
                 
-                <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+                <div style="padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1; background:#fff; font-size:0.85rem;">
                     <select id="filterYear" onchange="applyFilters()" style="...">
                         <option value="2026" <?= date('Y') == 2026 ? 'selected' : '' ?>>2026</option>
                         <option value="2025" <?= date('Y') == 2025 ? 'selected' : '' ?>>2025</option>
