@@ -25,24 +25,14 @@ DEALLOCATE PREPARE alterIfNotExists;"
   --user=root \
   --password='gwAfapwVMcrROKFxDvSSwhOeGhVepEfK' \
   --database=railway \
-  -e "INSERT INTO componentes (codigo, nombre, nombre_corto, grupo, descripcion, activo) VALUES
-('CLIMA', 'Climatización', 'Climatización', 'III', 'Mantenimiento y operación del sistema de climatización', 1),
-('CLIMA_PIC', 'Climatización-PIC', 'Climatización-PIC', 'III', 'Proyecto PIC - Climatización', 1),
-('SACC', 'Sistema de Automatización y Control Centralizado (SACC)', 'SACC', 'II', 'Mantenimiento y operación del SACC', 1),
-('ENERGIA', 'Sistema de Energía e Iluminación Artificial', 'Energía e Iluminación', 'II', 'Mantenimiento y operación del sistema de energía', 1),
-('GASES', 'Sistema de Gases Clínicos', 'Gases Clínicos', 'II', 'Mantenimiento y operación del sistema de gases clínicos', 1),
-('INFRA_SANIT', 'Infraestructura General y Sistema Sanitario', 'Infraestructura y Sist. Sanitario', 'I', 'Infraestructura general y mobiliario asociado al sistema sanitario', 1),
-('INFRA_MOB', 'Mantenimiento de Infraestructura General y Mobiliario', 'Mant. Infraestructura y Mobiliario', 'I', 'Mantenimiento de infraestructura general y mobiliario', 1),
-('AREAS_VERDES', 'Mantenimiento y Operación de Exteriores, Áreas Verdes y Paisajismo', 'Áreas Verdes y Paisajismo', 'I', 'Mantenimiento de áreas verdes y paisajismo', 1),
-('CORRIENTES', 'Corrientes Débiles + PCI + Correo Neumático', 'Corrientes Débiles+PCI+C_Neumático', 'II', 'Mantenimiento de corrientes débiles, PCI y correo neumático', 1)
-ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);"
+  -e "describe tipos_turno;"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
 
 
 git add .
-git commit -m "fix: KPIs filtro año, 2"
+git commit -m "fix: asistencia, 5"
 git push origin main
 
 base de datos AWS RDS
@@ -62,3 +52,8 @@ SET horas_estimadas = NULLIF(@horas_raw, '');
 
 
 /Applications/XAMPP/bin/php /Applications/XAMPP/xamppfiles/htdocs/medicalot/mantenimiento.csv
+
+
+ficha de mantenimiento de cada equipo, historial de preventivas y correctivas
+solicitud de repuestos
+tracking de compra repuestos
