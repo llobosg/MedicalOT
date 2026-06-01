@@ -333,6 +333,15 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             background-color: #ffffff !important;
             color: #1e293b !important;
         }
+
+        /* Ajuste para 4 columnas en pantallas grandes */
+        @media (min-width: 1400px) {
+            .ci-container { grid-template-columns: repeat(4, 1fr) !important; }
+        }
+        /* En pantallas medianas, 2x2 */
+        @media (max-width: 1399px) and (min-width: 900px) {
+            .ci-container { grid-template-columns: repeat(2, 1fr) !important; }
+        }
     </style>
 </head>
 <body>
@@ -533,7 +542,36 @@ $isAdmin = ($user['role'] === 'admin_hosp');
             <!-- Grid 3 Columnas -->
             <div class="ci-container">
 
-                <!-- ====== COLUMNA 1: PLANIFICACIÓN HH (Violeta) ====== -->
+                <!-- ====== COLUMNA 1: ESTADO FINAL (Cierre de Ciclo) ====== -->
+                <div class="ci-card" style="border-top-color:#ef4444;"> <!-- Rojo para indicar acción final/cierre -->
+                    <div class="ci-header">
+                        <h3 class="ci-title"><i class="bi bi-check-circle-fill" style="color:#ef4444;"></i> Estado Final</h3>
+                        <button class="ci-help-btn" onclick="openCIHelp('ejecucion')" title="Ayuda">?</button>
+                    </div>
+                    <div class="ci-desc">
+                        Cierra el ciclo de la OT. Importa HHs reales, tiempos de ejecución y estado final. Actualiza KPIs de eficiencia.
+                    </div>
+                    
+                    <div class="ci-dropzone" id="dropZoneEjecucion" onclick="document.getElementById('ejecucionFile').click()" style="border-color:#fecaca;">
+                        <input type="file" id="ejecucionFile" accept=".xlsx,.xls" style="display:none">
+                        <i class="bi bi-file-earmark-check" style="color:#ef4444;"></i>
+                        <p>Arrastra archivo de Cierre aquí</p>
+                        <small>.xlsx | Hoja "Estado Final"</small>
+                    </div>
+                    
+                    <div class="ci-progress" id="ejecucionProgressContainer">
+                        <div class="ci-bar-bg"><div class="ci-bar-fill" id="ejecucionProgressBar" style="width:0%; background:linear-gradient(90deg, #ef4444 0%, #b91c1c 100%);"></div></div>
+                        <p id="ejecucionProgressText" style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-align:center;"></p>
+                    </div>
+                    
+                    <div class="ci-result" id="ejecucionResult"></div>
+                    
+                    <div class="ci-bitacora">
+                        <div class="ci-bitacora-title">📋 Últimos cierres</div>
+                        <div id="bitacoraEjecucion"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
+                    </div>
+                </div>
+                <!-- ====== COLUMNA 2: PLANIFICACIÓN HH (Violeta) ====== -->
                 <div class="ci-card hh">
                     <div class="ci-header">
                         <h3 class="ci-title"><i class="bi bi-calendar-week"></i> Planificación HH</h3>
@@ -561,7 +599,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                 </div>
 
-                <!-- ====== COLUMNA 2: MANTENCIÓN NEW BD (Ámbar) ====== -->
+                <!-- ====== COLUMNA 3: MANTENCIÓN NEW BD (Ámbar) ====== -->
                 <div class="ci-card mant">
                     <div class="ci-header">
                         <h3 class="ci-title"><i class="bi bi-tools"></i> Mantención (NEW BD)</h3>
@@ -589,7 +627,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                 </div>
 
-                <!-- ====== COLUMNA 3: CARGA SIC (Azul) ====== -->
+                <!-- ====== COLUMNA 4: CARGA SIC (Azul) ====== -->
                 <div class="ci-card sic">
                     <div class="ci-header">
                         <h3 class="ci-title"><i class="bi bi-database"></i> Carga SIC</h3>
@@ -720,6 +758,26 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <p><span class="tag">SIC</span> Define la demanda anual de mantenimiento.<br>
                         <span class="tag">Mantención</span> Actualiza el estado y progreso de cada OT.<br>
                         <span class="tag">Planificación HH</span> Permite verificar si hay capacidad para cubrir la demanda SIC.</p>
+                    `
+                },
+                ejecucion: {
+                    cls: 'sic', // Usamos estilo rojo o azul, da igual
+                    title: '🛑 Estado Final (Cierre de OT)',
+                    body: `
+                        <p>Este archivo cierra el ciclo de vida de la Orden de Trabajo. Registra lo que <strong>realmente</strong> ocurrió en terreno.</p>
+                        <h4>🔗 Vinculación</h4>
+                        <ul>
+                            <li><strong>Llave:</strong> Columna B (<code>id_prevision</code>) vincula con la planificación SIC.</li>
+                            <li><strong>Técnico:</strong> Columna AV busca vincular con la tabla <code>tecnicos</code> para KPIs de ocupación.</li>
+                            <li><strong>HH Reales:</strong> Columna BN (<code>Horas</code>) se compara contra las HH Planificadas para calcular desviaciones.</li>
+                        </ul>
+                        <h4>📊 Impacto en KPIs</h4>
+                        <p>Al importar este archivo, se actualizan automáticamente:</p>
+                        <ul>
+                            <li>% Cumplimiento de Tiempos (Real vs Programado).</li>
+                            <li>Eficiencia de Técnicos (HH Consumidas).</li>
+                            <li>Estado real de Equipos (Operativo/Falla).</li>
+                        </ul>
                     `
                 }
             };
