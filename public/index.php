@@ -466,101 +466,251 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         </section>
 
         <?php if($isAdmin): ?>
-        <section id="carga-sic" class="module-section">
+            <section id="carga-sic" class="module-section">
             <style>
-                /* === CENTRO DE IMPORTACIONES === */
-                .ci-container { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; max-width:1400px; margin:0 auto; padding:0 1rem; }
-                .ci-card { background:#fff; border-radius:1rem; padding:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.07); border-top:4px solid #ccc; display:flex; flex-direction:column; height:100%; transition:transform 0.2s, box-shadow 0.2s; }
-                .ci-card:hover { transform:translateY(-2px); box-shadow:0 8px 15px -3px rgba(0,0,0,0.1); }
-                .ci-card.hh { border-top-color:#8b5cf6; }
-                .ci-card.mant { border-top-color:#f59e0b; }
-                .ci-card.sic { border-top-color:#3b82f6; }
-                .ci-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; }
-                .ci-title { font-size:1.1rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.5rem; margin:0; }
-                .ci-help-btn { width:28px; height:28px; border-radius:50%; border:2px solid #e2e8f0; background:#fff; color:#64748b; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.85rem; transition:all 0.2s; flex-shrink:0; }
-                .ci-help-btn:hover { border-color:#8b5cf6; color:#8b5cf6; background:#f5f3ff; }
-                .ci-desc { font-size:0.8rem; color:#64748b; margin-bottom:1rem; line-height:1.4; }
-                .ci-dropzone { border:2px dashed #cbd5e1; border-radius:0.75rem; padding:1.5rem 1rem; text-align:center; cursor:pointer; transition:all 0.3s; background:#fafbfc; min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; flex:0 0 auto; }
-                .ci-dropzone:hover, .ci-dropzone.dragover { border-color:#8b5cf6; background:#f5f3ff; }
-                .ci-dropzone.mant:hover, .ci-dropzone.mant.dragover { border-color:#f59e0b; background:#fffbeb; }
-                .ci-dropzone.sic:hover, .ci-dropzone.sic.dragover { border-color:#3b82f6; background:#eff6ff; }
-                .ci-dropzone i { font-size:2rem; margin-bottom:0.5rem; }
-                .ci-dropzone.hh i { color:#8b5cf6; }
-                .ci-dropzone.mant i { color:#f59e0b; }
-                .ci-dropzone.sic i { color:#3b82f6; }
-                .ci-dropzone p { margin:0; font-size:0.85rem; color:#475569; font-weight:600; }
-                .ci-dropzone small { font-size:0.7rem; color:#94a3b8; margin-top:0.3rem; }
-                .ci-progress { display:none; margin-top:0.75rem; animation:fadeIn 0.3s ease; }
-                .ci-bar-bg { height:6px; border-radius:6px; overflow:hidden; background:#e9ecef; }
-                .ci-bar-fill { height:100%; border-radius:6px; transition:width 0.5s ease; }
-                .ci-bar-fill.hh { background:linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%); }
-                .ci-bar-fill.mant { background:linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
-                .ci-bar-fill.sic { background:linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); }
-                .ci-result { display:none; margin-top:0.75rem; padding:1rem; border-radius:0.5rem; font-size:0.8rem; line-height:1.6; animation:fadeIn 0.3s ease; }
-                .ci-result.success { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
-                .ci-result.error { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
-                .ci-result-line { display:flex; align-items:center; gap:0.4rem; margin-bottom:0.2rem; }
-                .ci-close-btn { margin-top:0.75rem; width:100%; padding:0.5rem; border:1px solid #e2e8f0; border-radius:0.5rem; background:#fff; color:#475569; font-size:0.8rem; cursor:pointer; transition:all 0.2s; font-weight:500; }
-                .ci-close-btn:hover { background:#f8fafc; border-color:#cbd5e1; }
-                .ci-bitacora { margin-top:auto; padding-top:1rem; border-top:1px solid #f1f5f9; flex:1; min-height:0; overflow-y:auto; }
-                .ci-bitacora-title { font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.5rem; }
-                .ci-log-item { display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid #f8fafc; font-size:0.72rem; }
-                .ci-log-item:last-child { border-bottom:none; }
-                .ci-log-name { color:#334155; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:55%; }
-                .ci-log-meta { color:#94a3b8; text-align:right; white-space:nowrap; display:flex; align-items:center; gap:0.3rem; }
-                .ci-log-badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:0.65rem; font-weight:700; }
-                .ci-log-badge.ok { background:#dcfce7; color:#166534; }
-                .ci-log-badge.err { background:#fee2e2; color:#991b1b; }
+                /* === CENTRO DE IMPORTACIONES - LAYOUT 4 COLUMNAS HOMOGÉNEO === */
+                .ci-container { 
+                    display: grid; 
+                    grid-template-columns: repeat(4, 1fr); /* 4 Columnas Iguales */
+                    gap: 1rem; 
+                    max-width: 1600px; 
+                    margin: 0 auto; 
+                    padding: 0 1rem; 
+                    align-items: stretch; /* Fuerza misma altura */
+                }
+                
+                .ci-card { 
+                    background: #fff; 
+                    border-radius: 1rem; 
+                    padding: 1.25rem; 
+                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.07); 
+                    border-top: 5px solid #ccc; 
+                    display: flex; 
+                    flex-direction: column; 
+                    height: 100%; /* Ocupa toda la altura disponible */
+                    transition: transform 0.2s, box-shadow 0.2s; 
+                    position: relative;
+                }
+                
+                .ci-card:hover { 
+                    transform: translateY(-3px); 
+                    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); 
+                }
+
+                /* Colores por tarjeta */
+                .ci-card.ejecucion { border-top-color: #ef4444; } /* Rojo - Cierre */
+                .ci-card.hh { border-top-color: #8b5cf6; }       /* Violeta - Planificación */
+                .ci-card.mant { border-top-color: #f59e0b; }     /* Ámbar - Mantención */
+                .ci-card.sic { border-top-color: #3b82f6; }      /* Azul - SIC */
+
+                .ci-header { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: center; 
+                    margin-bottom: 0.75rem; 
+                    flex-shrink: 0; /* No se encoge */
+                }
+                
+                .ci-title { 
+                    font-size: 1rem; 
+                    font-weight: 700; 
+                    color: #1e293b; 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 0.5rem; 
+                    margin: 0; 
+                }
+                
+                .ci-help-btn { 
+                    width: 24px; 
+                    height: 24px; 
+                    border-radius: 50%; 
+                    border: 2px solid #e2e8f0; 
+                    background: #fff; 
+                    color: #64748b; 
+                    font-weight: 700; 
+                    cursor: pointer; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: 0.75rem; 
+                    transition: all 0.2s; 
+                    flex-shrink: 0; 
+                }
+                .ci-help-btn:hover { border-color: currentColor; background: #f8fafc; }
+
+                .ci-desc { 
+                    font-size: 0.75rem; 
+                    color: #64748b; 
+                    margin-bottom: 1rem; 
+                    line-height: 1.4; 
+                    flex-shrink: 0;
+                }
+                
+                /* Dropzone Uniforme */
+                .ci-dropzone { 
+                    border: 2px dashed #cbd5e1; 
+                    border-radius: 0.75rem; 
+                    padding: 1.5rem 1rem; 
+                    text-align: center; 
+                    cursor: pointer; 
+                    transition: all 0.3s; 
+                    background: #fafbfc; 
+                    min-height: 140px; /* Altura mínima fija */
+                    display: flex; 
+                    flex-direction: column; 
+                    align-items: center; 
+                    justify-content: center; 
+                    flex: 0 0 auto; 
+                    margin-bottom: 1rem;
+                }
+                
+                .ci-dropzone:hover, .ci-dropzone.dragover { 
+                    border-color: currentColor; 
+                    background: #f0f9ff; 
+                    transform: scale(1.02);
+                }
+                
+                /* Colores específicos hover */
+                .ci-card.ejecucion .ci-dropzone:hover, .ci-card.ejecucion .ci-dropzone.dragover { border-color: #ef4444; background: #fef2f2; }
+                .ci-card.hh .ci-dropzone:hover, .ci-card.hh .ci-dropzone.dragover { border-color: #8b5cf6; background: #f5f3ff; }
+                .ci-card.mant .ci-dropzone:hover, .ci-card.mant .ci-dropzone.dragover { border-color: #f59e0b; background: #fffbeb; }
+                .ci-card.sic .ci-dropzone:hover, .ci-card.sic .ci-dropzone.dragover { border-color: #3b82f6; background: #eff6ff; }
+
+                .ci-dropzone i { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.8; }
+                .ci-card.ejecucion .ci-dropzone i { color: #ef4444; }
+                .ci-card.hh .ci-dropzone i { color: #8b5cf6; }
+                .ci-card.mant .ci-dropzone i { color: #f59e0b; }
+                .ci-card.sic .ci-dropzone i { color: #3b82f6; }
+
+                .ci-dropzone p { margin: 0; font-size: 0.85rem; color: #475569; font-weight: 600; }
+                .ci-dropzone small { font-size: 0.7rem; color: #94a3b8; margin-top: 0.3rem; display: block; }
+
+                /* Progreso y Resultados */
+                .ci-progress { display: none; margin-top: 0.5rem; animation: fadeIn 0.3s ease; flex-shrink: 0; }
+                .ci-bar-bg { height: 6px; border-radius: 6px; overflow: hidden; background: #e9ecef; }
+                .ci-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease; }
+                
+                .ci-card.ejecucion .ci-bar-fill { background: linear-gradient(90deg, #ef4444 0%, #b91c1c 100%); }
+                .ci-card.hh .ci-bar-fill { background: linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%); }
+                .ci-card.mant .ci-bar-fill { background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
+                .ci-card.sic .ci-bar-fill { background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); }
+
+                .ci-result { 
+                    display: none; 
+                    margin-top: 0.75rem; 
+                    padding: 0.75rem; 
+                    border-radius: 0.5rem; 
+                    font-size: 0.75rem; 
+                    line-height: 1.5; 
+                    animation: fadeIn 0.3s ease; 
+                    flex-shrink: 0;
+                }
+                .ci-result.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+                .ci-result.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+                
+                .ci-close-btn { 
+                    margin-top: 0.5rem; 
+                    width: 100%; 
+                    padding: 0.4rem; 
+                    border: 1px solid #e2e8f0; 
+                    border-radius: 0.5rem; 
+                    background: #fff; 
+                    color: #475569; 
+                    font-size: 0.75rem; 
+                    cursor: pointer; 
+                    transition: all 0.2s; 
+                    font-weight: 500; 
+                }
+                .ci-close-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+                /* Bitácora con Scroll Interno para mantener altura */
+                .ci-bitacora { 
+                    margin-top: auto; /* Empuja hacia abajo */
+                    padding-top: 0.75rem; 
+                    border-top: 1px solid #f1f5f9; 
+                    flex: 1; /* Ocupa espacio restante */
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 0; /* Importante para scroll */
+                    overflow: hidden;
+                }
+                
+                .ci-bitacora-title { 
+                    font-size: 0.7rem; 
+                    font-weight: 700; 
+                    color: #94a3b8; 
+                    text-transform: uppercase; 
+                    letter-spacing: 0.5px; 
+                    margin-bottom: 0.4rem; 
+                    flex-shrink: 0;
+                }
+                
+                .ci-log-container {
+                    flex: 1;
+                    overflow-y: auto;
+                    max-height: 150px; /* Limita altura máxima */
+                    padding-right: 4px;
+                }
+
+                .ci-log-item { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: center; 
+                    padding: 0.3rem 0; 
+                    border-bottom: 1px solid #f8fafc; 
+                    font-size: 0.7rem; 
+                }
+                .ci-log-item:last-child { border-bottom: none; }
+                .ci-log-name { color: #334155; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+                .ci-log-meta { color: #94a3b8; text-align: right; white-space: nowrap; display: flex; align-items: center; gap: 0.3rem; }
+                
+                .ci-log-badge { display: inline-block; padding: 1px 5px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; }
+                .ci-log-badge.ok { background: #dcfce7; color: #166534; }
+                .ci-log-badge.err { background: #fee2e2; color: #991b1b; }
+
                 /* Modal Ayuda */
-                .ci-modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; animation:fadeIn 0.2s ease; }
-                .ci-modal-overlay.active { display:flex; }
-                .ci-modal { background:#fff; border-radius:1rem; max-width:550px; width:90%; max-height:80vh; overflow-y:auto; padding:2rem; box-shadow:0 20px 60px rgba(0,0,0,0.2); position:relative; }
-                .ci-modal-close { position:absolute; top:1rem; right:1rem; width:32px; height:32px; border-radius:50%; border:none; background:#f1f5f9; color:#64748b; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; }
-                .ci-modal-close:hover { background:#e2e8f0; }
-                .ci-modal h3 { margin:0 0 0.5rem; font-size:1.15rem; }
-                .ci-modal.hh h3 { color:#7c3aed; }
-                .ci-modal.mant h3 { color:#d97706; }
-                .ci-modal.sic h3 { color:#2563eb; }
-                .ci-modal p, .ci-modal li { font-size:0.85rem; color:#475569; line-height:1.6; }
-                .ci-modal ul { padding-left:1.2rem; margin:0.5rem 0; }
-                .ci-modal table { width:100%; border-collapse:collapse; margin:0.75rem 0; font-size:0.8rem; }
-                .ci-modal th { background:#f8fafc; padding:0.5rem; text-align:left; border-bottom:2px solid #e2e8f0; color:#334155; }
-                .ci-modal td { padding:0.5rem; border-bottom:1px solid #f1f5f9; color:#475569; }
-                .ci-modal .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700; }
-                .ci-modal.hh .tag { background:#ede9fe; color:#7c3aed; }
-                .ci-modal.mant .tag { background:#fef3c7; color:#d97706; }
-                .ci-modal.sic .tag { background:#dbeafe; color:#2563eb; }
-                @media(max-width:1000px) { .ci-container { grid-template-columns:1fr; } }
+                .ci-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; animation: fadeIn 0.2s ease; }
+                .ci-modal-overlay.active { display: flex; }
+                .ci-modal { background: #fff; border-radius: 1rem; max-width: 550px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative; }
+                .ci-modal-close { position: absolute; top: 1rem; right: 1rem; width: 32px; height: 32px; border-radius: 50%; border: none; background: #f1f5f9; color: #64748b; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+                .ci-modal-close:hover { background: #e2e8f0; }
+                .ci-modal h3 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+                .ci-modal p, .ci-modal li { font-size: 0.85rem; color: #475569; line-height: 1.6; }
+                .ci-modal ul { padding-left: 1.2rem; margin: 0.5rem 0; }
+                
+                @media (max-width: 1400px) { .ci-container { grid-template-columns: repeat(2, 1fr); } }
+                @media (max-width: 900px) { .ci-container { grid-template-columns: 1fr; } }
             </style>
 
             <!-- Header -->
-            <div style="max-width:1400px; margin:0 auto; padding:0 1rem 1rem;">
-                <h2 style="font-size:1.5rem; font-weight:700; color:#1e293b; margin-bottom:0.25rem;">📦 Centro de Importaciones</h2>
-                <p style="font-size:0.85rem; color:#64748b; margin:0;">Gestiona las cargas de datos del sistema. Cada archivo alimenta una capa diferente del análisis.</p>
+            <div style="max-width: 1600px; margin: 0 auto; padding: 0 1rem 1rem;">
+                <h2 style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-bottom: 0.25rem;">📦 Centro de Importaciones</h2>
+                <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Gestiona las cargas de datos del sistema. Cada archivo alimenta una capa diferente del análisis.</p>
             </div>
 
-            <!-- Grid 3 Columnas -->
+            <!-- Grid 4 Columnas -->
             <div class="ci-container">
 
                 <!-- ====== COLUMNA 1: ESTADO FINAL (Cierre de Ciclo) ====== -->
-                <div class="ci-card" style="border-top-color:#ef4444;"> <!-- Rojo para indicar acción final/cierre -->
+                <div class="ci-card ejecucion">
                     <div class="ci-header">
-                        <h3 class="ci-title"><i class="bi bi-check-circle-fill" style="color:#ef4444;"></i> Estado Final</h3>
-                        <button class="ci-help-btn" onclick="openCIHelp('ejecucion')" title="Ayuda">?</button>
+                        <h3 class="ci-title"><i class="bi bi-check-circle-fill"></i> Estado Final</h3>
+                        <button class="ci-help-btn" onclick="openCIHelp('ejecucion')" title="Ayuda" style="color:#ef4444; border-color:#fecaca;">?</button>
                     </div>
                     <div class="ci-desc">
                         Cierra el ciclo de la OT. Importa HHs reales, tiempos de ejecución y estado final. Actualiza KPIs de eficiencia.
                     </div>
                     
-                    <div class="ci-dropzone" id="dropZoneEjecucion" onclick="document.getElementById('ejecucionFile').click()" style="border-color:#fecaca;">
+                    <div class="ci-dropzone" id="dropZoneEjecucion" onclick="document.getElementById('ejecucionFile').click()">
                         <input type="file" id="ejecucionFile" accept=".xlsx,.xls" style="display:none">
-                        <i class="bi bi-file-earmark-check" style="color:#ef4444;"></i>
+                        <i class="bi bi-file-earmark-check"></i>
                         <p>Arrastra archivo de Cierre aquí</p>
                         <small>.xlsx | Hoja "Estado Final"</small>
                     </div>
                     
                     <div class="ci-progress" id="ejecucionProgressContainer">
-                        <div class="ci-bar-bg"><div class="ci-bar-fill" id="ejecucionProgressBar" style="width:0%; background:linear-gradient(90deg, #ef4444 0%, #b91c1c 100%);"></div></div>
+                        <div class="ci-bar-bg"><div class="ci-bar-fill" id="ejecucionProgressBar" style="width:0%;"></div></div>
                         <p id="ejecucionProgressText" style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-align:center;"></p>
                     </div>
                     
@@ -568,18 +718,21 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     
                     <div class="ci-bitacora">
                         <div class="ci-bitacora-title">📋 Últimos cierres</div>
-                        <div id="bitacoraEjecucion"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
+                        <div class="ci-log-container" id="bitacoraEjecucion"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
                     </div>
                 </div>
+
                 <!-- ====== COLUMNA 2: PLANIFICACIÓN HH (Violeta) ====== -->
                 <div class="ci-card hh">
                     <div class="ci-header">
                         <h3 class="ci-title"><i class="bi bi-calendar-week"></i> Planificación HH</h3>
-                        <button class="ci-help-btn" onclick="openCIHelp('hh')" title="Ayuda">?</button>
+                        <button class="ci-help-btn" onclick="openCIHelp('hh')" title="Ayuda" style="color:#8b5cf6; border-color:#ddd6fe;">?</button>
                     </div>
-                    <div class="ci-desc">Dotación mensual de técnicos con turnos y horas planificadas. Se carga <strong>mensual o semanalmente</strong>.</div>
+                    <div class="ci-desc">
+                        Dotación mensual de técnicos con turnos y horas planificadas. Se carga <strong>mensual o semanalmente</strong>.
+                    </div>
                     
-                    <div class="ci-dropzone hh" id="dropZoneHH" onclick="document.getElementById('hhFile').click()">
+                    <div class="ci-dropzone" id="dropZoneHH" onclick="document.getElementById('hhFile').click()">
                         <input type="file" id="hhFile" accept=".xlsx,.xls" style="display:none">
                         <i class="bi bi-file-earmark-spreadsheet"></i>
                         <p>Arrastra archivo Excel aquí</p>
@@ -587,7 +740,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                     
                     <div class="ci-progress" id="hhProgressContainer">
-                        <div class="ci-bar-bg"><div class="ci-bar-fill hh" id="hhProgressBar" style="width:0%"></div></div>
+                        <div class="ci-bar-bg"><div class="ci-bar-fill" id="hhProgressBar" style="width:0%;"></div></div>
                         <p id="hhProgressText" style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-align:center;"></p>
                     </div>
                     
@@ -595,7 +748,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     
                     <div class="ci-bitacora">
                         <div class="ci-bitacora-title">📋 Últimas cargas</div>
-                        <div id="bitacoraHH"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
+                        <div class="ci-log-container" id="bitacoraHH"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
                     </div>
                 </div>
 
@@ -603,11 +756,13 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <div class="ci-card mant">
                     <div class="ci-header">
                         <h3 class="ci-title"><i class="bi bi-tools"></i> Mantención (NEW BD)</h3>
-                        <button class="ci-help-btn" onclick="openCIHelp('mant')" title="Ayuda">?</button>
+                        <button class="ci-help-btn" onclick="openCIHelp('mant')" title="Ayuda" style="color:#f59e0b; border-color:#fde68a;">?</button>
                     </div>
-                    <div class="ci-desc">Planificaciones y ejecuciones del sistema de mantenimiento. Actualiza HHs, especialidades y estados de OTs.</div>
+                    <div class="ci-desc">
+                        Planificaciones y ejecuciones del sistema de mantenimiento. Actualiza HHs, especialidades y estados de OTs.
+                    </div>
                     
-                    <div class="ci-dropzone mant" id="dropZoneMantencion" onclick="document.getElementById('mantencionFile').click()">
+                    <div class="ci-dropzone" id="dropZoneMantencion" onclick="document.getElementById('mantencionFile').click()">
                         <input type="file" id="mantencionFile" accept=".xlsx,.xls,.csv" style="display:none">
                         <i class="bi bi-gear-wide-connected"></i>
                         <p>Arrastra archivo aquí</p>
@@ -615,7 +770,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                     
                     <div class="ci-progress" id="mantProgressContainer">
-                        <div class="ci-bar-bg"><div class="ci-bar-fill mant" id="mantProgressBar" style="width:0%"></div></div>
+                        <div class="ci-bar-bg"><div class="ci-bar-fill" id="mantProgressBar" style="width:0%;"></div></div>
                         <p id="mantProgressText" style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-align:center;"></p>
                     </div>
                     
@@ -623,7 +778,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     
                     <div class="ci-bitacora">
                         <div class="ci-bitacora-title">📋 Últimas cargas</div>
-                        <div id="bitacoraMant"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
+                        <div class="ci-log-container" id="bitacoraMant"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
                     </div>
                 </div>
 
@@ -631,11 +786,13 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 <div class="ci-card sic">
                     <div class="ci-header">
                         <h3 class="ci-title"><i class="bi bi-database"></i> Carga SIC</h3>
-                        <button class="ci-help-btn" onclick="openCIHelp('sic')" title="Ayuda">?</button>
+                        <button class="ci-help-btn" onclick="openCIHelp('sic')" title="Ayuda" style="color:#3b82f6; border-color:#bfdbfe;">?</button>
                     </div>
-                    <div class="ci-desc">Órdenes de trabajo y planificación anual del sistema SIC. Se carga <strong>una vez al año</strong> como base inicial.</div>
+                    <div class="ci-desc">
+                        Órdenes de trabajo y planificación anual del sistema SIC. Se carga <strong>una vez al año</strong> como base inicial.
+                    </div>
                     
-                    <div class="ci-dropzone sic" id="dropZone" onclick="document.getElementById('sicFile').click()">
+                    <div class="ci-dropzone" id="dropZoneSIC" onclick="document.getElementById('sicFile').click()">
                         <input type="file" id="sicFile" accept=".csv" style="display:none">
                         <i class="bi bi-server"></i>
                         <p>Arrastra archivo CSV aquí</p>
@@ -643,7 +800,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     </div>
                     
                     <div class="ci-progress" id="sicProgressContainer">
-                        <div class="ci-bar-bg"><div class="ci-bar-fill sic" id="sicProgressBar" style="width:0%"></div></div>
+                        <div class="ci-bar-bg"><div class="ci-bar-fill" id="sicProgressBar" style="width:0%;"></div></div>
                         <p id="sicProgressText" style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-align:center;"></p>
                     </div>
                     
@@ -651,7 +808,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     
                     <div class="ci-bitacora">
                         <div class="ci-bitacora-title">📋 Últimas cargas</div>
-                        <div id="bitacoraSIC"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
+                        <div class="ci-log-container" id="bitacoraSIC"><p style="font-size:0.72rem; color:#cbd5e1; text-align:center; margin:0;">Sin cargas recientes</p></div>
                     </div>
                 </div>
             </div>
@@ -676,6 +833,26 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
             // === CONTENIDO DE MODALES DE AYUDA ===
             const ciHelpContent = {
+                ejecucion: {
+                    cls: 'ejecucion',
+                    title: '🛑 Estado Final (Cierre de OT)',
+                    body: `
+                        <p>Este archivo cierra el ciclo de vida de la Orden de Trabajo. Registra lo que <strong>realmente</strong> ocurrió en terreno.</p>
+                        <h4>🔗 Vinculación</h4>
+                        <ul>
+                            <li><strong>Llave:</strong> Columna B (<code>id_prevision</code>) vincula con la planificación SIC.</li>
+                            <li><strong>Técnico:</strong> Columna AV busca vincular con la tabla <code>tecnicos</code> para KPIs de ocupación.</li>
+                            <li><strong>HH Reales:</strong> Columna BN (<code>Horas</code>) se compara contra las HH Planificadas para calcular desviaciones.</li>
+                        </ul>
+                        <h4>📊 Impacto en KPIs</h4>
+                        <p>Al importar este archivo, se actualizan automáticamente:</p>
+                        <ul>
+                            <li>% Cumplimiento de Tiempos (Real vs Programado).</li>
+                            <li>Eficiencia de Técnicos (HH Consumidas).</li>
+                            <li>Estado real de Equipos (Operativo/Falla).</li>
+                        </ul>
+                    `
+                },
                 hh: {
                     cls: 'hh',
                     title: '📅 Planificación de Horas-Hombre',
@@ -691,19 +868,12 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <table>
                             <tr><th>Columna</th><th>Descripción</th><th>Ejemplo</th></tr>
                             <tr><td>#</td><td>Número de fila</td><td>1, 2, 3...</td></tr>
-                            <tr><td>AREA</td><td>Área/departamento</td><td>Clima, Eléctrico</td></tr>
                             <tr><td>RUT</td><td>RUT del técnico</td><td>12345678-9</td></tr>
-                            <tr><td>CARGO</td><td>Cargo del técnico</td><td>Técnico Climatización</td></tr>
-                            <tr><td>Componente</td><td>Componente asignado</td><td>Climatización</td></tr>
                             <tr><td>Apellidos y Nombres</td><td>Nombre completo</td><td>Juan Pérez</td></tr>
                             <tr><td>HH</td><td>Aporta horas hombre</td><td>SI / NO</td></tr>
                             <tr><td>Estatus</td><td>Estado del técnico</td><td>Activo / Vacante</td></tr>
                             <tr><td>4/1/26 ... 4/30/26</td><td>Código de turno por día</td><td>7, 9, -1, 6</td></tr>
                         </table>
-                        <h4>🔗 Vinculación con otras cargas</h4>
-                        <p><span class="tag">SIC</span> Proporciona las OTs y HH demandadas.<br>
-                        <span class="tag">Mantención</span> Actualiza estados y ejecuciones reales.<br>
-                        <span class="tag">Planificación HH</span> Proporciona la oferta de HH disponibles para cubrir la demanda.</p>
                     `
                 },
                 mant: {
@@ -727,10 +897,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                             <tr><td>Fecha Programada</td><td>Fecha de ejecución planificada</td></tr>
                             <tr><td>Estado</td><td>Pendiente, En Ejecución, Completada</td></tr>
                         </table>
-                        <h4>🔗 Vinculación con otras cargas</h4>
-                        <p><span class="tag">SIC</span> Las OTs se originan en la carga SIC.<br>
-                        <span class="tag">Mantención</span> Enriquece con datos de ejecución real.<br>
-                        <span class="tag">Planificación HH</span> Permite comparar HH planificadas vs HH disponibles.</p>
                     `
                 },
                 sic: {
@@ -754,30 +920,6 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                             <tr><td>Periodicidad</td><td>Mensual, Semestral, Anual</td></tr>
                             <tr><td>Estado</td><td>Estado actual de la OT</td></tr>
                         </table>
-                        <h4>🔗 Vinculación con otras cargas</h4>
-                        <p><span class="tag">SIC</span> Define la demanda anual de mantenimiento.<br>
-                        <span class="tag">Mantención</span> Actualiza el estado y progreso de cada OT.<br>
-                        <span class="tag">Planificación HH</span> Permite verificar si hay capacidad para cubrir la demanda SIC.</p>
-                    `
-                },
-                ejecucion: {
-                    cls: 'sic', // Usamos estilo rojo o azul, da igual
-                    title: '🛑 Estado Final (Cierre de OT)',
-                    body: `
-                        <p>Este archivo cierra el ciclo de vida de la Orden de Trabajo. Registra lo que <strong>realmente</strong> ocurrió en terreno.</p>
-                        <h4>🔗 Vinculación</h4>
-                        <ul>
-                            <li><strong>Llave:</strong> Columna B (<code>id_prevision</code>) vincula con la planificación SIC.</li>
-                            <li><strong>Técnico:</strong> Columna AV busca vincular con la tabla <code>tecnicos</code> para KPIs de ocupación.</li>
-                            <li><strong>HH Reales:</strong> Columna BN (<code>Horas</code>) se compara contra las HH Planificadas para calcular desviaciones.</li>
-                        </ul>
-                        <h4>📊 Impacto en KPIs</h4>
-                        <p>Al importar este archivo, se actualizan automáticamente:</p>
-                        <ul>
-                            <li>% Cumplimiento de Tiempos (Real vs Programado).</li>
-                            <li>Eficiencia de Técnicos (HH Consumidas).</li>
-                            <li>Estado real de Equipos (Operativo/Falla).</li>
-                        </ul>
                     `
                 }
             };
@@ -806,6 +948,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 if (type === 'hh') count = stats.total_tecnicos || stats.planificaciones_creadas || 0;
                 else if (type === 'mant') count = stats.updated || stats.processed || 0;
                 else if (type === 'sic') count = stats.inserted || stats.total || 0;
+                else if (type === 'ejecucion') count = stats.insertados || stats.actualizados || 0;
                 
                 history.unshift({ name: fileName, time: timeStr, date: dateStr, count: count, ok: success });
                 localStorage.setItem(key, JSON.stringify(history.slice(0, 10)));
@@ -814,7 +957,12 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
             function renderBitacora(type) {
                 const key = 'ci_bitacora_' + type;
-                const containerId = type === 'hh' ? 'bitacoraHH' : type === 'mant' ? 'bitacoraMant' : 'bitacoraSIC';
+                let containerId = '';
+                if (type === 'hh') containerId = 'bitacoraHH';
+                else if (type === 'mant') containerId = 'bitacoraMant';
+                else if (type === 'sic') containerId = 'bitacoraSIC';
+                else if (type === 'ejecucion') containerId = 'bitacoraEjecucion';
+                
                 const container = document.getElementById(containerId);
                 if (!container) return;
                 
@@ -837,7 +985,12 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
             // === MOSTRAR RESULTADO SIMPLIFICADO ===
             function showCIResult(type, success, stats, periodo) {
-                const resultId = type === 'hh' ? 'hhResult' : type === 'mant' ? 'mantResult' : 'sicResult';
+                let resultId = '';
+                if (type === 'hh') resultId = 'hhResult';
+                else if (type === 'mant') resultId = 'mantResult';
+                else if (type === 'sic') resultId = 'sicResult';
+                else if (type === 'ejecucion') resultId = 'ejecucionResult';
+                
                 const el = document.getElementById(resultId);
                 if (!el) return;
                 
@@ -868,6 +1021,11 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         <div class="ci-result-line">📊 Registros leídos: ${stats.total || 0}</div>
                         <div class="ci-result-line">✅ OTs nuevas importadas: ${stats.inserted || 0}</div>
                         <div class="ci-result-line">⚠️ OTs duplicadas omitidas: ${stats.skipped || 0}</div>`;
+                } else if (type === 'ejecucion') {
+                    lines = `<div class="ci-result-line">✅ <strong>Cierre Exitoso</strong></div>
+                        <div class="ci-result-line">📝 OTs cerradas: ${stats.insertados || 0}</div>
+                        <div class="ci-result-line">🔄 OTs actualizadas: ${stats.actualizados || 0}</div>
+                        <div class="ci-result-line">❌ Errores: ${stats.errores || 0}</div>`;
                 }
                 
                 lines += `<button class="ci-close-btn" onclick="this.parentElement.style.display='none'">Cerrar</button>`;
@@ -880,8 +1038,22 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 const input = document.getElementById(fileInputId);
                 if (!drop || !input) return;
                 
-                drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
-                drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+                // Click to upload
+                drop.addEventListener('click', (e) => {
+                    // Evitar doble trigger si se hace click en el input invisible
+                    if(e.target !== input) input.click();
+                });
+
+                // Drag events
+                drop.addEventListener('dragover', (e) => { 
+                    e.preventDefault(); 
+                    drop.classList.add('dragover'); 
+                });
+                
+                drop.addEventListener('dragleave', () => { 
+                    drop.classList.remove('dragover'); 
+                });
+                
                 drop.addEventListener('drop', (e) => {
                     e.preventDefault();
                     drop.classList.remove('dragover');
@@ -890,6 +1062,8 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         handleCIUpload(e.dataTransfer.files[0], barId, textId, progressId, type);
                     }
                 });
+                
+                // File input change
                 input.addEventListener('change', () => {
                     if (input.files.length > 0) handleCIUpload(input.files[0], barId, textId, progressId, type);
                 });
@@ -902,7 +1076,12 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 const progress = document.getElementById(progressId);
                 
                 // Ocultar resultado anterior
-                const resultId = type === 'hh' ? 'hhResult' : type === 'mant' ? 'mantResult' : 'sicResult';
+                let resultId = '';
+                if (type === 'hh') resultId = 'hhResult';
+                else if (type === 'mant') resultId = 'mantResult';
+                else if (type === 'sic') resultId = 'sicResult';
+                else if (type === 'ejecucion') resultId = 'ejecucionResult';
+                
                 const resultEl = document.getElementById(resultId);
                 if (resultEl) resultEl.style.display = 'none';
                 
@@ -921,9 +1100,12 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 } else if (type === 'mant') {
                     endpoint = 'api/carga_mantencion.php';
                     fieldName = 'mantencion_file';
-                } else {
+                } else if (type === 'sic') {
                     endpoint = 'api/import_sic.php';
                     fieldName = 'sicFile';
+                } else if (type === 'ejecucion') {
+                    endpoint = 'api/importar_ejecucion.php';
+                    fieldName = 'archivo';
                 }
                 
                 formData.append(fieldName, file);
@@ -951,7 +1133,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                         addToBitacora(type, file.name, stats, success);
                         
                         // Limpiar input
-                        const inputId = type === 'hh' ? 'hhFile' : type === 'mant' ? 'mantencionFile' : 'sicFile';
+                        const inputId = type === 'hh' ? 'hhFile' : type === 'mant' ? 'mantencionFile' : type === 'sic' ? 'sicFile' : 'ejecucionFile';
                         const inputEl = document.getElementById(inputId);
                         if (inputEl) inputEl.value = '';
                     }, 500);
@@ -970,17 +1152,19 @@ $isAdmin = ($user['role'] === 'admin_hosp');
 
             // === INICIALIZAR ZONAS DE CARGA ===
             (function initCI() {
+                setupCIDropZone('dropZoneEjecucion', 'ejecucionFile', 'ejecucionProgressBar', 'ejecucionProgressText', 'ejecucionProgressContainer', 'ejecucion');
                 setupCIDropZone('dropZoneHH', 'hhFile', 'hhProgressBar', 'hhProgressText', 'hhProgressContainer', 'hh');
                 setupCIDropZone('dropZoneMantencion', 'mantencionFile', 'mantProgressBar', 'mantProgressText', 'mantProgressContainer', 'mant');
-                setupCIDropZone('dropZone', 'sicFile', 'sicProgressBar', 'sicProgressText', 'sicProgressContainer', 'sic');
+                setupCIDropZone('dropZoneSIC', 'sicFile', 'sicProgressBar', 'sicProgressText', 'sicProgressContainer', 'sic');
                 
                 // Renderizar bitácoras al cargar
+                renderBitacora('ejecucion');
                 renderBitacora('hh');
                 renderBitacora('mant');
                 renderBitacora('sic');
             })();
             </script>
-        </section>
+            </section>
         <?php endif; ?>
 
         <section id="ots" class="module-section">
