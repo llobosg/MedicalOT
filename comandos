@@ -25,14 +25,48 @@ DEALLOCATE PREPARE alterIfNotExists;"
   --user=root \
   --password='gwAfapwVMcrROKFxDvSSwhOeGhVepEfK' \
   --database=railway \
-  -e "describe tipos_turno;"
+  -e "CREATE TABLE IF NOT EXISTS ejecucion_ot_real (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    id_prevision_sic VARCHAR(50) NOT NULL,
+    id_tecnico INT NULL,
+    
+    nombre_equipo VARCHAR(255),
+    estado_equipo VARCHAR(100),
+    vertical_nombre VARCHAR(100),
+    gerencia VARCHAR(100),
+    subgerencia VARCHAR(100),
+    
+    fecha_inicio_reales DATETIME,
+    fecha_termino_reales DATETIME,
+    duracion_minutos_reales INT,
+    
+    estado_final_ot VARCHAR(50),
+    situacion_final TEXT,
+    observaciones_cierre TEXT,
+    
+    turno_ejecucion VARCHAR(50),
+    proveedor_ejecucion VARCHAR(100),
+    tipo_personal VARCHAR(50),
+    especialidad_ejecucion VARCHAR(100),
+    
+    hh_consumidas_reales DECIMAL(10,2),
+    
+    contrato_referencia VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_prevision (id_prevision_sic),
+    INDEX idx_tecnico (id_tecnico),
+    INDEX idx_fecha (fecha_inicio_reales)
+);"
 
 
 mysql://root:gwAfapwVMcrROKFxDvSSwhOeGhVepEfK@trolley.proxy.rlwy.net:28420/railway
 
 
 git add .
-git commit -m "fix: asistencia, 5"
+git commit -m "fix: importar csv ejecución, 7"
 git push origin main
 
 base de datos AWS RDS
