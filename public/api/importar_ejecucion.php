@@ -1,17 +1,22 @@
 <?php
-// ✅ Blindaje contra salida prematura de HTML/Errores
-ob_start(); 
-ini_set('display_errors', 0); // No mostrar errores HTML en producción
-error_reporting(E_ALL);
-
+/**
+ * API Endpoint - Importar Ejecución Real (Cierre de OTs)
+ */
 header('Content-Type: application/json; charset=utf-8');
 define('APP_ENTRY_POINT', true);
 
+// Manejo de errores para asegurar respuesta JSON
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
 try {
     require_once __DIR__ . '/../../config.php';
-    require_once __DIR__ . '/../../vendor/autoload.php';
-    require_once __DIR__ . '/../../src/Services/ImportarEjecucionOT.php';
-
+    
+    // Verificar si la clase existe antes de usarla
+    if (!class_exists('App\Services\ImportarEjecucionOT')) {
+        require_once __DIR__ . '/../../vendor/autoload.php';
+    }
+    
     use App\Services\ImportarEjecucionOT;
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -48,14 +53,13 @@ try {
     // Limpiar temporal
     @unlink($tmpPath);
     
-    // ✅ Limpiar buffer de salida antes de enviar JSON
-    ob_end_clean();
     echo json_encode($result);
     exit;
 
 } catch (Exception $e) {
-    ob_end_clean();
     http_response_code(500);
+    // Asegurar que no haya salida previa que rompa el JSON
+    ob_clean(); 
     echo json_encode([
         'success' => false, 
         'error' => $e->getMessage(),
