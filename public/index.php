@@ -972,7 +972,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 });
             }
 
-            // === UPLOAD UNIFICADO ===
+            // === UPLOAD UNIFICADO CON FEEDBACK VISUAL ===
             async function handleCIUpload(file, barId, textId, progressId, type) {
                 const bar = document.getElementById(barId);
                 const text = document.getElementById(textId);
@@ -988,10 +988,13 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 const resultEl = document.getElementById(resultId);
                 if (resultEl) resultEl.style.display = 'none';
                 
+                // Mostrar barra de progreso
                 progress.style.display = 'block';
-                bar.style.width = '20%';
-                bar.style.background = ''; // Reset color
-                text.textContent = '📤 Enviando ' + file.name + '...';
+                bar.style.width = '10%';
+                bar.style.background = ''; 
+                
+                // Mensaje inicial
+                text.textContent = ' Subiendo archivo...';
                 
                 const formData = new FormData();
                 
@@ -1014,16 +1017,39 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 formData.append(fieldName, file);
                 
                 try {
-                    bar.style.width = '50%';
-                    text.textContent = '⚙️ Procesando...';
-                    
+                    // Simular avance visual mientras sube/procesa
+                    let fakeProgress = 10;
+                    const interval = setInterval(() => {
+                        if (fakeProgress < 90) {
+                            fakeProgress += Math.random() * 5;
+                            bar.style.width = fakeProgress + '%';
+                            
+                            // Mensajes dinámicos según el tipo
+                            if (type === 'ejecucion') {
+                                if (fakeProgress < 30) text.textContent = '📂 Leyendo estructura CSV...';
+                                else if (fakeProgress < 60) text.textContent = '⚙️ Vinculando OTs y Técnicos...';
+                                else text.textContent = '💾 Guardando registros reales...';
+                            } else {
+                                text.textContent = '⚙️ Procesando datos... (' + Math.floor(fakeProgress) + '%)';
+                            }
+                        }
+                    }, 500);
+
                     const response = await fetch(endpoint, { method: 'POST', body: formData, credentials: 'include' });
+                    
+                    clearInterval(interval); // Detener simulación
+                    
                     const rawText = await response.text();
                     
                     let result;
-                    try { result = JSON.parse(rawText); } catch { throw new Error('Respuesta no válida del servidor'); }
+                    try { 
+                        result = JSON.parse(rawText); 
+                    } catch { 
+                        throw new Error('El servidor devolvió una respuesta no válida (no JSON). Revisa los logs del servidor.'); 
+                    }
                     
                     bar.style.width = '100%';
+                    text.textContent = '✅ Proceso finalizado';
                     
                     setTimeout(() => {
                         progress.style.display = 'none';
@@ -1045,6 +1071,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     bar.style.width = '100%';
                     bar.style.background = '#ef4444';
                     text.textContent = '❌ Error: ' + error.message;
+                    
                     setTimeout(() => {
                         progress.style.display = 'none';
                         showCIResult(type, false, { error: error.message });
