@@ -1,5 +1,12 @@
 <?php
 // public/api/kpis.php
+// Aumentar límites para procesos pesados
+set_time_limit(300); // 5 minutos máximo de ejecución
+ini_set('memory_limit', '512M'); // 512MB de memoria
+ini_set('max_input_vars', 5000); // Permitir muchos campos POST
+ini_set('post_max_size', '100M'); // Permitir archivos grandes
+ini_set('upload_max_filesize', '100M');
+
 header('Content-Type: application/json; charset=utf-8');
 while (ob_get_level()) ob_end_clean();
 

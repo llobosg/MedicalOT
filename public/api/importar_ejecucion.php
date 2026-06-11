@@ -12,6 +12,7 @@ use App\Services\ImportarEjecucionOT;
 
 // Aumentar tiempo de ejecución para archivos grandes (opcional, depende de tu hosting)
 set_time_limit(300); // 5 minutos
+ini_set('memory_limit', '512M');
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
