@@ -16,8 +16,6 @@ try {
     if (!class_exists('App\Services\ImportarEjecucionOT')) {
         require_once __DIR__ . '/../../vendor/autoload.php';
     }
-    
-    use App\Services\ImportarEjecucionOT;
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception("Método no permitido", 405);
@@ -47,7 +45,7 @@ try {
         throw new Exception("Conexión a BD fallida");
     }
 
-    $importer = new ImportarEjecucionOT($pdo);
+    $importer = new \App\Services\ImportarEjecucionOT($pdo);
     $result = $importer->procesarArchivo($tmpPath);
     
     // Limpiar temporal
