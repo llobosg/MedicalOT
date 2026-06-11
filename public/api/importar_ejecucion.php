@@ -1,20 +1,19 @@
 <?php
-/**
- * API Endpoint - Importar Ejecución Real (Cierre de OTs)
- */
+// ✅ Blindaje contra salida prematura de HTML/Errores
+ob_start(); 
+ini_set('display_errors', 0); // No mostrar errores HTML en producción
+error_reporting(E_ALL);
+
 header('Content-Type: application/json; charset=utf-8');
 define('APP_ENTRY_POINT', true);
-require_once __DIR__ . '/../../config.php';
-require_once __DIR__ . '/../../vendor/autoload.php';
-require_once __DIR__ . '/../../src/Services/ImportarEjecucionOT.php';
-
-use App\Services\ImportarEjecucionOT;
-
-// Aumentar tiempo de ejecución para archivos grandes (opcional, depende de tu hosting)
-set_time_limit(300); // 5 minutos
-ini_set('memory_limit', '512M');
 
 try {
+    require_once __DIR__ . '/../../config.php';
+    require_once __DIR__ . '/../../vendor/autoload.php';
+    require_once __DIR__ . '/../../src/Services/ImportarEjecucionOT.php';
+
+    use App\Services\ImportarEjecucionOT;
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception("Método no permitido", 405);
     }
@@ -39,17 +38,23 @@ try {
     }
 
     global $pdo;
+    if (!$pdo) {
+        throw new Exception("Conexión a BD fallida");
+    }
+
     $importer = new ImportarEjecucionOT($pdo);
-    
-    // Procesar
     $result = $importer->procesarArchivo($tmpPath);
     
     // Limpiar temporal
     @unlink($tmpPath);
     
+    // ✅ Limpiar buffer de salida antes de enviar JSON
+    ob_end_clean();
     echo json_encode($result);
+    exit;
 
 } catch (Exception $e) {
+    ob_end_clean();
     http_response_code(500);
     echo json_encode([
         'success' => false, 
@@ -59,4 +64,5 @@ try {
             'line' => $e->getLine()
         ]
     ]);
+    exit;
 }
