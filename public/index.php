@@ -468,15 +468,15 @@ $isAdmin = ($user['role'] === 'admin_hosp');
         <?php if($isAdmin): ?>
             <section id="carga-sic" class="module-section">
             <style>
-                /* === CENTRO DE IMPORTACIONES - LAYOUT 4 COLUMNAS HOMOGÉNEO === */
+                /* === CENTRO DE IMPORTACIONES - LAYOUT 4 COLUMNAS PERFECTAS === */
                 .ci-container { 
                     display: grid; 
-                    grid-template-columns: repeat(4, 1fr); /* 4 Columnas Iguales */
+                    grid-template-columns: repeat(4, 1fr); /* 4 Columnas Iguales Forzadas */
                     gap: 1rem; 
                     max-width: 1600px; 
                     margin: 0 auto; 
                     padding: 0 1rem; 
-                    align-items: stretch; /* Fuerza misma altura */
+                    align-items: stretch; 
                 }
                 
                 .ci-card { 
@@ -487,65 +487,27 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     border-top: 5px solid #ccc; 
                     display: flex; 
                     flex-direction: column; 
-                    height: 100%; /* Ocupa toda la altura disponible */
+                    height: 100%; 
+                    min-width: 0; /* CRÍTICO: Permite que el texto largo haga wrap en vez de estirar la columna */
                     transition: transform 0.2s, box-shadow 0.2s; 
                     position: relative;
+                    overflow: hidden; /* Contiene cualquier desbordamiento */
                 }
                 
-                .ci-card:hover { 
-                    transform: translateY(-3px); 
-                    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); 
-                }
+                .ci-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
 
                 /* Colores por tarjeta */
-                .ci-card.ejecucion { border-top-color: #ef4444; } /* Rojo - Cierre */
-                .ci-card.hh { border-top-color: #8b5cf6; }       /* Violeta - Planificación */
-                .ci-card.mant { border-top-color: #f59e0b; }     /* Ámbar - Mantención */
-                .ci-card.sic { border-top-color: #3b82f6; }      /* Azul - SIC */
+                .ci-card.ejecucion { border-top-color: #ef4444; } 
+                .ci-card.hh { border-top-color: #8b5cf6; }       
+                .ci-card.mant { border-top-color: #f59e0b; }     
+                .ci-card.sic { border-top-color: #3b82f6; }      
 
-                .ci-header { 
-                    display: flex; 
-                    justify-content: space-between; 
-                    align-items: center; 
-                    margin-bottom: 0.75rem; 
-                    flex-shrink: 0; /* No se encoge */
-                }
-                
-                .ci-title { 
-                    font-size: 1rem; 
-                    font-weight: 700; 
-                    color: #1e293b; 
-                    display: flex; 
-                    align-items: center; 
-                    gap: 0.5rem; 
-                    margin: 0; 
-                }
-                
-                .ci-help-btn { 
-                    width: 24px; 
-                    height: 24px; 
-                    border-radius: 50%; 
-                    border: 2px solid #e2e8f0; 
-                    background: #fff; 
-                    color: #64748b; 
-                    font-weight: 700; 
-                    cursor: pointer; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    font-size: 0.75rem; 
-                    transition: all 0.2s; 
-                    flex-shrink: 0; 
-                }
+                .ci-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-shrink: 0; }
+                .ci-title { font-size: 1rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .ci-help-btn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #e2e8f0; background: #fff; color: #64748b; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: all 0.2s; flex-shrink: 0; }
                 .ci-help-btn:hover { border-color: currentColor; background: #f8fafc; }
 
-                .ci-desc { 
-                    font-size: 0.75rem; 
-                    color: #64748b; 
-                    margin-bottom: 1rem; 
-                    line-height: 1.4; 
-                    flex-shrink: 0;
-                }
+                .ci-desc { font-size: 0.75rem; color: #64748b; margin-bottom: 1rem; line-height: 1.4; flex-shrink: 0; }
                 
                 /* Dropzone Uniforme */
                 .ci-dropzone { 
@@ -556,7 +518,7 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     cursor: pointer; 
                     transition: all 0.3s; 
                     background: #fafbfc; 
-                    min-height: 140px; /* Altura mínima fija */
+                    min-height: 140px; 
                     display: flex; 
                     flex-direction: column; 
                     align-items: center; 
@@ -565,13 +527,8 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                     margin-bottom: 1rem;
                 }
                 
-                .ci-dropzone:hover, .ci-dropzone.dragover { 
-                    border-color: currentColor; 
-                    background: #f0f9ff; 
-                    transform: scale(1.02);
-                }
+                .ci-dropzone:hover, .ci-dropzone.dragover { border-color: currentColor; background: #f0f9ff; transform: scale(1.02); }
                 
-                /* Colores específicos hover */
                 .ci-card.ejecucion .ci-dropzone:hover, .ci-card.ejecucion .ci-dropzone.dragover { border-color: #ef4444; background: #fef2f2; }
                 .ci-card.hh .ci-dropzone:hover, .ci-card.hh .ci-dropzone.dragover { border-color: #8b5cf6; background: #f5f3ff; }
                 .ci-card.mant .ci-dropzone:hover, .ci-card.mant .ci-dropzone.dragover { border-color: #f59e0b; background: #fffbeb; }
@@ -596,75 +553,21 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 .ci-card.mant .ci-bar-fill { background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
                 .ci-card.sic .ci-bar-fill { background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); }
 
-                .ci-result { 
-                    display: none; 
-                    margin-top: 0.75rem; 
-                    padding: 0.75rem; 
-                    border-radius: 0.5rem; 
-                    font-size: 0.75rem; 
-                    line-height: 1.5; 
-                    animation: fadeIn 0.3s ease; 
-                    flex-shrink: 0;
-                }
+                .ci-result { display: none; margin-top: 0.75rem; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; line-height: 1.5; animation: fadeIn 0.3s ease; flex-shrink: 0; word-break: break-word; }
                 .ci-result.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
                 .ci-result.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
                 
-                .ci-close-btn { 
-                    margin-top: 0.5rem; 
-                    width: 100%; 
-                    padding: 0.4rem; 
-                    border: 1px solid #e2e8f0; 
-                    border-radius: 0.5rem; 
-                    background: #fff; 
-                    color: #475569; 
-                    font-size: 0.75rem; 
-                    cursor: pointer; 
-                    transition: all 0.2s; 
-                    font-weight: 500; 
-                }
+                .ci-close-btn { margin-top: 0.5rem; width: 100%; padding: 0.4rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; background: #fff; color: #475569; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; font-weight: 500; }
                 .ci-close-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
 
-                /* Bitácora con Scroll Interno para mantener altura */
-                .ci-bitacora { 
-                    margin-top: auto; /* Empuja hacia abajo */
-                    padding-top: 0.75rem; 
-                    border-top: 1px solid #f1f5f9; 
-                    flex: 1; /* Ocupa espacio restante */
-                    display: flex;
-                    flex-direction: column;
-                    min-height: 0; /* Importante para scroll */
-                    overflow: hidden;
-                }
-                
-                .ci-bitacora-title { 
-                    font-size: 0.7rem; 
-                    font-weight: 700; 
-                    color: #94a3b8; 
-                    text-transform: uppercase; 
-                    letter-spacing: 0.5px; 
-                    margin-bottom: 0.4rem; 
-                    flex-shrink: 0;
-                }
-                
-                .ci-log-container {
-                    flex: 1;
-                    overflow-y: auto;
-                    max-height: 150px; /* Limita altura máxima */
-                    padding-right: 4px;
-                }
-
-                .ci-log-item { 
-                    display: flex; 
-                    justify-content: space-between; 
-                    align-items: center; 
-                    padding: 0.3rem 0; 
-                    border-bottom: 1px solid #f8fafc; 
-                    font-size: 0.7rem; 
-                }
+                /* Bitácora con Scroll Interno */
+                .ci-bitacora { margin-top: auto; padding-top: 0.75rem; border-top: 1px solid #f1f5f9; flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+                .ci-bitacora-title { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem; flex-shrink: 0; }
+                .ci-log-container { flex: 1; overflow-y: auto; max-height: 150px; padding-right: 4px; }
+                .ci-log-item { display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid #f8fafc; font-size: 0.7rem; }
                 .ci-log-item:last-child { border-bottom: none; }
                 .ci-log-name { color: #334155; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
                 .ci-log-meta { color: #94a3b8; text-align: right; white-space: nowrap; display: flex; align-items: center; gap: 0.3rem; }
-                
                 .ci-log-badge { display: inline-block; padding: 1px 5px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; }
                 .ci-log-badge.ok { background: #dcfce7; color: #166534; }
                 .ci-log-badge.err { background: #fee2e2; color: #991b1b; }

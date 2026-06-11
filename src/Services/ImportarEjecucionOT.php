@@ -49,6 +49,10 @@ class ImportarEjecucionOT
             
             // Cargar Excel
             $reader = IOFactory::createReaderForFile($rutaArchivo);
+            if ($ext === 'csv') {
+                $reader->setDelimiter(','); // O ';' dependiendo de tu CSV
+                $reader->setEnclosure('"');
+            }
             $reader->setReadDataOnly(true);
             $spreadsheet = $reader->load($rutaArchivo);
             

@@ -20,8 +20,9 @@ try {
     
     $file = $_FILES['archivo'];
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    if (!in_array($ext, ['xlsx', 'xls'])) {
-        throw new Exception("Solo se permiten archivos Excel (.xlsx, .xls)");
+    // ✅ Aceptar Excel y CSV
+    if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
+        throw new Exception("Formato inválido. Se permiten archivos .xlsx, .xls o .csv");
     }
     
     $tmpPath = sys_get_temp_dir() . '/' . uniqid('ejecucion_') . '.' . $ext;
