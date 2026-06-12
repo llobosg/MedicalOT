@@ -47,7 +47,7 @@ class ImportarEjecucionOT
         $this->log("Mapa de técnicos cargado: " . count($this->mapaTecnicos) . " entradas.");
     }
     
-    public function procesarArchivo(string $rutaArchivo): array
+        public function procesarArchivo(string $rutaArchivo): array
     {
         $inicio = microtime(true);
         
@@ -58,51 +58,67 @@ class ImportarEjecucionOT
             $reader->setReadDataOnly(true);
             $spreadsheet = $reader->load($rutaArchivo);
             
-            // Usar la primera hoja activa
             $hoja = $spreadsheet->getSheet(0);
             $this->log("Hoja utilizada: " . $hoja->getTitle());
             
-            // Detectar fila de encabezados buscando "Num Ot" o "Año Ot"
+            // 1. Detectar Encabezados y Limpiar Claves
             $filaEncabezados = 1;
-            $encabezados = [];
-            for ($col = 1; $col <= 100; $col++) { // Aumentamos rango para asegurar lectura
+            $encabezadosRaw = [];
+            $encabezadosClean = [];
+            
+            for ($col = 1; $col <= 150; $col++) { // Aumentamos rango para asegurar lectura de columnas lejanas como BN
                 $val = $hoja->getCell([$col, $filaEncabezados])->getValue();
                 if ($val) {
-                    $key = strtoupper(trim((string)$val));
-                    // Limpieza básica de caracteres raros en encabezados
-                    $key = preg_replace('/[^A-Z0-9_]/', '', $key); 
-                    $encabezados[$key] = $col;
+                    $rawKey = trim((string)$val);
+                    // Crear clave limpia: Mayúsculas, sin tildes, sin espacios
+                    $cleanKey = strtoupper(strtr(utf8_decode($rawKey), utf8_decode('áéíóúñ'), 'aeioun'));
+                    $cleanKey = preg_replace('/[^A-Z0-9_]/', '', $cleanKey);
+                    
+                    $encabezadosRaw[$col] = $rawKey;
+                    if (!empty($cleanKey)) {
+                        $encabezadosClean[$cleanKey] = $col;
+                    }
                 }
             }
             
-            // Mapeo dinámico basado en nombres de columna del CSV (ajustado a tu archivo)
+            // Loguear las primeras 20 columnas detectadas para depuración
+            $sampleKeys = array_slice(array_keys($encabezadosClean), 0, 20);
+            $this->log("Columnas detectadas (Muestra): " . implode(', ', $sampleKeys));
+
+            // 2. Mapeo Dinámico Robusto
             // Buscamos coincidencias parciales o exactas en las claves limpias
             $mapa = [
-                'id_prevision' => $this->buscarCol($encabezados, ['NUMOT', 'NUMOT']), // Columna B usualmente
-                'equipo' => $this->buscarCol($encabezados, ['NOMBREEQUIPO', 'EQUIPO']),
-                'estado_equipo' => $this->buscarCol($encabezados, ['ESTADOEQUIPO']),
-                'vertical' => $this->buscarCol($encabezados, ['AREA', 'GERENCIA']), // Usamos Área como Vertical temporal
-                'fecha_inicio' => $this->buscarCol($encabezados, ['FECHAINIINTER', 'FECHAINICIO']),
-                'hora_inicio' => $this->buscarCol($encabezados, ['HORAINIINTER', 'HORAINICIO']),
-                'fecha_termino' => $this->buscarCol($encabezados, ['FECHAFININTER', 'FECHATERMINO']),
-                'hora_termino' => $this->buscarCol($encabezados, ['HORAFININTER', 'HORATERMINO']),
-                'estado_ot' => $this->buscarCol($encabezados, ['EST', 'ESTADO']),
-                'situacion_final' => $this->buscarCol($encabezados, ['SITUACIONFINAL']),
-                'observaciones' => $this->buscarCol($encabezados, ['OBSERVACIONES', 'OBSTECNICAS']),
-                'tecnico' => $this->buscarCol($encabezados, ['TECNICO', 'NOMBRETECNICO']),
-                'especialidad' => $this->buscarCol($encabezados, ['NOMBRESPECIALIDAD', 'ESPECIALIDAD']),
-                'horas_reales' => $this->buscarCol($encabezados, ['HORAS', 'HHREALES']),
-                'gerencia' => $this->buscarCol($encabezados, ['GERENCIA']),
+                'id_prevision' => $this->buscarCol($encabezadosClean, ['NUMOT']), 
+                'equipo' => $this->buscarCol($encabezadosClean, ['NOMBREEQUIPO', 'EQUIPO']),
+                'estado_equipo' => $this->buscarCol($encabezadosClean, ['ESTADOEQUIPO']),
+                'vertical' => $this->buscarCol($encabezadosClean, ['AREA', 'GERENCIA']), 
+                'fecha_inicio' => $this->buscarCol($encabezadosClean, ['FECHAINIINTER', 'FECHAINICIO']),
+                'hora_inicio' => $this->buscarCol($encabezadosClean, ['HORAINIINTER', 'HORAINICIO']),
+                'fecha_termino' => $this->buscarCol($encabezadosClean, ['FECHAFININTER', 'FECHATERMINO']),
+                'hora_termino' => $this->buscarCol($encabezadosClean, ['HORAFININTER', 'HORATERMINO']),
+                'estado_ot' => $this->buscarCol($encabezadosClean, ['EST', 'ESTADO']),
+                'situacion_final' => $this->buscarCol($encabezadosClean, ['SITUACIONFINAL']),
+                'observaciones' => $this->buscarCol($encabezadosClean, ['OBSERVACIONES', 'OBSTECNICAS']),
+                'tecnico' => $this->buscarCol($encabezadosClean, ['TECNICO', 'NOMBRETECNICO']),
+                'especialidad' => $this->buscarCol($encabezadosClean, ['NOMBRESPECIALIDAD', 'ESPECIALIDAD']),
+                'horas_reales' => $this->buscarCol($encabezadosClean, ['HORAS', 'HHREALES']),
+                'gerencia' => $this->buscarCol($encabezadosClean, ['GERENCIA']),
+                'subgerencia' => $this->buscarCol($encabezadosClean, ['SUBGERENCIA']),
+                'proveedor' => $this->buscarCol($encabezadosClean, ['PROVEEDOR']),
+                'contrato' => $this->buscarCol($encabezadosClean, ['CONTRATO']),
             ];
 
             if (!$mapa['id_prevision']) {
-                throw new Exception("No se encontró la columna 'Num Ot' para vincular registros. Encabezados detectados: " . implode(', ', array_keys($encabezados)));
+                throw new Exception("No se encontró la columna 'Num Ot'. Encabezados detectados: " . implode(', ', array_keys($encabezadosClean)));
             }
             
+            $this->log("Mapeo final ID Prev: Col {$mapa['id_prevision']}");
+            $this->log("Mapeo final Técnico: Col " . ($mapa['tecnico'] ?? 'NO ENCONTRADA'));
+            $this->log("Mapeo final Horas: Col " . ($mapa['horas_reales'] ?? 'NO ENCONTRADA'));
+
             $totalFilas = $hoja->getHighestRow();
             $this->log("Procesando $totalFilas filas...");
             
-            // Deshabilitar autocommit para velocidad
             $this->pdo->beginTransaction();
             
             for ($fila = $filaEncabezados + 1; $fila <= $totalFilas; $fila++) {
@@ -115,7 +131,6 @@ class ImportarEjecucionOT
                     }
                 }
                 
-                // Liberar memoria cada 100 filas
                 if ($fila % 100 === 0) {
                     gc_collect_cycles();
                 }
@@ -125,7 +140,6 @@ class ImportarEjecucionOT
             
             $duracion = round(microtime(true) - $inicio, 2);
             $this->log("✅ Importación completada en $duracion segundos.");
-            $this->log("Estadísticas: " . json_encode($this->stats));
             
             return [
                 'success' => true,
