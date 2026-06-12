@@ -85,10 +85,12 @@ class ImportarEjecucionOT
             $sampleKeys = array_slice(array_keys($encabezadosClean), 0, 20);
             $this->log("Columnas detectadas (Muestra): " . implode(', ', $sampleKeys));
 
-            // 2. Mapeo Dinámico Robusto
+                        // 2. Mapeo Dinámico Robusto
             // Buscamos coincidencias parciales o exactas en las claves limpias
             $mapa = [
-                'id_prevision' => $this->buscarCol($encabezadosClean, ['NUMOT']), 
+                // ✅ CORRECCIÓN: Buscar NUMOT o IDPREVISION o CODIGOOT
+                'id_prevision' => $this->buscarCol($encabezadosClean, ['NUMOT', 'NUMEROOT', 'IDPREVISION', 'CODIGOOT']), 
+                
                 'equipo' => $this->buscarCol($encabezadosClean, ['NOMBREEQUIPO', 'EQUIPO']),
                 'estado_equipo' => $this->buscarCol($encabezadosClean, ['ESTADOEQUIPO']),
                 'vertical' => $this->buscarCol($encabezadosClean, ['AREA', 'GERENCIA']), 
@@ -109,7 +111,14 @@ class ImportarEjecucionOT
             ];
 
             if (!$mapa['id_prevision']) {
-                throw new Exception("No se encontró la columna 'Num Ot'. Encabezados detectados: " . implode(', ', array_keys($encabezadosClean)));
+                // DEBUG: Mostrar qué columnas se parecen a NUMOT
+                $similares = [];
+                foreach ($encabezadosClean as $key => $col) {
+                    if (strpos($key, 'NUM') !== false || strpos($key, 'OT') !== false) {
+                        $similares[] = "$key (Col $col)";
+                    }
+                }
+                throw new Exception("No se encontró la columna 'Num Ot'. Similares detectadas: " . implode(', ', $similares));
             }
             
             $this->log("Mapeo final ID Prev: Col {$mapa['id_prevision']}");
