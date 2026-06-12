@@ -86,6 +86,11 @@ class ImportarEjecucionOT
                     }
                 }
             }
+
+            // Limpieza final
+            unset($hoja);
+            unset($spreadsheet);
+            gc_collect_cycles();
             
             $duracion = round(microtime(true) - $inicio, 2);
             $this->log("✅ Importación completada en $duracion segundos.");
@@ -274,6 +279,12 @@ class ImportarEjecucionOT
                 $data['contrato_referencia']
             ]);
             $this->stats['insertados']++;
+        }
+        // ✅ LIBERAR MEMORIA CADA 100 REGISTROS
+        if ($this->stats['total_registros'] % 100 === 0) {
+            gc_collect_cycles();
+            // Opcional: Loguear progreso cada 100
+            // $this->log("Procesados: {$this->stats['total_registros']}");
         }
     }
     
