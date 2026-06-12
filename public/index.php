@@ -1367,6 +1367,43 @@ $isAdmin = ($user['role'] === 'admin_hosp');
                 </div>
             </div>
 
+            <!-- FILA 2: KPIs AVANZADOS DE EJECUCIÓN -->
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:1rem; margin-top:1rem;">
+                
+                <!-- KPI 1: EFICIENCIA -->
+                <div class="card kpi-card" style="border-left:4px solid #10b981;">
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600;">📈 Eficiencia Ejecución</div>
+                    <div style="font-size:1.8rem; font-weight:700; color:#1e293b; margin:0.5rem 0;" id="kpi-eficiencia-val">--%</div>
+                    <div style="font-size:0.75rem; color:#64748b;">
+                        <span id="kpi-eficiencia-desc">Calculando...</span>
+                    </div>
+                </div>
+
+                <!-- KPI 2: ESTADOS OT -->
+                <div class="card kpi-card" style="border-left:4px solid #3b82f6;">
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600;"> Estados OT (Mes)</div>
+                    <div style="display:flex; justify-content:space-around; align-items:center; height:60px; margin-top:0.5rem;">
+                        <div style="text-align:center;">
+                            <div style="font-size:1.5rem; font-weight:700; color:#10b981;" id="kpi-est-cerradas">--</div>
+                            <div style="font-size:0.7rem; color:#64748b;">Cerradas</div>
+                        </div>
+                        <div style="width:1px; height:40px; background:#e2e8f0;"></div>
+                        <div style="text-align:center;">
+                            <div style="font-size:1.5rem; font-weight:700; color:#f59e0b;" id="kpi-est-abiertas">--</div>
+                            <div style="font-size:0.7rem; color:#64748b;">Abiertas</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI 3: TOP TÉCNICOS -->
+                <div class="card kpi-card" style="border-left:4px solid #8b5cf6; overflow:hidden;">
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:600; margin-bottom:0.5rem;">🏆 Top Técnicos</div>
+                    <div id="kpi-top-tecnicos-list" style="font-size:0.75rem; color:#475569; max-height:100px; overflow-y:auto;">
+                        <div style="padding:0.5rem; text-align:center; color:#94a3b8;">Cargando...</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ═══════════════════════════════════════════════════════════ -->
             <!-- FILA 2: GRÁFICOS (70% Ranking + 30% Torta)                 -->
             <!-- ═══════════════════════════════════════════════════════════ -->
@@ -5700,6 +5737,70 @@ function restoreStandardTitles() {
             console.error("Error cargando KPI Turnos:", err);
         }
     }
+
+    async function loadAdvancedKpis() {
+        const params = new URLSearchParams({
+            year: dashboardFilters.year,
+            month: dashboardFilters.month
+        });
+
+        try {
+            // 1. Eficiencia
+            const resEff = await fetch(`/api/kpis.php?action=eficiencia_ejecucion&${params}`);
+            const dataEff = await resEff.json();
+            if (dataEff.success) {
+                const effVal = document.getElementById('kpi-eficiencia-val');
+                const effDesc = document.getElementById('kpi-eficiencia-desc');
+                
+                effVal.textContent = (dataEff.data.eficiencia_percent > 0 ? '+' : '') + dataEff.data.eficiencia_percent + '%';
+                effVal.style.color = dataEff.data.eficiencia_percent >= 0 ? '#10b981' : '#ef4444'; // Verde si ahorra, Rojo si se pasa
+                
+                effDesc.innerHTML = `Plan: <b>${dataEff.data.avg_hh_planificadas}h</b> | Real: <b>${dataEff.data.avg_hh_reales}h</b>`;
+            }
+
+            // 2. Distribución Estados
+            const resEst = await fetch(`/api/kpis.php?action=distribucion_estados&${params}`);
+            const dataEst = await resEst.json();
+            if (dataEst.success) {
+                let cerradas = 0;
+                let abiertas = 0;
+                
+                dataEst.data.forEach(item => {
+                    if (item.estado_final_ot === 'Cerrada') cerradas = item.total;
+                    else if (item.estado_final_ot === 'Abierta' || item.estado_final_ot === 'En Ejecución') abiertas += item.total;
+                });
+                
+                document.getElementById('kpi-est-cerradas').textContent = cerradas;
+                document.getElementById('kpi-est-abiertas').textContent = abiertas;
+            }
+
+            // 3. Top Técnicos
+            const resTop = await fetch(`/api/kpis.php?action=top_tecnicos&limit=5`);
+            const dataTop = await resTop.json();
+            if (dataTop.success) {
+                const listContainer = document.getElementById('kpi-top-tecnicos-list');
+                if (dataTop.data.length === 0) {
+                    listContainer.innerHTML = '<div style="padding:0.5rem; text-align:center;">Sin datos suficientes</div>';
+                } else {
+                    listContainer.innerHTML = dataTop.data.map((t, index) => `
+                        <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid #f1f5f9;">
+                            <span style="font-weight:600;">#${index+1} ${t.tecnico_nombre.split(' ')[0]}...</span>
+                            <span style="color:#64748b;">${t.ots_cerradas} OTs (${t.avg_hh_por_ot}h prom)</span>
+                        </div>
+                    `).join('');
+                }
+            }
+
+        } catch (err) {
+            console.error("Error cargando KPIs Avanzados:", err);
+        }
+    }
+
+    // Llamar al cargar la página o cambiar filtros
+    document.addEventListener('DOMContentLoaded', () => {
+        loadKpis();
+        loadAdvancedKpis();
+    });
 </script>
 </body>
 </html>

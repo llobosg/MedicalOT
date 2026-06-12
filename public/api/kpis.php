@@ -469,6 +469,118 @@ try {
             }
             break;
 
+                // ==========================================
+        // KPI 1: EFICIENCIA DE EJECUCIÓN (HH Reales vs Planificadas)
+        // ==========================================
+        case 'eficiencia_ejecucion':
+            $year  = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+            $month = !empty($_GET['month']) ? $_GET['month'] : null;
+            
+            // Normalizar mes
+            $mes_num = null;
+            if ($month !== null && $month !== '') {
+                if (is_numeric($month)) $mes_num = (int)$month;
+                else {
+                    $meses_map = ['enero'=>1,'febrero'=>2,'marzo'=>3,'abril'=>4,'mayo'=>5,'junio'=>6,'julio'=>7,'agosto'=>8,'septiembre'=>9,'octubre'=>10,'noviembre'=>11,'diciembre'=>12];
+                    $key = strtolower(trim($month));
+                    if (isset($meses_map[$key])) $mes_num = $meses_map[$key];
+                }
+            }
+            if (!$mes_num) $mes_num = (int)date('n');
+
+            // Consulta: Compara HH Reales (ejecucion_ot_real) vs HH Planificadas (planificacion_hh_mensual o sic_raw)
+            // Nota: Asumimos que hh_planificadas está en planificacion_hh_mensual para este ejemplo. 
+            // Si usas SIC anual, ajusta la tabla de origen.
+            $sql = "SELECT 
+                        AVG(e.hh_consumidas_reales) as avg_hh_reales,
+                        AVG(p.hh_planificadas_total) as avg_hh_planificadas
+                    FROM ejecucion_ot_real e
+                    LEFT JOIN planificacion_hh_mensual p ON e.id_prevision_sic = p.id_prevision_sic -- Ajustar llave si es diferente
+                    WHERE YEAR(e.fecha_inicio_reales) = ? AND MONTH(e.fecha_inicio_reales) = ?
+                    AND e.hh_consumidas_reales > 0"; // Evitar división por cero o nulos
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$year, $mes_num]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $avgReal = floatval($row['avg_hh_reales'] ?? 0);
+            $avgPlan = floatval($row['avg_hh_planificadas'] ?? 0);
+            
+            $eficiencia = 0;
+            if ($avgPlan > 0) {
+                // Fórmula: Si gastó menos de lo planificado, es eficiente (>100% o positivo). 
+                // Ajustamos fórmula: (Plan - Real) / Plan * 100. 
+                // Ejemplo: Plan 4h, Real 3h -> (4-3)/4 = 25% Ahorro/Eficiencia positiva.
+                $eficiencia = round((($avgPlan - $avgReal) / $avgPlan) * 100, 1);
+            }
+
+            echo json_encode([
+                'success' => true, 
+                'data' => [
+                    'eficiencia_percent' => $eficiencia,
+                    'avg_hh_reales' => round($avgReal, 2),
+                    'avg_hh_planificadas' => round($avgPlan, 2)
+                ]
+            ]);
+            break;
+
+        // ==========================================
+        // KPI 2: DISTRIBUCIÓN DE ESTADOS (Cerradas vs Abiertas)
+        // ==========================================
+        case 'distribucion_estados':
+            $year  = !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+            $month = !empty($_GET['month']) ? $_GET['month'] : null;
+            
+            $mes_num = null;
+            if ($month !== null && $month !== '') {
+                if (is_numeric($month)) $mes_num = (int)$month;
+                else {
+                    $meses_map = ['enero'=>1,'febrero'=>2,'marzo'=>3,'abril'=>4,'mayo'=>5,'junio'=>6,'julio'=>7,'agosto'=>8,'septiembre'=>9,'octubre'=>10,'noviembre'=>11,'diciembre'=>12];
+                    $key = strtolower(trim($month));
+                    if (isset($meses_map[$key])) $mes_num = $meses_map[$key];
+                }
+            }
+            if (!$mes_num) $mes_num = (int)date('n');
+
+            $sql = "SELECT 
+                        estado_final_ot, 
+                        COUNT(*) as total 
+                    FROM ejecucion_ot_real 
+                    WHERE YEAR(fecha_inicio_reales) = ? AND MONTH(fecha_inicio_reales) = ?
+                    GROUP BY estado_final_ot";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$year, $mes_num]);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'data' => $data]);
+            break;
+
+        // ==========================================
+        // KPI 3: TOP TÉCNICOS POR PRODUCTIVIDAD
+        // ==========================================
+        case 'top_tecnicos':
+            $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 5;
+            
+            $sql = "SELECT 
+                        t.nombre as tecnico_nombre,
+                        COUNT(e.id) as ots_cerradas,
+                        AVG(e.hh_consumidas_reales) as avg_hh_por_ot
+                    FROM ejecucion_ot_real e
+                    JOIN tecnicos t ON e.id_tecnico = t.id
+                    WHERE e.id_tecnico IS NOT NULL
+                    GROUP BY t.id, t.nombre
+                    HAVING COUNT(e.id) >= 2 -- Solo técnicos con más de 2 OTs para ser relevante
+                    ORDER BY ots_cerradas DESC, avg_hh_por_ot ASC
+                    LIMIT ?";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$limit]);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'data' => $data]);
+            break;
+
         // ═══════════════════════════════════════════════════════
         default:
         // ═══════════════════════════════════════════════════════
