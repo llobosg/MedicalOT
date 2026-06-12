@@ -203,7 +203,7 @@ class ImportarEjecucionOT
             }
         }
 
-        // 3. Fechas y Horas
+        // 3. Fechas y Horas (Usando las columnas mapeadas)
         $fIni = $this->obtenerValor($hoja, $fila, $mapa['fecha_inicio']);
         $hIni = $this->obtenerValor($hoja, $fila, $mapa['hora_inicio']);
         $fFin = $this->obtenerValor($hoja, $fila, $mapa['fecha_termino']);
@@ -211,6 +211,11 @@ class ImportarEjecucionOT
         
         $fechaInicioReal = $this->combinarFechaHora($fIni, $hIni);
         $fechaTerminoReal = $this->combinarFechaHora($fFin, $hFin);
+        
+        // Debug log para las primeras filas
+        if ($this->stats['total_registros'] <= 5) {
+             $this->log("DEBUG Fila {$this->stats['total_registros']}: F_Fin='$fFin', H_Fin='$hFin' -> Combina: '$fechaTerminoReal'");
+        }
         
         $duracionMin = null;
         if ($fechaInicioReal && $fechaTerminoReal) {
@@ -294,21 +299,29 @@ class ImportarEjecucionOT
         return strtoupper(preg_replace('/[^0-9kK]/', '', $rut));
     }
     
-    private function combinarFechaHora($fecha, $hora) {
+        private function combinarFechaHora($fecha, $hora) {
         if (!$fecha) return null;
-        // Si la fecha ya viene con hora en el string (ej: 2026-04-30 06:00:00.0)
-        if (strpos($fecha, ':') !== false) {
-            $ts = strtotime($fecha);
-            if ($ts) return date('Y-m-d H:i:s', $ts);
+        
+        // Limpiar la fecha: quitar horas si vienen pegadas (ej: "2026-04-30 00:00:00.0" -> "2026-04-30")
+        $fClean = preg_replace('/\s+\d{2}:\d{2}.*/', '', trim((string)$fecha));
+        
+        // Si la hora es nula o vacía, asumir 00:00:00
+        $hClean = '00:00:00';
+        if (!empty($hora)) {
+            // Limpiar la hora: quitar milisegundos (ej: "13:29:14.803" -> "13:29:14")
+            $hClean = preg_replace('/\.\d+$/', '', trim((string)$hora));
         }
         
-        // Si son campos separados
-        $fClean = preg_replace('/\s+\d{2}:\d{2}:\d{2}.*/', '', $fecha); // Limpiar si viene basura
-        $hClean = $hora ? preg_replace('/\.\d+$/', '', $hora) : '00:00:00';
+        // Combinar
+        $fullString = "$fClean $hClean";
         
-        $full = "$fClean $hClean";
-        $ts = strtotime($full);
-        return $ts ? date('Y-m-d H:i:s', $ts) : null;
+        // Validar y convertir
+        $ts = strtotime($fullString);
+        if ($ts) {
+            return date('Y-m-d H:i:s', $ts);
+        }
+        
+        return null;
     }
     
     private function convertirHoraADecimal($texto) {
