@@ -85,19 +85,21 @@ class ImportarEjecucionOT
             $sampleKeys = array_slice(array_keys($encabezadosClean), 0, 20);
             $this->log("Columnas detectadas (Muestra): " . implode(', ', $sampleKeys));
 
-                        // 2. Mapeo Dinámico Robusto
-            // Buscamos coincidencias parciales o exactas en las claves limpias
+            // 2. Mapeo Dinámico Robusto
+            // Mapeo Dinámico Robusto (Ajustado a informe (2).csv)
             $mapa = [
-                // ✅ CORRECCIÓN: Buscar NUMOT o IDPREVISION o CODIGOOT
-                'id_prevision' => $this->buscarCol($encabezadosClean, ['NUMOT', 'NUMEROOT', 'IDPREVISION', 'CODIGOOT']), 
-                
+                'id_prevision' => $this->buscarCol($encabezadosClean, ['NUMOT']), 
                 'equipo' => $this->buscarCol($encabezadosClean, ['NOMBREEQUIPO', 'EQUIPO']),
                 'estado_equipo' => $this->buscarCol($encabezadosClean, ['ESTADOEQUIPO']),
                 'vertical' => $this->buscarCol($encabezadosClean, ['AREA', 'GERENCIA']), 
+                
+                // ✅ CLAVE: Asegurar que buscamos las columnas de Fecha y Hora de Término
+                'fecha_termino' => $this->buscarCol($encabezadosClean, ['FECHAFININTER', 'FECHATERMINO', 'FECHAFIN']),
+                'hora_termino' => $this->buscarCol($encabezadosClean, ['HORAFININTER', 'HORATERMINO', 'HORAFIN']),
+                
                 'fecha_inicio' => $this->buscarCol($encabezadosClean, ['FECHAINIINTER', 'FECHAINICIO']),
                 'hora_inicio' => $this->buscarCol($encabezadosClean, ['HORAINIINTER', 'HORAINICIO']),
-                'fecha_termino' => $this->buscarCol($encabezadosClean, ['FECHAFININTER', 'FECHATERMINO']),
-                'hora_termino' => $this->buscarCol($encabezadosClean, ['HORAFININTER', 'HORATERMINO']),
+                
                 'estado_ot' => $this->buscarCol($encabezadosClean, ['EST', 'ESTADO']),
                 'situacion_final' => $this->buscarCol($encabezadosClean, ['SITUACIONFINAL']),
                 'observaciones' => $this->buscarCol($encabezadosClean, ['OBSERVACIONES', 'OBSTECNICAS']),
@@ -105,10 +107,10 @@ class ImportarEjecucionOT
                 'especialidad' => $this->buscarCol($encabezadosClean, ['NOMBRESPECIALIDAD', 'ESPECIALIDAD']),
                 'horas_reales' => $this->buscarCol($encabezadosClean, ['HORAS', 'HHREALES']),
                 'gerencia' => $this->buscarCol($encabezadosClean, ['GERENCIA']),
-                'subgerencia' => $this->buscarCol($encabezadosClean, ['SUBGERENCIA']),
-                'proveedor' => $this->buscarCol($encabezadosClean, ['PROVEEDOR']),
-                'contrato' => $this->buscarCol($encabezadosClean, ['CONTRATO']),
             ];
+
+            // DEBUG: Loguear qué columnas encontró para Fechas
+            $this->log("DEBUG Mapeo: FechaTermino Col=" . ($mapa['fecha_termino'] ?? 'NO ENCONTRADA') . ", HoraTermino Col=" . ($mapa['hora_termino'] ?? 'NO ENCONTRADA'));
 
             if (!$mapa['id_prevision']) {
                 // DEBUG: Mostrar qué columnas se parecen a NUMOT
@@ -299,10 +301,10 @@ class ImportarEjecucionOT
         return strtoupper(preg_replace('/[^0-9kK]/', '', $rut));
     }
     
-        private function combinarFechaHora($fecha, $hora) {
+    private function combinarFechaHora($fecha, $hora) {
         if (!$fecha) return null;
         
-        // Limpiar la fecha: quitar horas si vienen pegadas (ej: "2026-04-30 00:00:00.0" -> "2026-04-30")
+        // Limpiar la fecha: quitar horas si vienen pegadas o basura
         $fClean = preg_replace('/\s+\d{2}:\d{2}.*/', '', trim((string)$fecha));
         
         // Si la hora es nula o vacía, asumir 00:00:00
