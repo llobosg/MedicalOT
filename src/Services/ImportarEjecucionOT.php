@@ -15,7 +15,6 @@ class ImportarEjecucionOT
         'insertados' => 0,
         'actualizados' => 0,
         'errores' => 0,
-        'sin_vinculo_ot' => 0,
         'sin_vinculo_tecnico' => 0
     ];
     
@@ -66,34 +65,38 @@ class ImportarEjecucionOT
             // Detectar fila de encabezados buscando "Num Ot" o "Año Ot"
             $filaEncabezados = 1;
             $encabezados = [];
-            for ($col = 1; $col <= 50; $col++) {
+            for ($col = 1; $col <= 100; $col++) { // Aumentamos rango para asegurar lectura
                 $val = $hoja->getCell([$col, $filaEncabezados])->getValue();
                 if ($val) {
-                    $encabezados[strtoupper(trim((string)$val))] = $col;
+                    $key = strtoupper(trim((string)$val));
+                    // Limpieza básica de caracteres raros en encabezados
+                    $key = preg_replace('/[^A-Z0-9_]/', '', $key); 
+                    $encabezados[$key] = $col;
                 }
             }
             
-            // Mapeo dinámico basado en nombres de columna del CSV
+            // Mapeo dinámico basado en nombres de columna del CSV (ajustado a tu archivo)
+            // Buscamos coincidencias parciales o exactas en las claves limpias
             $mapa = [
-                'id_prevision' => $encabezados['NUM OT'] ?? null, // Columna B usualmente
-                'equipo' => $encabezados['NOMBRE EQUIPO'] ?? $encabezados['EQUIPO'] ?? null,
-                'estado_equipo' => $encabezados['ESTADO EQUIPO'] ?? null,
-                'vertical' => $encabezados['ÁREA'] ?? $encabezados['AREA'] ?? null, // Usamos Área como Vertical temporal
-                'fecha_inicio' => $encabezados['FECHA INI INTER'] ?? null,
-                'hora_inicio' => $encabezados['HORA INI INTER'] ?? null,
-                'fecha_termino' => $encabezados['FECHA FIN INTER'] ?? null,
-                'hora_termino' => $encabezados['HORA FIN INTER'] ?? null,
-                'estado_ot' => $encabezados['EST.'] ?? null,
-                'situacion_final' => $encabezados['SITUACIÓN FINAL'] ?? null,
-                'observaciones' => $encabezados['OBSERVACIONES TÉCNICAS GENERALES'] ?? null,
-                'tecnico' => $encabezados['TÉCNICO'] ?? $encabezados['TECNICO'] ?? null,
-                'especialidad' => $encabezados['NOMBRE ESPECIALIDAD'] ?? null,
-                'horas_reales' => $encabezados['HORAS'] ?? null,
-                'gerencia' => $encabezados['GERENCIA'] ?? null,
-            );
+                'id_prevision' => $this->buscarCol($encabezados, ['NUMOT', 'NUMOT']), // Columna B usualmente
+                'equipo' => $this->buscarCol($encabezados, ['NOMBREEQUIPO', 'EQUIPO']),
+                'estado_equipo' => $this->buscarCol($encabezados, ['ESTADOEQUIPO']),
+                'vertical' => $this->buscarCol($encabezados, ['AREA', 'GERENCIA']), // Usamos Área como Vertical temporal
+                'fecha_inicio' => $this->buscarCol($encabezados, ['FECHAINIINTER', 'FECHAINICIO']),
+                'hora_inicio' => $this->buscarCol($encabezados, ['HORAINIINTER', 'HORAINICIO']),
+                'fecha_termino' => $this->buscarCol($encabezados, ['FECHAFININTER', 'FECHATERMINO']),
+                'hora_termino' => $this->buscarCol($encabezados, ['HORAFININTER', 'HORATERMINO']),
+                'estado_ot' => $this->buscarCol($encabezados, ['EST', 'ESTADO']),
+                'situacion_final' => $this->buscarCol($encabezados, ['SITUACIONFINAL']),
+                'observaciones' => $this->buscarCol($encabezados, ['OBSERVACIONES', 'OBSTECNICAS']),
+                'tecnico' => $this->buscarCol($encabezados, ['TECNICO', 'NOMBRETECNICO']),
+                'especialidad' => $this->buscarCol($encabezados, ['NOMBRESPECIALIDAD', 'ESPECIALIDAD']),
+                'horas_reales' => $this->buscarCol($encabezados, ['HORAS', 'HHREALES']),
+                'gerencia' => $this->buscarCol($encabezados, ['GERENCIA']),
+            ];
 
             if (!$mapa['id_prevision']) {
-                throw new Exception("No se encontró la columna 'Num Ot' para vincular registros.");
+                throw new Exception("No se encontró la columna 'Num Ot' para vincular registros. Encabezados detectados: " . implode(', ', array_keys($encabezados)));
             }
             
             $totalFilas = $hoja->getHighestRow();
@@ -108,7 +111,7 @@ class ImportarEjecucionOT
                 } catch (Exception $e) {
                     $this->stats['errores']++;
                     if ($this->stats['errores'] <= 5) {
-                        $this->log(" Error Fila $fila: " . $e->getMessage());
+                        $this->log("❌ Error Fila $fila: " . $e->getMessage());
                     }
                 }
                 
@@ -141,6 +144,16 @@ class ImportarEjecucionOT
         }
     }
     
+    // Helper para buscar columna por múltiples nombres posibles
+    private function buscarCol(array $encabezados, array $posiblesNombres) {
+        foreach ($posiblesNombres as $nombre) {
+            if (isset($encabezados[$nombre])) {
+                return $encabezados[$nombre];
+            }
+        }
+        return null;
+    }
+
     private function procesarFilaDinamica($hoja, int $fila, array $mapa): void
     {
         $this->stats['total_registros']++;
@@ -148,10 +161,6 @@ class ImportarEjecucionOT
         // 1. Obtener ID OT (Num Ot)
         $numOt = $this->obtenerValor($hoja, $fila, $mapa['id_prevision']);
         if (empty($numOt)) return; // Saltar vacíos
-        
-        // Normalizar ID OT: Si en BD es "SIC-24828" y en CSV es "24828", ajustar aquí
-        // Asumimos que en BD se guarda como string numérico o con prefijo. 
-        // Para seguridad, buscamos por coincidencia parcial o exacta.
         
         // 2. Buscar Técnico
         $nomTecnico = $this->obtenerValor($hoja, $fila, $mapa['tecnico']);
@@ -192,7 +201,7 @@ class ImportarEjecucionOT
 
         // 5. Preparar Datos
         $data = [
-            'id_prevision_sic' => $numOt, // Guardamos tal cual viene del CSV
+            'id_prevision_sic' => $numOt,
             'id_tecnico' => $idTecnico,
             'nombre_equipo' => $this->obtenerValor($hoja, $fila, $mapa['equipo']),
             'estado_equipo' => $this->obtenerValor($hoja, $fila, $mapa['estado_equipo']),
