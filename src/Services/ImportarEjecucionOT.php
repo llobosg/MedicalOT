@@ -85,29 +85,38 @@ class ImportarEjecucionOT
             $sampleKeys = array_slice(array_keys($encabezadosClean), 0, 20);
             $this->log("Columnas detectadas (Muestra): " . implode(', ', $sampleKeys));
 
-            // 2. Mapeo Dinámico Robusto
-            // Mapeo Dinámico Robusto (Ajustado a informe (2).csv)
+            // MAPEO FIJO BASADO EN LA ESTRUCTURA REAL DE 'informe (2).csv'
+            // A=1, B=2, ... AB=28, AC=29, AD=30, AE=31, AF=32, AV=48, BN=66
             $mapa = [
-                'id_prevision' => $this->buscarCol($encabezadosClean, ['NUMOT']), 
-                'equipo' => $this->buscarCol($encabezadosClean, ['NOMBREEQUIPO', 'EQUIPO']),
-                'estado_equipo' => $this->buscarCol($encabezadosClean, ['ESTADOEQUIPO']),
-                'vertical' => $this->buscarCol($encabezadosClean, ['AREA', 'GERENCIA']), 
+                'id_prevision' => 2,   // Columna B: Num Ot
+                'equipo' => 11,        // Columna K: Nombre equipo
+                'estado_equipo' => 15, // Columna O: Estado Equipo
+                'vertical' => 19,      // Columna S: Área
                 
-                // ✅ CLAVE: Asegurar que buscamos las columnas de Fecha y Hora de Término
-                'fecha_termino' => $this->buscarCol($encabezadosClean, ['FECHAFININTER', 'FECHATERMINO', 'FECHAFIN']),
-                'hora_termino' => $this->buscarCol($encabezadosClean, ['HORAFININTER', 'HORATERMINO', 'HORAFIN']),
+                // CLAVE: Fechas y Horas
+                'fecha_inicio' => 28,  // Columna AB: Fecha Ini Inter
+                'hora_inicio' => 29,   // Columna AC: Hora Ini Inter
+                'fecha_termino' => 30, // Columna AD: Fecha Fin Inter
+                'hora_termino' => 31,  // Columna AE: Hora Fin Inter
                 
-                'fecha_inicio' => $this->buscarCol($encabezadosClean, ['FECHAINIINTER', 'FECHAINICIO']),
-                'hora_inicio' => $this->buscarCol($encabezadosClean, ['HORAINIINTER', 'HORAINICIO']),
-                
-                'estado_ot' => $this->buscarCol($encabezadosClean, ['EST', 'ESTADO']),
-                'situacion_final' => $this->buscarCol($encabezadosClean, ['SITUACIONFINAL']),
-                'observaciones' => $this->buscarCol($encabezadosClean, ['OBSERVACIONES', 'OBSTECNICAS']),
-                'tecnico' => $this->buscarCol($encabezadosClean, ['TECNICO', 'NOMBRETECNICO']),
-                'especialidad' => $this->buscarCol($encabezadosClean, ['NOMBRESPECIALIDAD', 'ESPECIALIDAD']),
-                'horas_reales' => $this->buscarCol($encabezadosClean, ['HORAS', 'HHREALES']),
-                'gerencia' => $this->buscarCol($encabezadosClean, ['GERENCIA']),
+                'estado_ot' => 32,     // Columna AF: Est. (Estado Final)
+                'situacion_final' => 33, // Columna AG: Situación Final (Ajustar si es diferente)
+                'observaciones' => 45, // Columna AS: Observaciones técnicas generales
+                'tecnico' => 48,       // Columna AV: Técnico
+                'especialidad' => 50,  // Columna AX: Nombre especialidad
+                'horas_reales' => 66,  // Columna BN: Horas
+                'gerencia' => 41,      // Columna AO: Gerencia
             ];
+
+            // DEBUG: Verificar que estamos leyendo algo de las columnas de fecha
+            $testFila = 2;
+            $fFinTest = $this->obtenerValor($hoja, $testFila, $mapa['fecha_termino']);
+            $hFinTest = $this->obtenerValor($hoja, $testFila, $mapa['hora_termino']);
+            $this->log("DEBUG: Fila $testFila -> FechaFin='$fFinTest', HoraFin='$hFinTest'");
+            
+            if (!$fFinTest || !$hFinTest) {
+                 $this->log("⚠️ ADVERTENCIA: Las columnas de fecha/hora parecen vacías. Revisar índices.");
+            }
 
             // DEBUG: Loguear qué columnas encontró para Fechas
             $this->log("DEBUG Mapeo: FechaTermino Col=" . ($mapa['fecha_termino'] ?? 'NO ENCONTRADA') . ", HoraTermino Col=" . ($mapa['hora_termino'] ?? 'NO ENCONTRADA'));
@@ -304,21 +313,23 @@ class ImportarEjecucionOT
     private function combinarFechaHora($fecha, $hora) {
         if (!$fecha) return null;
         
-        // Limpiar la fecha: quitar horas si vienen pegadas o basura
-        $fClean = preg_replace('/\s+\d{2}:\d{2}.*/', '', trim((string)$fecha));
+        // Limpiar fecha
+        $fClean = trim((string)$fecha);
         
-        // Si la hora es nula o vacía, asumir 00:00:00
+        // Limpiar hora: quitar milisegundos .0 o .123
         $hClean = '00:00:00';
         if (!empty($hora)) {
-            // Limpiar la hora: quitar milisegundos (ej: "13:29:14.803" -> "13:29:14")
-            $hClean = preg_replace('/\.\d+$/', '', trim((string)$hora));
+            $hStr = trim((string)$hora);
+            // Quitar todo después del punto si existe
+            if (strpos($hStr, '.') !== false) {
+                $hStr = explode('.', $hStr)[0];
+            }
+            $hClean = $hStr;
         }
         
-        // Combinar
         $fullString = "$fClean $hClean";
-        
-        // Validar y convertir
         $ts = strtotime($fullString);
+        
         if ($ts) {
             return date('Y-m-d H:i:s', $ts);
         }
