@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propuesta MedicalOT Master - Hospital Antofagasta</title>
+    <style>
+        :root {
+            --primary: #0f4c75; /* Azul Hospitalario Profundo */
+            --secondary: #3282b8; /* Azul Claro */
+            --accent: #bbe1fa; /* Hielo */
+            --dark: #1b262c; /* Texto Oscuro */
+            --light: #ffffff;
+            --success: #10b981;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        /* HEADER */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-area h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .logo-area p {
+            margin: 5px 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        .doc-info {
+            text-align: right;
+            font-size: 0.9rem;
+        }
+        
+        /* INTRO */
+        .intro {
+            padding: 40px;
+            border-bottom: 1px solid #eee;
+        }
+        .intro h2 {
+            color: var(--primary);
+            margin-top: 0;
+        }
+        .highlight-box {
+            background: #eef2f5;
+            border-left: 5px solid var(--secondary);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* SCOPE GRID */
+        .scope-section {
+            padding: 40px;
+            background: #fafafa;
+        }
+        .section-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-top: 4px solid var(--secondary);
+        }
+        .card h3 {
+            margin-top: 0;
+            color: var(--dark);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card ul {
+            padding-left: 20px;
+            margin: 0;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .card li {
+            margin-bottom: 8px;
+        }
+
+        /* TIMELINE */
+        .timeline-section {
+            padding: 40px;
+        }
+        .timeline {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin-top: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+        .step {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            width: 18%;
+        }
+        .circle {
+            width: 35px;
+            height: 35px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .step h4 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--dark);
+        }
+        .step span {
+            font-size: 0.8rem;
+            color: #777;
+        }
+
+        /* PRICING */
+        .pricing-section {
+            background: var(--dark);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .price-card {
+            background: white;
+            color: var(--dark);
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .price-tag {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 10px 0;
+        }
+        .price-details {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+            margin: 20px 0;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+            padding: 20px 0;
+        }
+        .price-details li {
+            padding: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+        }
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        /* FOOTER */
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8rem;
+            color: #888;
+            background: #f9f9f9;
+        }
+
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; }
+            .btn { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- HEADER -->
+    <header>
+        <div class="logo-area">
+            <!-- Reemplaza esto con tu logo real si tienes la URL, sino deja el texto -->
+            <h1>MedicalOT <span style="font-weight:300;">Master</span></h1>
+            <p>Gestión Inteligente de Órdenes de Trabajo</p>
+        </div>
+        <div class="doc-info">
+            <strong>Cliente:</strong> Hospital Antofagasta<br>
+            <strong>Fecha:</strong> Junio 2026<br>
+            <strong>Versión:</strong> 2.0 (Unificada)
+        </div>
+    </header>
+
+    <!-- INTRODUCCIÓN ESTRATÉGICA -->
+    <div class="intro">
+        <h2>De la Fragmentación a la Inteligencia Unificada</h2>
+        <p>Actualmente, la gestión de mantenimiento hospitalario enfrenta el desafío de consolidar datos dispersos en múltiples formatos (SIC, Planillas HH, Reportes de Ejecución). Esta dispersión genera latencia en la toma de decisiones y dificulta la trazabilidad real del ciclo de vida de una OT.</p>
+        
+        <div class="highlight-box">
+            <strong>La Solución MedicalOT Master:</strong> Hemos rediseñado la plataforma para operar bajo el concepto de <em>"Single Source of Truth"</em>. Mediante la ingesta automatizada de la <strong>Planilla Master Semestral</strong>, el sistema no solo almacena registros, sino que ejecuta reglas de negocio complejas para validar duplicidades, clasificar demandas (Preventiva/Spot) y generar indicadores de desempeño en tiempo real, eliminando la carga manual fragmentada.
+        </div>
+    </div>
+
+    <!-- ALCANCES TÉCNICOS -->
+    <div class="scope-section">
+        <div class="section-title">Alcances del Proyecto</div>
+        
+        <div class="grid-2">
+            <!-- Columna Izquierda: Núcleo -->
+            <div>
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>🛠️ Núcleo de Datos & Ingesta</h3>
+                    <ul>
+                        <li><strong>Diseño Lógico Unificado:</strong> Estructura de base de datos MySQL optimizada para soportar la jerarquía completa de la Planilla Master.</li>
+                        <li><strong>Módulo de Importación Inteligente:</strong> Validación automática de formato, detección de duplicados por ID_OT y bitácora de auditoría de cargas.</li>
+                        <li><strong>Almacenamiento Incremental:</strong> Logic-upsert para actualizar estados existentes e insertar nuevas OTs sin perder histórico.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3> Analítica Avanzada (6 KPIs)</h3>
+                    <ul>
+                        <li><strong>Detección de Demanda:</strong> Clasificación automática de origen (Preventiva, Spot Usuario, Spot Terreno, Incidencia Padre).</li>
+                        <li><strong>Tiempos de Estado:</strong> Tracking de duración en cada fase (Programada, Hallazgo, Conductivo).</li>
+                        <li><strong>Distribución:</strong> Desglose por Componentes, Especialidades y Verticales Críticas.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Visualización -->
+            <div>
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>🗺️ Visualización & Control</h3>
+                    <ul>
+                        <li><strong>Mapa de Calor:</strong> Matriz visual de densidad de OTs por Estado y las 3 Verticales principales.</li>
+                        <li><strong>Exportación PDF:</strong> Generación automática de reportes de OTs pendientes filtrados por Vertical.</li>
+                        <li><strong>Seguridad:</strong> Módulo de acceso robusto con autenticación usuario/contraseña y roles.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>📑 Reportes Estratégicos (4)</h3>
+                    <ul>
+                        <li>1. Análisis de Reprogramaciones (Causa/Efecto).</li>
+                        <li>2. Matriz OTs por Vertical y Estado Actual.</li>
+                        <li>3. % Cumplimiento de Programación (Semana/Mes).</li>
+                        <li>4. Backlog Acumulado y Días de Retraso.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CRONOGRAMA -->
+    <div class="timeline-section">
+        <div class="section-title">Plan de Implementación (7 Semanas)</div>
+        <div class="timeline">
+            <div class="step">
+                <div class="circle">1</div>
+                <h4>Desarrollo</h4>
+                <span>3 Semanas</span>
+                <p style="font-size:0.75rem; color:#666;">Backend, Frontend & Lógica Master</p>
+            </div>
+            <div class="step">
+                <div class="circle">2</div>
+                <h4>QA Interno</h4>
+                <span>1 Semana</span>
+                <p style="font-size:0.75rem; color:#666;">Pruebas de Carga & Validación</p>
+            </div>
+            <div class="step">
+                <div class="circle">3</div>
+                <h4>Migración</h4>
+                <span>2 Semanas</span>
+                <p style="font-size:0.75rem; color:#666;">Despliegue On-Premise Hospital</p>
+            </div>
+            <div class="step">
+                <div class="circle">4</div>
+                <h4>QA Final</h4>
+                <span>1 Semana</span>
+                <p style="font-size:0.75rem; color:#666;">Validación en entorno real</p>
+            </div>
+            <div class="step">
+                <div class="circle">5</div>
+                <h4>Entrega</h4>
+                <span>1 Día</span>
+                <p style="font-size:0.75rem; color:#666;">Capacitación & Recepción</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROPUESTA ECONÓMICA -->
+    <div class="pricing-section">
+        <h2>Inversión Estimada</h2>
+        <p style="opacity:0.8; margin-bottom: 30px;">Solución llave en mano incluyendo desarrollo, migración y soporte inicial.</p>
+        
+        <div class="price-card">
+            <h3 style="color:#555; text-transform:uppercase; font-size:0.9rem; letter-spacing:1px;">Proyecto MedicalOT Master</h3>
+            <div class="price-tag">$XX.XXX.XXX CLP</div>
+            <p style="font-size:0.9rem; color:#777;">Pago único por desarrollo e implementación</p>
+            
+            <ul class="price-details">
+                <li><span>Desarrollo de Módulos (Ingesta + KPIs)</span> <strong>Incluido</strong></li>
+                <li><span>Migración Infraestructura On-Premise</span> <strong>Incluido</strong></li>
+                <li><span>QA y Aseguramiento de Calidad</span> <strong>Incluido</strong></li>
+                <li><span>Soporte Post-Implementación (1 mes)</span> <strong>Incluido</strong></li>
+            </ul>
+            
+            <a href="#" class="btn">Aprobar Propuesta</a>
+        </div>
+    </div>
+
+    <footer>
+        MedicalOT © 2026 - Tecnología para la Gestión Hospitalaria Eficiente.<br>
+        Contacto: contacto@medicalot.cl | +56 9 1234 5678
+    </footer>
+</div>
+
+</body>
+</html>
